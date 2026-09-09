@@ -1,0 +1,16 @@
+{
+  "name": "ระบบคลังพัสดุโรงเรียน",
+  "short_name": "ตัดสต็อกโรงเรียน",
+  "description": "ระบบสแกนเช็คและตัดสต็อกพัสดุสำหรับเจ้าหน้าที่และครูในโรงเรียน",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
