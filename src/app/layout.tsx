@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
   title: 'ระบบสต็อกสินค้าและตัดเบิกพัสดุในโรงเรียน',
@@ -27,10 +28,12 @@ export default function RootLayout({
   return (
     <html lang="th">
       <body className="min-h-screen bg-slate-50 text-slate-900 pb-20 md:pb-6">
-        <Navbar />
-        <main className="max-w-5xl mx-auto px-3 sm:px-6 py-4">
-          {children}
-        </main>
+        <AuthProvider>
+          <Navbar />
+          <main className="max-w-5xl mx-auto px-3 sm:px-6 py-4">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

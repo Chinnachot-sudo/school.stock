@@ -79,13 +79,13 @@
       "code": "A4-DOUBLE-A",
       "name": "กระดาษ Double A 80 แกรม (A4)",
       "categoryId": "cat-paper",
-      "currentStock": 36,
+      "currentStock": 35,
       "minStock": 15,
       "unit": "รีม",
       "location": "ตู้พัสดุ A ชั้น 2",
       "note": "ใช้สำหรับพิมพ์เอกสารราชการและข้อสอบ",
       "isBorrowable": false,
-      "updatedAt": "2026-09-09T06:39:27.533Z"
+      "updatedAt": "2026-09-09T07:59:37.009Z"
     },
     {
       "id": "item-2",
@@ -296,6 +296,19 @@
       "requesterName": "",
       "note": "",
       "createdAt": "2026-09-09T06:39:27.533Z"
+    },
+    {
+      "id": "tx-1788940777009-123",
+      "itemId": "item-1",
+      "itemName": "กระดาษ Double A 80 แกรม (A4)",
+      "itemCode": "A4-DOUBLE-A",
+      "type": "OUT",
+      "quantity": 1,
+      "balanceAfter": 35,
+      "department": "กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี",
+      "requesterName": "",
+      "note": "",
+      "createdAt": "2026-09-09T07:59:37.009Z"
     }
   ]
 }

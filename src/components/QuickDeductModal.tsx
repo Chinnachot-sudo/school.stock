@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Item, Department } from '@/types/inventory';
+import { useAuth } from '@/lib/auth-context';
 import { X, Minus, Plus, Scissors, MapPin, Building2, User, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface QuickDeductModalProps {
@@ -19,6 +20,7 @@ export default function QuickDeductModal({
   onClose,
   onSuccess
 }: QuickDeductModalProps) {
+  const { user } = useAuth();
   const [quantity, setQuantity] = useState<number>(1);
   const [department, setDepartment] = useState<string>('');
   const [requesterName, setRequesterName] = useState<string>('');
@@ -26,16 +28,22 @@ export default function QuickDeductModal({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load saved preferences on mount
+  // Load saved preferences on mount or from logged-in user
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedDept = localStorage.getItem('school_stock_last_dept');
+    if (user) {
+      const authName = user.user_metadata?.full_name || user.email?.split('@')[0] || '';
+      setRequesterName(authName);
+    } else if (typeof window !== 'undefined') {
       const savedRequester = localStorage.getItem('school_stock_last_requester');
-      if (savedDept) setDepartment(savedDept);
-      else if (departments.length > 0) setDepartment(departments[0].name);
       if (savedRequester) setRequesterName(savedRequester);
     }
-  }, [departments]);
+
+    if (typeof window !== 'undefined') {
+      const savedDept = localStorage.getItem('school_stock_last_dept');
+      if (savedDept) setDepartment(savedDept);
+      else if (departments.length > 0) setDepartment(departments[0].name);
+    }
+  }, [departments, user]);
 
   // Reset quantity when modal opens for a new item
   useEffect(() => {
