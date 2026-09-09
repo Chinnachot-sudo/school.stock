@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export async function GET(
   request: Request,
@@ -7,6 +8,35 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .or(`id.eq.${id},code.eq.${id}`)
+        .maybeSingle();
+
+      if (error || !data) {
+        return NextResponse.json({ error: 'ไม่พบสินค้านี้' }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        item: {
+          id: data.id,
+          code: data.code,
+          name: data.name,
+          categoryId: data.category_id,
+          currentStock: data.current_stock,
+          minStock: data.min_stock,
+          unit: data.unit,
+          location: data.location,
+          note: data.note,
+          isBorrowable: data.is_borrowable,
+          updatedAt: data.updated_at
+        }
+      });
+    }
+
     const db = readDb();
     const item = db.items.find(i => i.id === id || i.code.toLowerCase() === id.toLowerCase());
 
@@ -27,8 +57,48 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const db = readDb();
 
+    if (isSupabaseConfigured && supabase) {
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+      if (body.name !== undefined) updateData.name = body.name.trim();
+      if (body.code !== undefined) updateData.code = body.code.trim();
+      if (body.categoryId !== undefined) updateData.category_id = body.categoryId;
+      if (body.minStock !== undefined) updateData.min_stock = Number(body.minStock);
+      if (body.unit !== undefined) updateData.unit = body.unit.trim();
+      if (body.location !== undefined) updateData.location = body.location.trim();
+      if (body.note !== undefined) updateData.note = body.note.trim();
+      if (body.isBorrowable !== undefined) updateData.is_borrowable = Boolean(body.isBorrowable);
+
+      const { data, error } = await supabase
+        .from('items')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return NextResponse.json({
+        success: true,
+        item: {
+          id: data.id,
+          code: data.code,
+          name: data.name,
+          categoryId: data.category_id,
+          currentStock: data.current_stock,
+          minStock: data.min_stock,
+          unit: data.unit,
+          location: data.location,
+          note: data.note,
+          isBorrowable: data.is_borrowable,
+          updatedAt: data.updated_at
+        }
+      });
+    }
+
+    const db = readDb();
     const index = db.items.findIndex(i => i.id === id);
     if (index === -1) {
       return NextResponse.json({ error: 'ไม่พบสินค้าที่ต้องการแก้ไข' }, { status: 404 });
@@ -61,9 +131,15 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('items').delete().eq('id', id);
+      if (error) throw error;
+      return NextResponse.json({ success: true });
+    }
+
     const db = readDb();
     const index = db.items.findIndex(i => i.id === id);
-
     if (index === -1) {
       return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
     }
