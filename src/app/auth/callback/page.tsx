@@ -34,7 +34,7 @@ export default function AuthCallbackPage() {
 
           router.replace('/');
         } else {
-          const { data: listener } = client.auth.onAuthStateChange((event, session) => {
+          const { data: listener } = client.auth.onAuthStateChange((_event: any, session: any) => {
             if (session) {
               listener.subscription.unsubscribe();
               router.replace('/');
