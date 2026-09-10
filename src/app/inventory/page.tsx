@@ -48,6 +48,9 @@ export default function InventoryPage() {
     minStock: 5,
     unit: 'ชิ้น',
     location: '',
+    price: 0,
+    cost: 0,
+    isForSale: false,
     note: '',
     isBorrowable: false
   });
@@ -107,6 +110,9 @@ export default function InventoryPage() {
         minStock: 5,
         unit: 'ชิ้น',
         location: '',
+        price: 0,
+        cost: 0,
+        isForSale: false,
         note: '',
         isBorrowable: false
       });
@@ -293,6 +299,16 @@ export default function InventoryPage() {
                     <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
                       {item.code}
                     </span>
+                    {item.price !== undefined && item.price > 0 && (
+                      <span className="text-[10px] font-black bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md">
+                        ฿{item.price.toFixed(2)}
+                      </span>
+                    )}
+                    {item.isForSale && (
+                      <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">
+                        🛒 สินค้าขาย
+                      </span>
+                    )}
                     {isOut ? (
                       <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-md">
                         หมดสต็อก
@@ -528,6 +544,53 @@ export default function InventoryPage() {
                 />
               </div>
 
+              {/* Sales & Pricing Section */}
+              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-900">การจำหน่ายหน้าร้าน / สหกรณ์</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isForSale}
+                      onChange={e => setFormData({ ...formData, isForSale: e.target.checked })}
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-xs font-bold text-blue-800">เปิดขายในระบบ POS</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                      ราคาขาย (บาท)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      placeholder="0.00"
+                      value={formData.price || ''}
+                      onChange={e => setFormData({ ...formData, price: Number(e.target.value) || 0 })}
+                      className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                      ราคาทุน (บาท)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      placeholder="0.00"
+                      value={formData.cost || ''}
+                      onChange={e => setFormData({ ...formData, cost: Number(e.target.value) || 0 })}
+                      className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
@@ -649,6 +712,53 @@ export default function InventoryPage() {
                   onChange={(e) => setEditingItem({ ...editingItem, note: e.target.value })}
                   className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5"
                 />
+              </div>
+
+              {/* Sales & Pricing Section */}
+              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-900">การจำหน่ายหน้าร้าน / สหกรณ์</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingItem.isForSale)}
+                      onChange={e => setEditingItem({ ...editingItem, isForSale: e.target.checked })}
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-xs font-bold text-blue-800">เปิดขายในระบบ POS</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                      ราคาขาย (บาท)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      placeholder="0.00"
+                      value={editingItem.price || ''}
+                      onChange={e => setEditingItem({ ...editingItem, price: Number(e.target.value) || 0 })}
+                      className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                      ราคาทุน (บาท)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      placeholder="0.00"
+                      value={editingItem.cost || ''}
+                      onChange={e => setEditingItem({ ...editingItem, cost: Number(e.target.value) || 0 })}
+                      className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="pt-3 flex gap-2">

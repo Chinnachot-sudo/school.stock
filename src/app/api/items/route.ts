@@ -32,6 +32,9 @@ export async function GET(request: Request) {
         minStock: row.min_stock,
         unit: row.unit,
         location: row.location || '',
+        price: row.price !== undefined && row.price !== null ? Number(row.price) : 0,
+        cost: row.cost !== undefined && row.cost !== null ? Number(row.cost) : 0,
+        isForSale: Boolean(row.is_for_sale),
         note: row.note || '',
         isBorrowable: row.is_borrowable,
         updatedAt: row.updated_at
@@ -92,7 +95,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { code, name, categoryId, currentStock, minStock, unit, location, note, isBorrowable } = body;
+    const { code, name, categoryId, currentStock, minStock, unit, location, note, isBorrowable, price, cost, isForSale } = body;
 
     if (!code || !name || !unit) {
       return NextResponse.json({ error: 'กรุณากรอกรหัสสินค้า, ชื่อสินค้า และหน่วยนับ' }, { status: 400 });
@@ -116,7 +119,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const newItemData = {
+      const newItemData: any = {
         id: `item-${Date.now()}`,
         code: trimmedCode,
         name: trimmedName,
@@ -125,13 +128,24 @@ export async function POST(request: Request) {
         min_stock: Number(minStock) || 5,
         unit: unit.trim(),
         location: (location || 'ตู้พัสดุกลาง').trim(),
+        price: Number(price) || 0,
+        cost: Number(cost) || 0,
+        is_for_sale: Boolean(isForSale),
         note: (note || '').trim(),
         is_borrowable: Boolean(isBorrowable),
         updated_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase.from('items').insert(newItemData).select().single();
-      if (error) throw error;
+      let insertRes = await supabase.from('items').insert(newItemData).select().single();
+      if (insertRes.error && insertRes.error.message?.includes('column')) {
+        delete newItemData.price;
+        delete newItemData.cost;
+        delete newItemData.is_for_sale;
+        insertRes = await supabase.from('items').insert(newItemData).select().single();
+      }
+
+      if (insertRes.error) throw insertRes.error;
+      const data = insertRes.data;
 
       return NextResponse.json({
         success: true,
@@ -144,6 +158,9 @@ export async function POST(request: Request) {
           minStock: data.min_stock,
           unit: data.unit,
           location: data.location,
+          price: data.price !== undefined ? Number(data.price) : Number(price) || 0,
+          cost: data.cost !== undefined ? Number(data.cost) : Number(cost) || 0,
+          isForSale: data.is_for_sale !== undefined ? Boolean(data.is_for_sale) : Boolean(isForSale),
           note: data.note,
           isBorrowable: data.is_borrowable,
           updatedAt: data.updated_at
@@ -167,6 +184,9 @@ export async function POST(request: Request) {
       minStock: Number(minStock) || 5,
       unit: unit.trim(),
       location: (location || 'ตู้พัสดุกลาง').trim(),
+      price: Number(price) || 0,
+      cost: Number(cost) || 0,
+      isForSale: Boolean(isForSale),
       note: (note || '').trim(),
       isBorrowable: Boolean(isBorrowable),
       updatedAt: new Date().toISOString()

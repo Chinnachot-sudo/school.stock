@@ -1,12 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { Item, Category, Department, Transaction } from '@/types/inventory';
+import { Item, Category, Department, Transaction, Receipt } from '@/types/inventory';
 
 interface DatabaseSchema {
   categories: Category[];
   departments: Department[];
   items: Item[];
   transactions: Transaction[];
+  receipts: Receipt[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -15,13 +16,15 @@ const DB_FILE = path.join(DATA_DIR, 'inventory_db.json');
 const INITIAL_DATA: DatabaseSchema = {
   categories: [
     { id: 'cat-stationery', name: 'เครื่องเขียนและแบบพิมพ์', icon: '✏️' },
-    { id: 'cat-paper', name: 'กระดาษและเอกสาร', icon: '📄' },
+    { id: 'cat-paper', name: 'กระดาษและสมุดโรงเรียน', icon: '📄' },
+    { id: 'cat-uniform', name: 'ชุดนักเรียนและเครื่องแบบ', icon: '👕' },
     { id: 'cat-it', name: 'หมึกพิมพ์และอุปกรณ์ไอที', icon: '🖨️' },
     { id: 'cat-cleaning', name: 'อุปกรณ์ทำความสะอาด', icon: '🧹' },
     { id: 'cat-craft', name: 'อุปกรณ์กิจกรรม/ศิลปะ', icon: '🎨' },
     { id: 'cat-equipment', name: 'อุปกรณ์ยืม-คืน (ครุภัณฑ์)', icon: '📽️' }
   ],
   departments: [
+    { id: 'dept-store', name: 'ร้านค้าสวัสดิการ / สหกรณ์โรงเรียน' },
     { id: 'dept-sci', name: 'กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี' },
     { id: 'dept-math', name: 'กลุ่มสาระฯ คณิตศาสตร์' },
     { id: 'dept-thai', name: 'กลุ่มสาระฯ ภาษาไทย' },
@@ -33,6 +36,7 @@ const INITIAL_DATA: DatabaseSchema = {
     { id: 'dept-academic', name: 'งานวิชาการและทะเบียน' },
     { id: 'dept-facility', name: 'งานพัสดุ อาคารสถานที่' }
   ],
+  receipts: [],
   items: [
     {
       id: 'item-1',
@@ -195,7 +199,11 @@ export function readDb(): DatabaseSchema {
   ensureDbExists();
   try {
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(raw) as DatabaseSchema;
+    const parsed = JSON.parse(raw) as DatabaseSchema;
+    if (!Array.isArray(parsed.receipts)) {
+      parsed.receipts = [];
+    }
+    return parsed;
   } catch (error) {
     console.error('Error reading database file, resetting to initial data:', error);
     return INITIAL_DATA;

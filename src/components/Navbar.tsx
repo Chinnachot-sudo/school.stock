@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ScanLine, Boxes, History, QrCode, School, LogIn, LogOut } from 'lucide-react';
+import { ScanLine, Boxes, History, QrCode, School, LogIn, LogOut, Store, DollarSign } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 export default function Navbar() {
@@ -10,10 +10,12 @@ export default function Navbar() {
   const { user, isConfigured, role, isSuperAdmin, isInventoryManager, canPrintQr, signOut } = useAuth();
 
   const navItems = [
-    { label: 'สแกนเบิกด่วน', href: '/', icon: ScanLine },
+    { label: 'สแกนเบิก', href: '/', icon: ScanLine },
+    { label: 'ขายของ (POS)', href: '/pos', icon: Store },
     { label: 'คลังพัสดุ', href: '/inventory', icon: Boxes },
+    ...(isInventoryManager ? [{ label: 'การเงิน/ใบเสร็จ', href: '/finance', icon: DollarSign }] : []),
     { label: 'ประวัติเบิก-รับ', href: '/history', icon: History },
-    ...(canPrintQr ? [{ label: 'พิมพ์ป้าย QR', href: '/print-qr', icon: QrCode }] : [])
+    ...(canPrintQr ? [{ label: 'ป้าย QR', href: '/print-qr', icon: QrCode }] : [])
   ];
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
@@ -30,10 +32,10 @@ export default function Navbar() {
             </div>
             <div>
               <span className="text-sm sm:text-base leading-tight block font-extrabold text-blue-900">
-                ระบบคลังพัสดุโรงเรียน
+                ระบบ ERP & สต็อกโรงเรียน
               </span>
               <span className="text-[9px] sm:text-[10px] font-medium text-slate-400 block">
-                Roong-Aroon Stock
+                Roong-Aroon School ERP
               </span>
             </div>
           </Link>
