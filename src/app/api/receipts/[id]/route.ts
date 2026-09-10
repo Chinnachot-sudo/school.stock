@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
-import { Receipt, Transaction } from '@/types/inventory';
+import { Receipt, ReceiptItem, Transaction } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 
 export async function GET(
@@ -67,6 +67,79 @@ export async function DELETE(
     const body = await request.json().catch(() => ({}));
     const voidReason = body.reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
 
+    // 1. Supabase Cloud DB
+    if (isSupabaseConfigured && supabase) {
+      const { data: sbReceipt } = await supabase
+        .from('receipts')
+        .select('*')
+        .or(`id.eq.${id},receipt_number.eq.${id}`)
+        .maybeSingle();
+
+      if (sbReceipt) {
+        if (sbReceipt.status === 'VOIDED') {
+          return NextResponse.json({ error: 'ใบเสร็จนี้ถูกยกเลิกไปแล้ว' }, { status: 400 });
+        }
+
+        await supabase
+          .from('receipts')
+          .update({ status: 'VOIDED', void_reason: voidReason })
+          .eq('id', sbReceipt.id);
+
+        const items: ReceiptItem[] = typeof sbReceipt.items === 'string'
+          ? JSON.parse(sbReceipt.items)
+          : (sbReceipt.items || []);
+
+        for (const item of items) {
+          const { data: cur } = await supabase
+            .from('items')
+            .select('current_stock')
+            .eq('id', item.itemId)
+            .maybeSingle();
+
+          if (cur) {
+            const restoredStock = (cur.current_stock || 0) + item.quantity;
+            await supabase
+              .from('items')
+              .update({ current_stock: restoredStock, updated_at: new Date().toISOString() })
+              .eq('id', item.itemId);
+
+            await supabase.from('transactions').insert({
+              id: `tx-void-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              item_id: item.itemId,
+              item_name: item.itemName,
+              item_code: item.itemCode,
+              type: 'VOID_SALE',
+              quantity: item.quantity,
+              balance_after: restoredStock,
+              department: 'School Store & Co-op',
+              requester_name: 'ระบบ (ยกเลิกบิล)',
+              note: `คืนสต็อกเนื่องจากยกเลิกใบเสร็จ #${sbReceipt.receipt_number} (${voidReason})`,
+              receipt_id: sbReceipt.id,
+              created_at: new Date().toISOString()
+            });
+          }
+        }
+
+        // Also safely sync to local DB cache
+        try {
+          const db = readDb();
+          const localIdx = db.receipts?.findIndex(r => r.id === sbReceipt.id || r.receiptNumber === sbReceipt.receipt_number);
+          if (localIdx !== -1 && db.receipts) {
+            db.receipts[localIdx].status = 'VOIDED';
+            db.receipts[localIdx].voidReason = voidReason;
+            writeDb(db);
+          }
+        } catch {}
+
+        return NextResponse.json({
+          success: true,
+          message: `ยกเลิกใบเสร็จ #${sbReceipt.receipt_number} และคืนยอดสต็อกเรียบร้อยแล้ว`,
+          receipt: { ...sbReceipt, status: 'VOIDED', voidReason }
+        });
+      }
+    }
+
+    // 2. Local JSON DB Fallback
     const db = readDb();
     const index = db.receipts?.findIndex(r => r.id === id || r.receiptNumber.toLowerCase() === id.toLowerCase());
 
@@ -79,11 +152,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'ใบเสร็จนี้ถูกยกเลิกไปแล้ว' }, { status: 400 });
     }
 
-    // 1. Mark receipt as VOIDED
     receipt.status = 'VOIDED';
     receipt.voidReason = voidReason;
 
-    // 2. Restore stock for all items in local DB
     for (const item of receipt.items) {
       const itemIdx = db.items.findIndex(i => i.id === item.itemId);
       if (itemIdx !== -1) {
@@ -109,26 +180,6 @@ export async function DELETE(
     }
 
     writeDb(db);
-
-    // 3. Sync void to Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase
-          .from('receipts')
-          .update({ status: 'VOIDED', void_reason: voidReason })
-          .eq('id', receipt.id);
-
-        for (const item of receipt.items) {
-          const { data: cur } = await supabase.from('items').select('current_stock').eq('id', item.itemId).single();
-          if (cur) {
-            const restoredStock = cur.current_stock + item.quantity;
-            await supabase.from('items').update({ current_stock: restoredStock }).eq('id', item.itemId);
-          }
-        }
-      } catch (e) {
-        console.warn('Supabase void sync error:', e);
-      }
-    }
 
     return NextResponse.json({
       success: true,

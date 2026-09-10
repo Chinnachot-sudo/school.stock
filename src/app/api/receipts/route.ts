@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
-import { Receipt, ReceiptItem, Transaction } from '@/types/inventory';
+import { Item, Receipt, ReceiptItem, Transaction } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 
 export async function GET(request: Request) {
@@ -137,20 +137,100 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'กรุณาเลือกสินค้าอย่างน้อย 1 รายการ' }, { status: 400 });
     }
 
+    // 1. Fetch items from Supabase if configured, or fall back to local DB
+    let cloudItems: Item[] = [];
+    if (isSupabaseConfigured && supabase) {
+      const itemIds = items.map((ci: any) => ci.itemId).filter(Boolean);
+      const itemCodes = items.map((ci: any) => ci.itemCode).filter(Boolean);
+
+      const { data: sbItems } = await supabase
+        .from('items')
+        .select('*')
+        .in('id', itemIds);
+
+      if (sbItems) {
+        for (const row of sbItems) {
+          cloudItems.push({
+            id: row.id,
+            code: row.code,
+            name: row.name,
+            categoryId: row.category_id,
+            currentStock: Number(row.current_stock) || 0,
+            minStock: Number(row.min_stock) || 5,
+            unit: row.unit || 'ชิ้น',
+            price: Number(row.price) || 0,
+            cost: Number(row.cost) || 0,
+            location: row.location || '',
+            isForSale: Boolean(row.is_for_sale),
+            note: row.note || '',
+            isBorrowable: Boolean(row.is_borrowable),
+            updatedAt: row.updated_at
+          });
+        }
+      }
+
+      // If any items were not found by id, query by code
+      const missingCodes = itemCodes.filter(c => !cloudItems.some(i => i.code === c));
+      if (missingCodes.length > 0) {
+        const { data: codeItems } = await supabase
+          .from('items')
+          .select('*')
+          .in('code', missingCodes);
+
+        if (codeItems) {
+          for (const row of codeItems) {
+            if (!cloudItems.some(i => i.id === row.id)) {
+              cloudItems.push({
+                id: row.id,
+                code: row.code,
+                name: row.name,
+                categoryId: row.category_id,
+                currentStock: Number(row.current_stock) || 0,
+                minStock: Number(row.min_stock) || 5,
+                unit: row.unit || 'ชิ้น',
+                price: Number(row.price) || 0,
+                cost: Number(row.cost) || 0,
+                location: row.location || '',
+                isForSale: Boolean(row.is_for_sale),
+                note: row.note || '',
+                isBorrowable: Boolean(row.is_borrowable),
+                updatedAt: row.updated_at
+              });
+            }
+          }
+        }
+      }
+    }
+
     const db = readDb();
     const date = new Date();
     const yy = date.getFullYear().toString().slice(-2);
     const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-    const countSeq = ((db.receipts?.length || 0) + 1).toString().padStart(4, '0');
+
+    let seq = 1;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { count } = await supabase.from('receipts').select('*', { count: 'exact', head: true });
+        if (typeof count === 'number' && !isNaN(count)) seq = count + 1;
+      } catch {
+        seq = (db.receipts?.length || 0) + 1;
+      }
+    } else {
+      seq = (db.receipts?.length || 0) + 1;
+    }
+
+    const countSeq = seq.toString().padStart(4, '0');
     const receiptNumber = `RC${yy}${mm}-${countSeq}`;
     const receiptId = `rec-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     let subtotal = 0;
     const validatedReceiptItems: ReceiptItem[] = [];
 
-    // 1. Validate items and stock
+    // 2. Validate items and stock against cloud or local database
     for (const cartItem of items) {
-      const targetItem = db.items.find(i => i.id === cartItem.itemId || i.code === cartItem.itemCode);
+      const targetItem = cloudItems.find(i => i.id === cartItem.itemId || i.code === cartItem.itemCode)
+        || db.items.find(i => i.id === cartItem.itemId || i.code === cartItem.itemCode);
+
       if (!targetItem) {
         return NextResponse.json({ error: `ไม่พบสินค้า: ${cartItem.itemName || cartItem.itemId}` }, { status: 404 });
       }
@@ -206,38 +286,9 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString()
     };
 
-    // 2. Deduct stock and log transactions in local DB
-    for (const rItem of validatedReceiptItems) {
-      const idx = db.items.findIndex(i => i.id === rItem.itemId);
-      if (idx !== -1) {
-        db.items[idx].currentStock -= rItem.quantity;
-        db.items[idx].updatedAt = new Date().toISOString();
-
-        const tx: Transaction = {
-          id: `tx-sale-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          itemId: rItem.itemId,
-          itemName: rItem.itemName,
-          itemCode: rItem.itemCode,
-          type: 'SALE',
-          quantity: rItem.quantity,
-          balanceAfter: db.items[idx].currentStock,
-          department: 'ร้านค้าสวัสดิการ / สหกรณ์',
-          requesterName: newReceipt.customerName + (newReceipt.studentClass ? ` (${newReceipt.studentClass})` : ''),
-          note: `ขายตามใบเสร็จ #${receiptNumber}`,
-          receiptId,
-          createdAt: new Date().toISOString()
-        };
-        db.transactions.push(tx);
-      }
-    }
-
-    db.receipts.push(newReceipt);
-    writeDb(db);
-
-    // 3. Sync to Supabase if configured
+    // 3. Deduct stock and record transactions in Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
       try {
-        // Try insert receipt in Supabase (if table exists)
         await supabase.from('receipts').insert({
           id: newReceipt.id,
           receipt_number: newReceipt.receiptNumber,
@@ -259,36 +310,54 @@ export async function POST(request: Request) {
           created_at: newReceipt.createdAt
         });
 
-        // Deduct items stock in Supabase
         for (const rItem of validatedReceiptItems) {
-          const { data: currentItem } = await supabase
+          const { data: cur } = await supabase
             .from('items')
             .select('current_stock')
             .eq('id', rItem.itemId)
-            .single();
+            .maybeSingle();
 
-          if (currentItem) {
-            const newStock = Math.max(0, currentItem.current_stock - rItem.quantity);
-            await supabase.from('items').update({ current_stock: newStock }).eq('id', rItem.itemId);
+          const newStock = cur ? Math.max(0, (cur.current_stock || 0) - rItem.quantity) : 0;
 
-            await supabase.from('transactions').insert({
-              id: `tx-sale-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-              item_id: rItem.itemId,
-              item_name: rItem.itemName,
-              item_code: rItem.itemCode,
-              type: 'SALE',
-              quantity: rItem.quantity,
-              balance_after: newStock,
-              department: 'ร้านค้าสวัสดิการ / สหกรณ์',
-              requester_name: newReceipt.customerName,
-              note: `ขายตามใบเสร็จ #${receiptNumber}`,
-              created_at: new Date().toISOString()
-            });
-          }
+          await supabase
+            .from('items')
+            .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+            .eq('id', rItem.itemId);
+
+          await supabase.from('transactions').insert({
+            id: `tx-sale-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            item_id: rItem.itemId,
+            item_name: rItem.itemName,
+            item_code: rItem.itemCode,
+            type: 'SALE',
+            quantity: rItem.quantity,
+            balance_after: newStock,
+            department: 'School Store & Co-op',
+            requester_name: newReceipt.customerName + (newReceipt.studentClass ? ` (${newReceipt.studentClass})` : ''),
+            note: `ขายตามใบเสร็จ #${receiptNumber}`,
+            receipt_id: newReceipt.id,
+            created_at: new Date().toISOString()
+          });
         }
       } catch (sbErr) {
-        console.warn('Supabase receipt sync skipped or table missing:', sbErr);
+        console.warn('Supabase sale insert warning:', sbErr);
       }
+    }
+
+    // 4. Safely update local DB as local cache
+    try {
+      for (const rItem of validatedReceiptItems) {
+        const idx = db.items.findIndex(i => i.id === rItem.itemId);
+        if (idx !== -1) {
+          db.items[idx].currentStock = Math.max(0, db.items[idx].currentStock - rItem.quantity);
+          db.items[idx].updatedAt = new Date().toISOString();
+        }
+      }
+      if (!db.receipts) db.receipts = [];
+      db.receipts.push(newReceipt);
+      writeDb(db);
+    } catch (localErr) {
+      console.warn('Local db write skipped:', localErr);
     }
 
     return NextResponse.json({
