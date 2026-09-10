@@ -31,6 +31,11 @@ function getSanitizedConfig() {
     }
   }
 
+  // Auto-heal 3: If user typed .supabase.com instead of .supabase.co
+  if (url.includes('.supabase.com')) {
+    url = url.replace('.supabase.com', '.supabase.co');
+  }
+
   return { url, key };
 }
 
