@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Item } from '@/types/inventory';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 
 export async function GET(request: Request) {
   try {
@@ -182,8 +182,12 @@ export async function POST(request: Request) {
 
       if (insertRes.error) {
         console.error('Supabase item insertion failed:', insertRes.error);
+        let msg = insertRes.error.message || insertRes.error.details || 'ไม่สามารถบันทึกพัสดุลงในฐานข้อมูลได้';
+        if (msg.includes('row-level security') || msg.includes('policy')) {
+          msg = 'ติดสิทธิ์ Row Level Security (RLS) ของ Supabase table "items" — กรุณารัน SQL ปิด RLS หรือใส่ SUPABASE_SERVICE_ROLE_KEY ใน Vercel';
+        }
         return NextResponse.json(
-          { error: insertRes.error.message || insertRes.error.details || 'ไม่สามารถบันทึกพัสดุลงในฐานข้อมูลได้' },
+          { error: msg },
           { status: 500 }
         );
       }

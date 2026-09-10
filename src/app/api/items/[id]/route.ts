@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 
 export async function GET(
   request: Request,

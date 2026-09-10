@@ -1,13 +1,13 @@
 -- =========================================================
--- สคริปต์สร้างตารางฐานข้อมูลสำหรับระบบสต็อกโรงเรียน (Supabase SQL)
--- นำสคริปต์นี้ไปวางในเมนู "SQL Editor" บน Supabase แล้วกด RUN
+-- สคริปต์สร้างและอัปเดตฐานข้อมูลสำหรับระบบ ERP โรงเรียนรุ่งอรุณ (Supabase SQL)
+-- วิธีใช้: คัดลอกข้อความทั้งหมดไปวางในเมนู "SQL Editor" บน Supabase แล้วกด "RUN"
 -- =========================================================
 
 -- 1. ตารางหมวดหมู่สินค้า (Categories)
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  icon TEXT
+  icon TEXT DEFAULT '🏷️'
 );
 
 -- 2. ตารางกลุ่มสาระ / แผนกงาน (Departments)
@@ -25,11 +25,19 @@ CREATE TABLE IF NOT EXISTS items (
   current_stock INTEGER NOT NULL DEFAULT 0,
   min_stock INTEGER NOT NULL DEFAULT 5,
   unit TEXT NOT NULL DEFAULT 'ชิ้น',
-  location TEXT,
+  location TEXT DEFAULT 'ตู้พัสดุกลาง',
+  price NUMERIC DEFAULT 0,
+  cost NUMERIC DEFAULT 0,
+  is_for_sale BOOLEAN DEFAULT false,
   note TEXT,
   is_borrowable BOOLEAN DEFAULT false,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- เพิ่ม Columns สำหรับระบบขาย POS หากมีตารางเดิมอยู่แล้ว
+ALTER TABLE items ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS cost NUMERIC DEFAULT 0;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS is_for_sale BOOLEAN DEFAULT false;
 
 -- 4. ตารางบันทึกประวัติการเบิก-รับ (Transactions)
 CREATE TABLE IF NOT EXISTS transactions (
@@ -37,53 +45,132 @@ CREATE TABLE IF NOT EXISTS transactions (
   item_id TEXT REFERENCES items(id) ON DELETE CASCADE,
   item_name TEXT NOT NULL,
   item_code TEXT NOT NULL,
-  type TEXT NOT NULL, -- 'IN' (รับเข้า), 'OUT' (เบิกตัดสต็อก), 'ADJUST' (ปรับยอด)
+  type TEXT NOT NULL, -- 'IN' (รับเข้า), 'OUT' (เบิกตัดสต็อก), 'SALE' (ขาย POS), 'ADJUST' (ปรับยอด)
   quantity INTEGER NOT NULL,
   balance_after INTEGER NOT NULL,
   department TEXT NOT NULL,
   requester_name TEXT,
   note TEXT,
+  receipt_id TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- ปิด Row Level Security (RLS) เพื่อให้ระบบเว็บเบิกพัสดุสามารถบันทึกได้สะดวก
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_id TEXT;
+
+-- 5. ตารางฐานข้อมูลลูกค้าและนักเรียน IB (Customers)
+CREATE TABLE IF NOT EXISTS customers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  nickname TEXT,
+  type TEXT NOT NULL DEFAULT 'STUDENT', -- 'STUDENT' | 'PARENT' | 'TEACHER' | 'GENERAL'
+  programme TEXT NOT NULL DEFAULT 'MYP', -- 'PYP' | 'MYP' | 'DP' | 'CP' | 'STAFF' | 'GENERAL'
+  grade TEXT DEFAULT '',
+  student_id TEXT,
+  parent_name TEXT,
+  phone TEXT,
+  email TEXT,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS nickname TEXT;
+
+-- 6. ตารางใบเสร็จรับเงิน (Receipts)
+CREATE TABLE IF NOT EXISTS receipts (
+  id TEXT PRIMARY KEY,
+  receipt_number TEXT UNIQUE NOT NULL,
+  customer_name TEXT NOT NULL,
+  customer_type TEXT NOT NULL DEFAULT 'STUDENT',
+  student_class TEXT,
+  student_id TEXT,
+  payment_method TEXT NOT NULL DEFAULT 'CASH', -- 'CASH' | 'PROMPTPAY' | 'TRANSFER'
+  subtotal NUMERIC NOT NULL DEFAULT 0,
+  discount NUMERIC NOT NULL DEFAULT 0,
+  total_amount NUMERIC NOT NULL DEFAULT 0,
+  cash_received NUMERIC DEFAULT 0,
+  change NUMERIC DEFAULT 0,
+  cashier_name TEXT,
+  cashier_email TEXT,
+  items JSONB NOT NULL DEFAULT '[]'::jsonb,
+  status TEXT NOT NULL DEFAULT 'COMPLETED', -- 'COMPLETED' | 'VOIDED'
+  void_reason TEXT,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =========================================================
+-- ปิด Row Level Security (RLS) เพื่อให้ระบบ API สามารถ เพิ่ม/แก้ไข/ลบ ข้อมูลได้ทันที
+-- =========================================================
 ALTER TABLE categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE departments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE items DISABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE customers DISABLE ROW LEVEL SECURITY;
+ALTER TABLE receipts DISABLE ROW LEVEL SECURITY;
 
--- 5. ข้อมูลหมวดหมู่ตั้งต้น (Initial Categories)
+-- หรือในกรณีที่เปิด RLS ไว้ ให้สร้าง Policy อนุญาตให้ทุกสิทธิ์เข้าถึงได้ (Public Access)
+DROP POLICY IF EXISTS "public_categories_all" ON categories;
+CREATE POLICY "public_categories_all" ON categories FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_departments_all" ON departments;
+CREATE POLICY "public_departments_all" ON departments FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_items_all" ON items;
+CREATE POLICY "public_items_all" ON items FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_transactions_all" ON transactions;
+CREATE POLICY "public_transactions_all" ON transactions FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_customers_all" ON customers;
+CREATE POLICY "public_customers_all" ON customers FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_receipts_all" ON receipts;
+CREATE POLICY "public_receipts_all" ON receipts FOR ALL TO public USING (true) WITH CHECK (true);
+
+-- =========================================================
+-- ข้อมูลหมวดหมู่ตั้งต้นตามหลักสูตรโรงเรียน IB (Initial Categories)
+-- =========================================================
 INSERT INTO categories (id, name, icon) VALUES
-  ('cat-stationery', 'เครื่องเขียนและแบบพิมพ์', '✏️'),
-  ('cat-paper', 'กระดาษและเอกสาร', '📄'),
-  ('cat-it', 'หมึกพิมพ์และอุปกรณ์ไอที', '🖨️'),
-  ('cat-cleaning', 'อุปกรณ์ทำความสะอาด', '🧹'),
-  ('cat-craft', 'อุปกรณ์กิจกรรม/ศิลปะ', '🎨'),
-  ('cat-equipment', 'อุปกรณ์ยืม-คืน (ครุภัณฑ์)', '📽️')
-ON CONFLICT (id) DO NOTHING;
+  ('cat-uniform', 'ชุดนักเรียนและเครื่องแบบ (Uniforms)', '👕'),
+  ('cat-books', 'หนังสือและแบบเรียน IB (Textbooks & Workbooks)', '📚'),
+  ('cat-stationery', 'เครื่องเขียนและอุปกรณ์การเรียน (Stationery)', '✏️'),
+  ('cat-paper', 'กระดาษและสมุดโรงเรียน (Paper & Notebooks)', '📄'),
+  ('cat-it', 'หมึกพิมพ์และอุปกรณ์ไอที (IT & EdTech)', '💻'),
+  ('cat-science', 'อุปกรณ์การทดลองวิทย์ (Science Lab)', '🔬'),
+  ('cat-art', 'อุปกรณ์ศิลปะและงานดีไซน์ (Art & Design)', '🎨'),
+  ('cat-pe', 'อุปกรณ์กีฬาและพลศึกษา (PHE & Sports)', '⚽'),
+  ('cat-cleaning', 'อุปกรณ์ทำความสะอาด (Hygiene & Facilities)', '🧹'),
+  ('cat-equipment', 'ครุภัณฑ์ยืม-คืน (Audio-Visual Equipment)', '📽️')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  icon = EXCLUDED.icon;
 
--- 6. ข้อมูลกลุ่มสาระฯ / แผนกตั้งต้น (Initial Departments)
+-- =========================================================
+-- ข้อมูลแผนกงานและหลักสูตรโรงเรียน (Initial Departments)
+-- =========================================================
 INSERT INTO departments (id, name) VALUES
-  ('dept-sci', 'กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี'),
-  ('dept-math', 'กลุ่มสาระฯ คณิตศาสตร์'),
-  ('dept-thai', 'กลุ่มสาระฯ ภาษาไทย'),
-  ('dept-foreign', 'กลุ่มสาระฯ ภาษาต่างประเทศ'),
-  ('dept-social', 'กลุ่มสาระฯ สังคมศึกษา ศาสนาฯ'),
-  ('dept-art', 'กลุ่มสาระฯ ศิลปะ / การงาน'),
-  ('dept-pe', 'กลุ่มสาระฯ สุขศึกษาและพลศึกษา'),
-  ('dept-admin', 'งานธุรการและสารบรรณ'),
-  ('dept-academic', 'งานวิชาการและทะเบียน'),
-  ('dept-facility', 'งานพัสดุ อาคารสถานที่')
-ON CONFLICT (id) DO NOTHING;
+  ('dept-store', 'School Store & Co-op (ร้านค้าสวัสดิการและสหกรณ์)'),
+  ('dept-pyp', 'Primary Years Programme (PYP)'),
+  ('dept-myp', 'Middle Years Programme (MYP)'),
+  ('dept-dp', 'Diploma Programme (DP)'),
+  ('dept-cp', 'Career-related Programme (CP)'),
+  ('dept-sci', 'Science & Laboratory Department'),
+  ('dept-art', 'Arts & Design Department'),
+  ('dept-phe', 'Physical & Health Education (PHE)'),
+  ('dept-it', 'IT & Educational Technology'),
+  ('dept-lib', 'Library & Resource Center'),
+  ('dept-admin', 'Administration & Admissions'),
+  ('dept-facility', 'Facilities & Maintenance')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name;
 
--- 7. ข้อมูลสินค้าตัวอย่างสำหรับโรงเรียน (Initial Items)
-INSERT INTO items (id, code, name, category_id, current_stock, min_stock, unit, location, note, is_borrowable) VALUES
-  ('item-1', 'A4-DOUBLE-A', 'กระดาษ Double A 80 แกรม (A4)', 'cat-paper', 45, 15, 'รีม', 'ตู้พัสดุ A ชั้น 2', 'ใช้สำหรับพิมพ์เอกสารราชการและข้อสอบ', false),
-  ('item-2', 'PEN-WB-BLUE', 'ปากกาไวท์บอร์ดตราม้า (น้ำเงิน)', 'cat-stationery', 32, 10, 'ด้าม', 'กล่องเครื่องเขียน B1 ชั้น 1', 'เบิกสำหรับประจำห้องเรียน', false),
-  ('item-3', 'PEN-WB-RED', 'ปากกาไวท์บอร์ดตราม้า (แดง)', 'cat-stationery', 18, 10, 'ด้าม', 'กล่องเครื่องเขียน B1 ชั้น 1', 'สำหรับตรวจงานและเน้นข้อความ', false),
-  ('item-4', 'INK-BROTHER-2380', 'ตลับหมึกเลเซอร์ Brother TN-2380', 'cat-it', 3, 4, 'กล่อง', 'ตู้พัสดุ C ชั้น 3 (ห้องเซิร์ฟเวอร์)', 'สำหรับเครื่องพิมพ์ห้องวิชาการและห้องสมุด', false),
-  ('item-5', 'CL-DET-PINK', 'น้ำยาล้างห้องน้ำ มาจิคลีน (ชมพู)', 'cat-cleaning', 14, 6, 'ขวด', 'ห้องเก็บของนักการภารโรง', 'เบิกสัปดาห์ละ 1-2 ครั้ง', false),
-  ('item-6', 'CRAFT-POSTER-COLOR', 'สีโปสเตอร์ 12 สี มาสเตอร์อาร์ต', 'cat-craft', 25, 8, 'ชุด', 'ห้องกลุ่มสาระฯ ศิลปะ', 'ใช้จัดบอร์ดและกิจกรรมนักเรียน', false),
-  ('item-7', 'EQ-PROJ-EPSON-01', 'โปรเจคเตอร์พกพา Epson EB-X06', 'cat-equipment', 2, 1, 'เครื่อง', 'ตู้กระจก ห้องโสตทัศนศึกษา', 'อุปกรณ์ยืม-คืน สำหรับห้องเรียนพิเศษ/ประชุม', true),
-  ('item-8', 'EQ-HDMI-10M', 'สายสัญญาณ HDMI ยาว 10 เมตร', 'cat-equipment', 5, 2, 'เส้น', 'กล่องสายสัญญาณ ห้องโสตฯ', 'อุปกรณ์ยืม-คืน', true)
+-- =========================================================
+-- ตัวอย่างข้อมูลนักเรียน IB ตั้งต้น (Sample IB Students)
+-- =========================================================
+INSERT INTO customers (id, name, nickname, type, programme, grade, student_id, parent_name, phone, email, note) VALUES
+  ('cust-1', 'ด.ช. ปัญญาวุฒิ สุขใจ', 'Ken', 'STUDENT', 'MYP', 'Grade 7 (MYP 2)', 'RAIS-2024-042', 'คุณสมศักดิ์ สุขใจ', '081-234-5678', 'panyawut.k@roong-aroon.ac.th', 'นักเรียนทุนวิชาการ'),
+  ('cust-2', 'Sarah Jenkins', 'Sarah', 'STUDENT', 'DP', 'Grade 11 (DP 1)', 'RAIS-2023-108', 'Mr. Robert Jenkins', '089-876-5432', 'sarah.j@roong-aroon.ac.th', 'IB Diploma Candidate'),
+  ('cust-3', 'ด.ญ. กัญญาพัชร มงคลกุล', 'ขวัญข้าว', 'STUDENT', 'PYP', 'Grade 3 (PYP 3)', 'RAIS-2025-015', 'คุณปิยะดา มงคลกุล', '086-555-4321', 'kanyapat.m@roong-aroon.ac.th', 'แพ้ถั่วลิสง'),
+  ('cust-4', 'นายธนกฤต วิริยะภาพ', 'Mark', 'STUDENT', 'CP', 'Grade 12 (CP 2)', 'RAIS-2022-099', 'คุณวิรัช วิริยะภาพ', '082-333-7890', 'thanakrit.w@roong-aroon.ac.th', 'BTEC Art & Design')
 ON CONFLICT (id) DO NOTHING;

@@ -59,3 +59,27 @@ if (supabaseUrl && supabaseKey) {
 }
 
 export const supabase = client;
+
+// Service role client for server API routes (bypasses Row-Level Security)
+const serviceRoleKey = (
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  ''
+).trim().replace(/^["']|["']$/g, '');
+
+let adminClient: any = null;
+if (supabaseUrl && serviceRoleKey) {
+  try {
+    adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    });
+  } catch (err) {
+    console.error('Failed to initialize Supabase Admin client:', err);
+  }
+}
+
+export const supabaseAdmin = adminClient || client;
+export const isServiceRoleConfigured = Boolean(adminClient);

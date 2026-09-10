@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Category } from '@/types/inventory';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-uniform', name: 'ชุดนักเรียนและเครื่องแบบ (Uniforms)', icon: '👕', description: 'เครื่องแบบนักเรียน เสื้อเชิ้ต กางเกง กระโปรง ชุดพละ' },

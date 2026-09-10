@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Customer } from '@/types/inventory';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 
 export async function GET(request: Request) {
   try {
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
         let customers: Customer[] = data.map((row: any) => ({
           id: row.id,
           name: row.name,
+          nickname: row.nickname,
           type: row.type || 'STUDENT',
           programme: row.programme || 'MYP',
           grade: row.grade || '',
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
           customers = customers.filter(
             c =>
               c.name.toLowerCase().includes(q) ||
+              (c.nickname && c.nickname.toLowerCase().includes(q)) ||
               (c.studentId && c.studentId.toLowerCase().includes(q)) ||
               (c.parentName && c.parentName.toLowerCase().includes(q)) ||
               (c.phone && c.phone.includes(q)) ||
@@ -63,6 +65,7 @@ export async function GET(request: Request) {
       customers = customers.filter(
         c =>
           c.name.toLowerCase().includes(q) ||
+          (c.nickname && c.nickname.toLowerCase().includes(q)) ||
           (c.studentId && c.studentId.toLowerCase().includes(q)) ||
           (c.parentName && c.parentName.toLowerCase().includes(q)) ||
           (c.phone && c.phone.includes(q)) ||
@@ -80,19 +83,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, type = 'STUDENT', programme = 'MYP', grade = '', studentId = '', parentName = '', phone = '', email = '', note = '' } = body;
+    const { name, nickname = '', type = 'STUDENT', programme = 'MYP', grade = '', studentId = '', parentName = '', phone = '', email = '', note = '' } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'กรุณากรอกชื่อลูกค้า / นักเรียน' }, { status: 400 });
     }
 
     const cleanName = name.trim();
+    const cleanNickname = (nickname || '').trim() || undefined;
     const customerId = `cust-${Date.now()}`;
     const now = new Date().toISOString();
 
     const newCustomer: Customer = {
       id: customerId,
       name: cleanName,
+      nickname: cleanNickname,
       type,
       programme,
       grade: grade.trim(),
@@ -107,31 +112,37 @@ export async function POST(request: Request) {
 
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.from('customers').insert({
-          id: customerId,
-          name: cleanName,
-          type,
-          programme,
-          grade: grade.trim(),
-          student_id: studentId.trim() || null,
-          parent_name: parentName.trim() || null,
-          phone: phone.trim() || null,
-          email: email.trim() || null,
-          note: note.trim() || null,
-          created_at: now,
-          updated_at: now
-        }).select().single();
+      const { data, error } = await supabase.from('customers').insert({
+        id: customerId,
+        name: cleanName,
+        nickname: cleanNickname || null,
+        type,
+        programme,
+        grade: grade.trim(),
+        student_id: studentId.trim() || null,
+        parent_name: parentName.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        note: note.trim() || null,
+        created_at: now,
+        updated_at: now
+      }).select().single();
 
-        if (!error && data) {
-          return NextResponse.json({ success: true, customer: newCustomer });
+      if (error) {
+        console.error('Supabase customers insert error:', error);
+        let msg = error.message;
+        if (msg.includes('relation "customers" does not exist') || msg.includes('does not exist')) {
+          msg = 'ยังไม่มีตาราง "customers" ใน Supabase — กรุณารันสคริปต์ SQL ใน Supabase SQL Editor';
+        } else if (msg.includes('row-level security') || msg.includes('policy')) {
+          msg = 'ติดสิทธิ์ Row Level Security (RLS) ของ Supabase table "customers" — กรุณารัน SQL ปิด RLS หรือใส่ SUPABASE_SERVICE_ROLE_KEY ใน Vercel';
         }
-      } catch (sbErr) {
-        console.warn('Supabase customers insert warning:', sbErr);
+        return NextResponse.json({ error: msg }, { status: 500 });
       }
+
+      return NextResponse.json({ success: true, customer: newCustomer });
     }
 
-    // 2. Local JSON DB
+    // 2. Local JSON DB Fallback (development only)
     const db = readDb();
     if (!db.customers) db.customers = [];
     db.customers.push(newCustomer);
