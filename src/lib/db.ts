@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Item, Category, Department, Transaction, Receipt } from '@/types/inventory';
+import { Item, Category, Department, Transaction, Receipt, Customer } from '@/types/inventory';
 
 interface DatabaseSchema {
   categories: Category[];
@@ -8,6 +8,7 @@ interface DatabaseSchema {
   items: Item[];
   transactions: Transaction[];
   receipts: Receipt[];
+  customers: Customer[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -15,28 +16,87 @@ const DB_FILE = path.join(DATA_DIR, 'inventory_db.json');
 
 const INITIAL_DATA: DatabaseSchema = {
   categories: [
-    { id: 'cat-stationery', name: 'เครื่องเขียนและแบบพิมพ์', icon: '✏️' },
-    { id: 'cat-paper', name: 'กระดาษและสมุดโรงเรียน', icon: '📄' },
-    { id: 'cat-uniform', name: 'ชุดนักเรียนและเครื่องแบบ', icon: '👕' },
-    { id: 'cat-it', name: 'หมึกพิมพ์และอุปกรณ์ไอที', icon: '🖨️' },
-    { id: 'cat-cleaning', name: 'อุปกรณ์ทำความสะอาด', icon: '🧹' },
-    { id: 'cat-craft', name: 'อุปกรณ์กิจกรรม/ศิลปะ', icon: '🎨' },
-    { id: 'cat-equipment', name: 'อุปกรณ์ยืม-คืน (ครุภัณฑ์)', icon: '📽️' }
+    { id: 'cat-uniform', name: 'ชุดนักเรียนและเครื่องแบบ (Uniforms)', icon: '👕', description: 'เครื่องแบบนักเรียน เสื้อเชิ้ต กางเกง กระโปรง ชุดพละ' },
+    { id: 'cat-books', name: 'หนังสือและแบบเรียน IB (Textbooks & Workbooks)', icon: '📚', description: 'หนังสือเรียน PYP, MYP, DP, CP และแบบฝึกหัด' },
+    { id: 'cat-stationery', name: 'เครื่องเขียนและอุปกรณ์การเรียน (Stationery)', icon: '✏️', description: 'ปากกา ดินสอ ยางลบ ไม้บรรทัด กรรไกร สี' },
+    { id: 'cat-paper', name: 'กระดาษและสมุดโรงเรียน (Paper & Notebooks)', icon: '📄', description: 'สมุดรายงานโรงเรียน กระดาษ A4 สมุดจดการบ้าน' },
+    { id: 'cat-it', name: 'หมึกพิมพ์และอุปกรณ์ไอที (IT & EdTech)', icon: '💻', description: 'หมึกพิมพ์ สายต่อคอมพิวเตอร์ อุปกรณ์ไอที' },
+    { id: 'cat-science', name: 'อุปกรณ์การทดลองวิทย์ (Science Lab)', icon: '🔬', description: 'หลอดทดลอง สารเคมี แว่นตานิรภัย' },
+    { id: 'cat-art', name: 'อุปกรณ์ศิลปะและงานดีไซน์ (Art & Design)', icon: '🎨', description: 'สีน้ำ สีโปสเตอร์ กระดาษวาดเขียน ดินน้ำมัน' },
+    { id: 'cat-pe', name: 'อุปกรณ์กีฬาและพลศึกษา (PHE & Sports)', icon: '⚽', description: 'ลูกบอล กรวยฝึกซ้อม ไม้แบดมินตัน' },
+    { id: 'cat-cleaning', name: 'อุปกรณ์ทำความสะอาด (Hygiene & Facilities)', icon: '🧹', description: 'น้ำยาทำความสะอาด ทิชชู่ ถุงขยะ' },
+    { id: 'cat-equipment', name: 'ครุภัณฑ์ยืม-คืน (Audio-Visual Equipment)', icon: '📽️', description: 'โปรเจคเตอร์ ไมโครโฟน สายสัญญาณ' }
   ],
   departments: [
-    { id: 'dept-store', name: 'ร้านค้าสวัสดิการ / สหกรณ์โรงเรียน' },
-    { id: 'dept-sci', name: 'กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี' },
-    { id: 'dept-math', name: 'กลุ่มสาระฯ คณิตศาสตร์' },
-    { id: 'dept-thai', name: 'กลุ่มสาระฯ ภาษาไทย' },
-    { id: 'dept-foreign', name: 'กลุ่มสาระฯ ภาษาต่างประเทศ' },
-    { id: 'dept-social', name: 'กลุ่มสาระฯ สังคมศึกษา ศาสนาฯ' },
-    { id: 'dept-art', name: 'กลุ่มสาระฯ ศิลปะ / การงาน' },
-    { id: 'dept-pe', name: 'กลุ่มสาระฯ สุขศึกษาและพลศึกษา' },
-    { id: 'dept-admin', name: 'งานธุรการและสารบรรณ' },
-    { id: 'dept-academic', name: 'งานวิชาการและทะเบียน' },
-    { id: 'dept-facility', name: 'งานพัสดุ อาคารสถานที่' }
+    { id: 'dept-store', name: 'School Store & Co-op (ร้านค้าสวัสดิการและสหกรณ์)' },
+    { id: 'dept-pyp', name: 'Primary Years Programme (PYP)' },
+    { id: 'dept-myp', name: 'Middle Years Programme (MYP)' },
+    { id: 'dept-dp', name: 'Diploma Programme (DP)' },
+    { id: 'dept-cp', name: 'Career-related Programme (CP)' },
+    { id: 'dept-sci', name: 'Science & Laboratory Department' },
+    { id: 'dept-art', name: 'Arts & Design Department' },
+    { id: 'dept-phe', name: 'Physical & Health Education (PHE)' },
+    { id: 'dept-it', name: 'IT & Educational Technology' },
+    { id: 'dept-lib', name: 'Library & Resource Center' },
+    { id: 'dept-admin', name: 'Administration & Admissions' },
+    { id: 'dept-facility', name: 'Facilities & Maintenance' }
   ],
   receipts: [],
+  customers: [
+    {
+      id: 'cust-1',
+      name: 'ด.ช. ปัญญาวุฒิ สุขใจ (Ken)',
+      type: 'STUDENT',
+      programme: 'MYP',
+      grade: 'Grade 7 (MYP 2)',
+      studentId: 'RAIS-2024-042',
+      parentName: 'คุณสมศักดิ์ สุขใจ',
+      phone: '081-234-5678',
+      email: 'panyawut.k@roong-aroon.ac.th',
+      note: 'นักเรียนทุนวิชาการ',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'cust-2',
+      name: 'ด.ญ. ภัทรวดี มงคลศิลป์ (Pat)',
+      type: 'STUDENT',
+      programme: 'PYP',
+      grade: 'Grade 4 (PYP 4)',
+      studentId: 'RAIS-2024-118',
+      parentName: 'คุณวิภา มงคลศิลป์',
+      phone: '089-876-5432',
+      email: 'pattawadee.m@roong-aroon.ac.th',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'cust-3',
+      name: 'นายธนาธิป เจริญผล (Mark)',
+      type: 'STUDENT',
+      programme: 'DP',
+      grade: 'Grade 11 (DP 1)',
+      studentId: 'RAIS-2023-015',
+      parentName: 'คุณเกรียงไกร เจริญผล',
+      phone: '086-555-1234',
+      email: 'thanathip.c@roong-aroon.ac.th',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'cust-4',
+      name: 'Sarah Jenkins (Ms. Sarah)',
+      type: 'TEACHER',
+      programme: 'MYP',
+      grade: 'MYP Faculty',
+      studentId: 'STAFF-029',
+      phone: '092-333-8899',
+      email: 'sarah.j@roong-aroon.ac.th',
+      note: 'MYP Individuals & Societies Teacher',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ],
   items: [
     {
       id: 'item-1',
@@ -202,6 +262,12 @@ export function readDb(): DatabaseSchema {
     const parsed = JSON.parse(raw) as DatabaseSchema;
     if (!Array.isArray(parsed.receipts)) {
       parsed.receipts = [];
+    }
+    if (!Array.isArray(parsed.customers)) {
+      parsed.customers = INITIAL_DATA.customers;
+    }
+    if (!Array.isArray(parsed.categories) || parsed.categories.length === 0) {
+      parsed.categories = INITIAL_DATA.categories;
     }
     return parsed;
   } catch (error) {

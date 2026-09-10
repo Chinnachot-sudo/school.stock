@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Item, Category, CustomerType, PaymentMethod, Receipt, CUSTOMER_TYPE_LABELS } from '@/types/inventory';
+import { Item, Category, CustomerType, PaymentMethod, Receipt, CUSTOMER_TYPE_LABELS, Customer, ALL_IB_GRADES } from '@/types/inventory';
 import { useAuth } from '@/lib/auth-context';
 import { generatePromptPayPayload } from '@/lib/promptpay';
 import ScannerModal from '@/components/ScannerModal';
@@ -26,7 +26,9 @@ import {
   ArrowRight,
   Receipt as ReceiptIcon,
   Store,
-  Edit2
+  Edit2,
+  Users,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -36,14 +38,6 @@ interface CartItem {
   unitPrice: number;
 }
 
-const SCHOOL_CLASSES = [
-  'อ.1', 'อ.2', 'อ.3',
-  'ป.1/1', 'ป.1/2', 'ป.2/1', 'ป.2/2', 'ป.3/1', 'ป.3/2',
-  'ป.4/1', 'ป.4/2', 'ป.5/1', 'ป.5/2', 'ป.6/1', 'ป.6/2',
-  'ม.1/1', 'ม.1/2', 'ม.2/1', 'ม.2/2', 'ม.3/1', 'ม.3/2',
-  'ม.4', 'ม.5', 'ม.6', 'บุคลากร/ทั่วไป'
-];
-
 const DEFAULT_PROMPTPAY_ID = process.env.NEXT_PUBLIC_DEFAULT_PROMPTPAY_ID || '0994000165';
 
 export default function PosPage() {
@@ -51,6 +45,10 @@ export default function PosPage() {
 
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerList, setShowCustomerList] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -61,7 +59,7 @@ export default function PosPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState('ผู้ปกครอง / นักเรียน');
   const [customerType, setCustomerType] = useState<CustomerType>('STUDENT');
-  const [studentClass, setStudentClass] = useState('ป.1/1');
+  const [studentClass, setStudentClass] = useState(ALL_IB_GRADES[3] || 'Grade 1 (PYP 1)');
   const [studentId, setStudentId] = useState('');
   const [discount, setDiscount] = useState<number>(0);
 
@@ -79,22 +77,30 @@ export default function PosPage() {
   const [completedReceipt, setCompletedReceipt] = useState<Receipt | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const fetchItems = async () => {
+  const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/items');
-      const data = await res.json();
+      const [itemsRes, custRes] = await Promise.all([
+        fetch('/api/items'),
+        fetch('/api/customers')
+      ]);
+      const data = await itemsRes.json();
       setItems(data.items || []);
       setCategories(data.categories || []);
+
+      if (custRes.ok) {
+        const custData = await custRes.json();
+        setCustomers(custData.customers || []);
+      }
     } catch (err) {
-      console.error('Error fetching items for POS:', err);
+      console.error('Error fetching data for POS:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchItems();
+    fetchInitialData();
   }, []);
 
   const showToast = (msg: string) => {
@@ -112,6 +118,36 @@ export default function PosPage() {
       return matchCat && matchSearch;
     });
   }, [items, selectedCategory, searchQuery]);
+
+  // Filter customers for autocomplete
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch.trim()) return customers.slice(0, 8);
+    const q = customerSearch.toLowerCase();
+    return customers.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      (c.nickname && c.nickname.toLowerCase().includes(q)) ||
+      (c.studentId && c.studentId.toLowerCase().includes(q)) ||
+      (c.grade && c.grade.toLowerCase().includes(q)) ||
+      (c.parentName && c.parentName.toLowerCase().includes(q))
+    ).slice(0, 8);
+  }, [customers, customerSearch]);
+
+  const handleSelectCustomer = (c: Customer) => {
+    setSelectedCustomer(c);
+    setCustomerName(c.nickname ? `${c.name} (${c.nickname})` : c.name);
+    setCustomerType(c.type || 'STUDENT');
+    if (c.grade) setStudentClass(c.grade);
+    if (c.studentId) setStudentId(c.studentId);
+    setShowCustomerList(false);
+    setCustomerSearch('');
+  };
+
+  const handleClearSelectedCustomer = () => {
+    setSelectedCustomer(null);
+    setCustomerName('ผู้ปกครอง / นักเรียน');
+    setStudentId('');
+    setCustomerSearch('');
+  };
 
   // Add to cart
   const addToCart = (item: Item) => {
@@ -465,27 +501,114 @@ export default function PosPage() {
 
             {/* Buyer Info Form */}
             <div className="p-3.5 border-b border-slate-100 bg-slate-50/70 space-y-2.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-bold text-slate-500">
                   ประเภทผู้ซื้อ
                 </label>
-                <div className="grid grid-cols-4 gap-1">
-                  {(['STUDENT', 'PARENT', 'TEACHER', 'GENERAL'] as CustomerType[]).map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setCustomerType(t)}
-                      className={`py-1 rounded-lg text-[10px] font-bold border transition ${
-                        customerType === t
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {t === 'STUDENT' ? 'นักเรียน' : t === 'PARENT' ? 'ผู้ปกครอง' : t === 'TEACHER' ? 'ครู' : 'ทั่วไป'}
-                    </button>
-                  ))}
-                </div>
+                <Link
+                  href="/customers"
+                  target="_blank"
+                  className="text-[10px] text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 hover:underline"
+                >
+                  <Users className="w-3 h-3" />
+                  <span>ฐานข้อมูลนักเรียน IB ↗</span>
+                </Link>
               </div>
+
+              <div className="grid grid-cols-4 gap-1">
+                {(['STUDENT', 'PARENT', 'TEACHER', 'GENERAL'] as CustomerType[]).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setCustomerType(t)}
+                    className={`py-1 rounded-lg text-[10px] font-bold border transition ${
+                      customerType === t
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {t === 'STUDENT' ? 'นักเรียน' : t === 'PARENT' ? 'ผู้ปกครอง' : t === 'TEACHER' ? 'ครู' : 'ทั่วไป'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Selected Customer Highlight Banner */}
+              {selectedCustomer ? (
+                <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                      {selectedCustomer.programme}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-bold text-blue-950 truncate text-xs">
+                        {selectedCustomer.name} {selectedCustomer.nickname && `(${selectedCustomer.nickname})`}
+                      </p>
+                      <p className="text-[10px] text-blue-700">
+                        {selectedCustomer.grade} {selectedCustomer.studentId && `• รหัส ${selectedCustomer.studentId}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedCustomer}
+                    className="text-slate-400 hover:text-red-500 p-1 shrink-0"
+                    title="ยกเลิกการเลือก"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                /* Customer Fast Search Autocomplete */
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="🔍 ค้นหานักเรียนในระบบ (ชื่อ, ชื่อเล่น, รหัส)..."
+                      value={customerSearch}
+                      onChange={e => {
+                        setCustomerSearch(e.target.value);
+                        setShowCustomerList(true);
+                      }}
+                      onFocus={() => setShowCustomerList(true)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {showCustomerList && filteredCustomers.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {filteredCustomers.map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleSelectCustomer(c)}
+                          className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center justify-between gap-2 transition"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-800 text-xs">{c.name}</span>
+                            {c.nickname && <span className="text-slate-500 text-xs ml-1">({c.nickname})</span>}
+                            <div className="text-[10px] text-slate-400">
+                              {c.grade} {c.studentId && `• รหัส ${c.studentId}`}
+                            </div>
+                          </div>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">
+                            {c.programme}
+                          </span>
+                        </button>
+                      ))}
+                      <div className="p-1.5 text-center bg-slate-50">
+                        <button
+                          type="button"
+                          onClick={() => setShowCustomerList(false)}
+                          className="text-[10px] text-slate-500 hover:text-slate-700 font-semibold"
+                        >
+                          ปิดเมนูค้นหา ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -504,14 +627,14 @@ export default function PosPage() {
                 {customerType === 'STUDENT' ? (
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                      ระดับชั้น
+                      ระดับชั้น (IB Curriculum)
                     </label>
                     <select
                       value={studentClass}
                       onChange={e => setStudentClass(e.target.value)}
                       className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
                     >
-                      {SCHOOL_CLASSES.map(cls => (
+                      {ALL_IB_GRADES.map(cls => (
                         <option key={cls} value={cls}>{cls}</option>
                       ))}
                     </select>

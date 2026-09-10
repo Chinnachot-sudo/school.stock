@@ -31,7 +31,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-slate-50 text-slate-900 pb-20 md:pb-6">
         <AuthProvider>
           <Navbar />
-          <main className="max-w-5xl mx-auto px-3 sm:px-6 py-4">
+          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5">
             <AuthGuard>
               {children}
             </AuthGuard>

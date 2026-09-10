@@ -50,12 +50,102 @@ export interface Category {
   id: string;
   name: string;
   icon?: string;
+  description?: string;
+  itemCount?: number;
 }
 
 export interface Department {
   id: string;
   name: string;
 }
+
+// IB Curriculum Structure & Constants
+export type IBProgramme = 'PYP' | 'MYP' | 'DP' | 'CP' | 'STAFF' | 'GENERAL';
+
+export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; grades: string[] }> = {
+  PYP: {
+    name: 'Primary Years Programme',
+    label: '🌱 PYP (อนุบาล - ประถม)',
+    grades: [
+      'EY1 (Early Years 1)',
+      'EY2 (Early Years 2)',
+      'EY3 (Early Years 3)',
+      'Grade 1 (PYP 1)',
+      'Grade 2 (PYP 2)',
+      'Grade 3 (PYP 3)',
+      'Grade 4 (PYP 4)',
+      'Grade 5 (PYP 5)'
+    ]
+  },
+  MYP: {
+    name: 'Middle Years Programme',
+    label: '📘 MYP (มัธยมต้น)',
+    grades: [
+      'Grade 6 (MYP 1)',
+      'Grade 7 (MYP 2)',
+      'Grade 8 (MYP 3)',
+      'Grade 9 (MYP 4)',
+      'Grade 10 (MYP 5)'
+    ]
+  },
+  DP: {
+    name: 'Diploma Programme',
+    label: '🎓 DP (มัธยมปลาย Diploma)',
+    grades: [
+      'Grade 11 (DP 1)',
+      'Grade 12 (DP 2)'
+    ]
+  },
+  CP: {
+    name: 'Career-related Programme',
+    label: '💼 CP (มัธยมปลาย อาชีพ/ทักษะ)',
+    grades: [
+      'Grade 11 (CP 1)',
+      'Grade 12 (CP 2)'
+    ]
+  },
+  STAFF: {
+    name: 'Faculty & Staff',
+    label: '👨‍🏫 บุคลากร / ครูอาจารย์',
+    grades: [
+      'PYP Faculty',
+      'MYP Faculty',
+      'DP/CP Faculty',
+      'Administration & Operations'
+    ]
+  },
+  GENERAL: {
+    name: 'General / Visitor',
+    label: '👤 บุคคลภายนอก / ทั่วไป',
+    grades: ['General Visitor']
+  }
+};
+
+export const ALL_IB_GRADES = [
+  // PYP
+  'EY1 (Early Years 1)',
+  'EY2 (Early Years 2)',
+  'EY3 (Early Years 3)',
+  'Grade 1 (PYP 1)',
+  'Grade 2 (PYP 2)',
+  'Grade 3 (PYP 3)',
+  'Grade 4 (PYP 4)',
+  'Grade 5 (PYP 5)',
+  // MYP
+  'Grade 6 (MYP 1)',
+  'Grade 7 (MYP 2)',
+  'Grade 8 (MYP 3)',
+  'Grade 9 (MYP 4)',
+  'Grade 10 (MYP 5)',
+  // DP
+  'Grade 11 (DP 1)',
+  'Grade 12 (DP 2)',
+  // CP
+  'Grade 11 (CP 1)',
+  'Grade 12 (CP 2)',
+  // Staff
+  'Faculty / Staff'
+];
 
 export interface Transaction {
   id: string;
@@ -65,9 +155,9 @@ export interface Transaction {
   type: TransactionType;
   quantity: number; // e.g. 2
   balanceAfter: number; // e.g. 38
-  department: string; // e.g. "กลุ่มสาระฯ คณิตศาสตร์" or "ร้านค้าสวัสดิการ / สหกรณ์"
-  requesterName?: string; // e.g. "ครูสมชาย" or "ด.ช. ปัญญาวุฒิ"
-  note?: string; // e.g. "ใช้จัดกิจกรรมสัปดาห์วิทยาศาสตร์" or "เลขที่ใบเสร็จ RC202609-001"
+  department: string; // e.g. "MYP Sciences" or "School Store / Co-op"
+  requesterName?: string;
+  note?: string;
   receiptId?: string;
   createdAt: string; // ISO 8601
 }
@@ -77,7 +167,7 @@ export type CustomerType = 'STUDENT' | 'PARENT' | 'TEACHER' | 'GENERAL';
 export type PaymentMethod = 'CASH' | 'PROMPTPAY' | 'TRANSFER';
 
 export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
-  STUDENT: '🎒 นักเรียน',
+  STUDENT: '🎒 นักเรียน IB',
   PARENT: '👨‍👩‍👧 ผู้ปกครอง',
   TEACHER: '👨‍🏫 ครู / บุคลากร',
   GENERAL: '👤 ทั่วไป'
@@ -88,6 +178,23 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   PROMPTPAY: '📱 PromptPay QR',
   TRANSFER: '🏦 เงินโอนธนาคาร'
 };
+
+// Customer Database Record
+export interface Customer {
+  id: string;
+  name: string; // e.g. "ด.ช. ปัญญาวุฒิ สุขใจ" or "Sarah Jenkins"
+  nickname?: string; // e.g. "น้องวิน" or "Ken"
+  type: CustomerType;
+  programme: IBProgramme;
+  grade: string; // e.g. "Grade 7 (MYP 2)"
+  studentId?: string; // e.g. "RAIS-2024-042"
+  parentName?: string; // e.g. "คุณสมศักดิ์ สุขใจ"
+  phone?: string;
+  email?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface ReceiptItem {
   itemId: string;
@@ -102,10 +209,10 @@ export interface ReceiptItem {
 export interface Receipt {
   id: string;
   receiptNumber: string; // e.g. "RC2609-0001"
-  customerName: string; // e.g. "ด.ช. ทักษิณ ทองสุข" หรือ "ผู้ปกครอง"
+  customerName: string;
   customerType: CustomerType;
-  studentClass?: string; // e.g. "ป.3/2"
-  studentId?: string; // e.g. "65012"
+  studentClass?: string; // e.g. "Grade 7 (MYP 2)"
+  studentId?: string; // e.g. "RAIS-2024-042"
   paymentMethod: PaymentMethod;
   items: ReceiptItem[];
   subtotal: number;

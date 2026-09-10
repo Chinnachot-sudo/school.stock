@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Item, Category, Department } from '@/types/inventory';
 import QuickDeductModal from '@/components/QuickDeductModal';
 import QuickRestockModal from '@/components/QuickRestockModal';
+import CategoryManageModal from '@/components/CategoryManageModal';
 import {
   Search,
   Plus,
@@ -16,7 +17,8 @@ import {
   X,
   MapPin,
   CheckCircle2,
-  QrCode
+  QrCode,
+  Tag
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -35,6 +37,7 @@ export default function InventoryPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [selectedItemForDeduct, setSelectedItemForDeduct] = useState<Item | null>(null);
   const [selectedItemForRestock, setSelectedItemForRestock] = useState<Item | null>(null);
@@ -43,7 +46,7 @@ export default function InventoryPage() {
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    categoryId: 'cat-stationery',
+    categoryId: '',
     currentStock: 10,
     minStock: 5,
     unit: 'ชิ้น',
@@ -62,9 +65,18 @@ export default function InventoryPage() {
       setLoading(true);
       const res = await fetch('/api/items');
       const data = await res.json();
-      setItems(data.items || []);
-      setCategories(data.categories || []);
+      const loadedItems = data.items || [];
+      const loadedCats = data.categories || [];
+      setItems(loadedItems);
+      setCategories(loadedCats);
       setDepartments(data.departments || []);
+
+      if (loadedCats.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          categoryId: prev.categoryId && loadedCats.some((c: Category) => c.id === prev.categoryId) ? prev.categoryId : loadedCats[0].id
+        }));
+      }
     } catch (err) {
       console.error('Error fetching inventory:', err);
     } finally {
@@ -105,7 +117,7 @@ export default function InventoryPage() {
       setFormData({
         code: '',
         name: '',
-        categoryId: 'cat-stationery',
+        categoryId: categories[0]?.id || '',
         currentStock: 10,
         minStock: 5,
         unit: 'ชิ้น',
@@ -193,7 +205,7 @@ export default function InventoryPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {canPrintQr && (
             <Link
               href="/print-qr"
@@ -205,7 +217,21 @@ export default function InventoryPage() {
           )}
           {canManageItems && (
             <button
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-xs active:scale-95"
+            >
+              <Tag className="w-4 h-4 text-slate-500" />
+              <span>จัดการหมวดหมู่</span>
+            </button>
+          )}
+          {canManageItems && (
+            <button
+              onClick={() => {
+                if (categories.length > 0 && !formData.categoryId) {
+                  setFormData(prev => ({ ...prev, categoryId: categories[0].id }));
+                }
+                setIsAddModalOpen(true);
+              }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition"
             >
               <Plus className="w-4 h-4" />
@@ -447,17 +473,30 @@ export default function InventoryPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    หมวดหมู่
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      หมวดหมู่ *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCategoryModalOpen(true)}
+                      className="text-[11px] text-blue-600 hover:text-blue-700 font-bold underline"
+                    >
+                      + จัดการหมวดหมู่
+                    </button>
+                  </div>
                   <select
                     value={formData.categoryId}
                     onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 font-medium"
                   >
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                    ))}
+                    {categories.length === 0 ? (
+                      <option value="">-- ยังไม่มีหมวดหมู่ (คลิก + จัดการหมวดหมู่) --</option>
+                    ) : (
+                      categories.map(c => (
+                        <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>
@@ -802,6 +841,13 @@ export default function InventoryPage() {
           setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)));
           showToast(`📦 รับเข้า "${updated.name}" (+${qty}) เรียบร้อย`);
         }}
+      />
+
+      <CategoryManageModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        categories={categories}
+        onUpdated={() => fetchItems()}
       />
 
     </div>

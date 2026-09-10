@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ScanLine, Boxes, History, QrCode, School, LogIn, LogOut, Store, DollarSign } from 'lucide-react';
+import { ScanLine, Boxes, History, QrCode, School, LogIn, LogOut, Store, DollarSign, Users } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 export default function Navbar() {
@@ -13,6 +13,7 @@ export default function Navbar() {
     { label: 'สแกนเบิก', href: '/', icon: ScanLine },
     { label: 'ขายของ (POS)', href: '/pos', icon: Store },
     { label: 'คลังพัสดุ', href: '/inventory', icon: Boxes },
+    ...(isInventoryManager ? [{ label: 'ลูกค้า/นักเรียน', href: '/customers', icon: Users }] : []),
     ...(isInventoryManager ? [{ label: 'การเงิน/ใบเสร็จ', href: '/finance', icon: DollarSign }] : []),
     { label: 'ประวัติเบิก-รับ', href: '/history', icon: History },
     ...(canPrintQr ? [{ label: 'ป้าย QR', href: '/print-qr', icon: QrCode }] : [])
@@ -25,7 +26,7 @@ export default function Navbar() {
     <>
       {/* Top Header (Mobile & Desktop) */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-slate-800">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
               <School className="w-4 h-4 sm:w-5 sm:h-5" />

@@ -119,11 +119,34 @@ export async function POST(request: Request) {
         );
       }
 
+      // Ensure category_id exists in Supabase to satisfy foreign key constraints
+      let targetCatId = categoryId || 'cat-uniform';
+      try {
+        const { data: catCheck } = await supabase.from('categories').select('id').eq('id', targetCatId).maybeSingle();
+        if (!catCheck) {
+          // If specified category doesn't exist, check if there are any categories
+          const { data: anyCat } = await supabase.from('categories').select('id').limit(1).maybeSingle();
+          if (anyCat) {
+            targetCatId = anyCat.id;
+          } else {
+            // Auto-create category to satisfy FK
+            const { data: createdCat } = await supabase
+              .from('categories')
+              .insert({ id: targetCatId, name: 'พัสดุและสินค้าทั่วไป', icon: '📦' })
+              .select('id')
+              .maybeSingle();
+            if (createdCat) targetCatId = createdCat.id;
+          }
+        }
+      } catch (catErr) {
+        console.warn('Category verification warning:', catErr);
+      }
+
       const newItemData: any = {
         id: `item-${Date.now()}`,
         code: trimmedCode,
         name: trimmedName,
-        category_id: categoryId || 'cat-stationery',
+        category_id: targetCatId,
         current_stock: Number(currentStock) || 0,
         min_stock: Number(minStock) || 5,
         unit: unit.trim(),
@@ -137,14 +160,34 @@ export async function POST(request: Request) {
       };
 
       let insertRes = await supabase.from('items').insert(newItemData).select().single();
-      if (insertRes.error && insertRes.error.message?.includes('column')) {
-        delete newItemData.price;
-        delete newItemData.cost;
-        delete newItemData.is_for_sale;
-        insertRes = await supabase.from('items').insert(newItemData).select().single();
+
+      // If Supabase schema does not have price/cost/is_for_sale columns, gracefully retry without them
+      if (insertRes.error) {
+        const errMsg = (insertRes.error.message || '').toLowerCase();
+        const errCode = insertRes.error.code || '';
+        if (
+          errMsg.includes('column') ||
+          errMsg.includes('schema cache') ||
+          errMsg.includes('price') ||
+          errMsg.includes('is_for_sale') ||
+          errCode === 'PGRST204' ||
+          errCode === '42703'
+        ) {
+          delete newItemData.price;
+          delete newItemData.cost;
+          delete newItemData.is_for_sale;
+          insertRes = await supabase.from('items').insert(newItemData).select().single();
+        }
       }
 
-      if (insertRes.error) throw insertRes.error;
+      if (insertRes.error) {
+        console.error('Supabase item insertion failed:', insertRes.error);
+        return NextResponse.json(
+          { error: insertRes.error.message || insertRes.error.details || 'ไม่สามารถบันทึกพัสดุลงในฐานข้อมูลได้' },
+          { status: 500 }
+        );
+      }
+
       const data = insertRes.data;
 
       return NextResponse.json({
@@ -179,7 +222,7 @@ export async function POST(request: Request) {
       id: `item-${Date.now()}`,
       code: trimmedCode,
       name: trimmedName,
-      categoryId: categoryId || 'cat-stationery',
+      categoryId: categoryId || (db.categories[0]?.id || 'cat-uniform'),
       currentStock: Number(currentStock) || 0,
       minStock: Number(minStock) || 5,
       unit: unit.trim(),
@@ -196,8 +239,8 @@ export async function POST(request: Request) {
     writeDb(db);
 
     return NextResponse.json({ success: true, item: newItem });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in POST /api/items:', error);
-    return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Failed to create item' }, { status: 500 });
   }
 }
