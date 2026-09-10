@@ -19,8 +19,10 @@ import {
   RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export default function HomePage() {
+  const { canRestock } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -232,15 +234,25 @@ export default function HomePage() {
             </h2>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {lowStockItems.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => setSelectedItemForRestock(item)}
-                  className="inline-flex items-center gap-1.5 text-xs bg-white border border-amber-200 hover:border-amber-400 px-2.5 py-1 rounded-lg font-medium text-slate-700 shadow-xs"
-                >
-                  <span className="truncate max-w-[150px]">{item.name}</span>
-                  <span className="text-red-600 font-bold">({item.currentStock} {item.unit})</span>
-                  <span className="text-[10px] text-blue-600 font-bold">+รับเข้า</span>
-                </button>
+                canRestock ? (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedItemForRestock(item)}
+                    className="inline-flex items-center gap-1.5 text-xs bg-white border border-amber-200 hover:border-amber-400 px-2.5 py-1 rounded-lg font-medium text-slate-700 shadow-xs"
+                  >
+                    <span className="truncate max-w-[150px]">{item.name}</span>
+                    <span className="text-red-600 font-bold">({item.currentStock} {item.unit})</span>
+                    <span className="text-[10px] text-blue-600 font-bold">+รับเข้า</span>
+                  </button>
+                ) : (
+                  <div
+                    key={item.id}
+                    className="inline-flex items-center gap-1.5 text-xs bg-white border border-amber-200 px-2.5 py-1 rounded-lg font-medium text-slate-700 shadow-xs"
+                  >
+                    <span className="truncate max-w-[150px]">{item.name}</span>
+                    <span className="text-red-600 font-bold">({item.currentStock} {item.unit})</span>
+                  </div>
+                )
               ))}
             </div>
           </div>
@@ -332,13 +344,15 @@ export default function HomePage() {
 
                     {/* Action buttons */}
                     <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setSelectedItemForRestock(item)}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 active:scale-95 transition"
-                        title="รับของเข้า"
-                      >
-                        <PackagePlus className="w-4 h-4" />
-                      </button>
+                      {canRestock && (
+                        <button
+                          onClick={() => setSelectedItemForRestock(item)}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 active:scale-95 transition"
+                          title="รับของเข้า"
+                        >
+                          <PackagePlus className="w-4 h-4" />
+                        </button>
+                      )}
 
                       <button
                         onClick={() => setSelectedItemForDeduct(item)}

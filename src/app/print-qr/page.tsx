@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Item, Category } from '@/types/inventory';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, CheckSquare, Square, QrCode, MapPin, School, Sparkles, Link2, Hash } from 'lucide-react';
+import { Printer, CheckSquare, Square, QrCode, MapPin, School, Sparkles, Link2, Hash, ShieldAlert } from 'lucide-react';
+import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export default function PrintQrPage() {
+  const { canPrintQr, loading: authLoading } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +58,32 @@ export default function PrintQrPage() {
     }
     return item.code;
   };
+
+  if (!authLoading && !canPrintQr) {
+    return (
+      <div className="bg-white rounded-3xl p-8 text-center border border-slate-200 max-w-md mx-auto my-12 shadow-sm space-y-4">
+        <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+          <ShieldAlert className="w-7 h-7" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-slate-800">
+            เฉพาะเจ้าหน้าที่พัสดุและผู้ดูแลระบบ
+          </h2>
+          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            หน้านี้สำหรับพิมพ์ป้าย QR Code ติดตู้พัสดุ สงวนสิทธิ์สำหรับเจ้าหน้าที่พัสดุและ Super Admin เท่านั้น
+          </p>
+        </div>
+        <div>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition shadow-sm"
+          >
+            กลับสู่หน้าหลัก
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -15,8 +15,10 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useAuth } from '@/lib/auth-context';
 
 export default function HistoryPage() {
+  const { canExportExcel } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,14 +110,16 @@ export default function HistoryPage() {
           </p>
         </div>
 
-        <button
-          onClick={handleExportExcel}
-          disabled={filtered.length === 0}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold shadow-md shadow-emerald-500/20 active:scale-95 transition"
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>ส่งออกรายงาน Excel (.xlsx)</span>
-        </button>
+        {canExportExcel && (
+          <button
+            onClick={handleExportExcel}
+            disabled={filtered.length === 0}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold shadow-md shadow-emerald-500/20 active:scale-95 transition"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>ส่งออกรายงาน Excel (.xlsx)</span>
+          </button>
+        )}
       </div>
 
       {/* Summary Cards */}

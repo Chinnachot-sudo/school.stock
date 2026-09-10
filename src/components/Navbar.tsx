@@ -2,18 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ScanLine, Boxes, History, QrCode, School, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { ScanLine, Boxes, History, QrCode, School, LogIn, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, isConfigured, signOut } = useAuth();
+  const { user, isConfigured, role, isSuperAdmin, isInventoryManager, canPrintQr, signOut } = useAuth();
 
   const navItems = [
     { label: 'สแกนเบิกด่วน', href: '/', icon: ScanLine },
     { label: 'คลังพัสดุ', href: '/inventory', icon: Boxes },
     { label: 'ประวัติเบิก-รับ', href: '/history', icon: History },
-    { label: 'พิมพ์ป้าย QR', href: '/print-qr', icon: QrCode },
+    ...(canPrintQr ? [{ label: 'พิมพ์ป้าย QR', href: '/print-qr', icon: QrCode }] : [])
   ];
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
@@ -63,7 +63,7 @@ export default function Navbar() {
           {/* User Auth Section (Desktop & Mobile) */}
           <div className="flex items-center gap-2">
             {user ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-xl">
                   {userAvatar ? (
                     <img
@@ -76,10 +76,23 @@ export default function Navbar() {
                       {userName.slice(0, 1).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-xs font-bold text-slate-700 max-w-[100px] truncate hidden sm:inline">
-                    {userName}
-                  </span>
+                  
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-700 max-w-[110px] truncate leading-tight hidden sm:inline">
+                      {userName}
+                    </span>
+                    <span className="text-[9px] font-bold leading-none mt-0.5">
+                      {isSuperAdmin ? (
+                        <span className="text-amber-700 bg-amber-100 px-1 py-0.2 rounded">👑 Super Admin</span>
+                      ) : isInventoryManager ? (
+                        <span className="text-blue-700 bg-blue-100 px-1 py-0.2 rounded">📦 พัสดุ</span>
+                      ) : (
+                        <span className="text-slate-600 bg-slate-100 px-1 py-0.2 rounded">👨‍🏫 ครู</span>
+                      )}
+                    </span>
+                  </div>
                 </div>
+
                 <button
                   onClick={() => signOut()}
                   title="ออกจากระบบ"

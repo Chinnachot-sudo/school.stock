@@ -3,8 +3,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { UserRole, getUserRole, ROLE_LABELS } from '@/types/inventory';
 
-// Change or configure allowed school domain (leave empty to allow all for testing)
 const ALLOWED_SCHOOL_DOMAIN = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || 'roong-aroon.ac.th';
 
 interface AuthContextType {
@@ -12,6 +12,15 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isConfigured: boolean;
+  role: UserRole;
+  roleLabel: string;
+  isSuperAdmin: boolean;
+  isInventoryManager: boolean;
+  canManageItems: boolean;
+  canRestock: boolean;
+  canDeleteItems: boolean;
+  canPrintQr: boolean;
+  canExportExcel: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -21,6 +30,15 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   isConfigured: false,
+  role: 'TEACHER',
+  roleLabel: '👨‍🏫 ครู / บุคลากร',
+  isSuperAdmin: false,
+  isInventoryManager: false,
+  canManageItems: false,
+  canRestock: false,
+  canDeleteItems: false,
+  canPrintQr: false,
+  canExportExcel: false,
   signInWithGoogle: async () => {},
   signOut: async () => {}
 });
@@ -94,6 +112,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Compute permissions based on user email
+  const role: UserRole = getUserRole(user?.email);
+  const roleLabel = ROLE_LABELS[role];
+  const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isInventoryManager = role === 'INVENTORY_MANAGER' || isSuperAdmin;
+  const canManageItems = isInventoryManager;
+  const canRestock = isInventoryManager;
+  const canDeleteItems = isSuperAdmin;
+  const canPrintQr = isInventoryManager;
+  const canExportExcel = isInventoryManager;
+
   return (
     <AuthContext.Provider
       value={{
@@ -101,6 +130,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading,
         isConfigured: isSupabaseConfigured,
+        role,
+        roleLabel,
+        isSuperAdmin,
+        isInventoryManager,
+        canManageItems,
+        canRestock,
+        canDeleteItems,
+        canPrintQr,
+        canExportExcel,
         signInWithGoogle,
         signOut
       }}

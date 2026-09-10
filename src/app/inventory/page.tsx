@@ -19,8 +19,10 @@ import {
   QrCode
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export default function InventoryPage() {
+  const { canManageItems, canRestock, canDeleteItems, canPrintQr } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -186,20 +188,24 @@ export default function InventoryPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/print-qr"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition"
-          >
-            <QrCode className="w-4 h-4 text-slate-600" />
-            <span>พิมพ์ป้าย QR</span>
-          </Link>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>เพิ่มพัสดุใหม่</span>
-          </button>
+          {canPrintQr && (
+            <Link
+              href="/print-qr"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition"
+            >
+              <QrCode className="w-4 h-4 text-slate-600" />
+              <span>พิมพ์ป้าย QR</span>
+            </Link>
+          )}
+          {canManageItems && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>เพิ่มพัสดุใหม่</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -337,14 +343,16 @@ export default function InventoryPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setSelectedItemForRestock(item)}
-                      className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1 transition"
-                      title="รับเข้าสต็อก"
-                    >
-                      <PackagePlus className="w-4 h-4" />
-                      <span className="hidden sm:inline">รับเข้า</span>
-                    </button>
+                    {canRestock && (
+                      <button
+                        onClick={() => setSelectedItemForRestock(item)}
+                        className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1 transition"
+                        title="รับเข้าสต็อก"
+                      >
+                        <PackagePlus className="w-4 h-4" />
+                        <span className="hidden sm:inline">รับเข้า</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => setSelectedItemForDeduct(item)}
@@ -356,21 +364,25 @@ export default function InventoryPage() {
                       <span className="hidden sm:inline">เบิก</span>
                     </button>
 
-                    <button
-                      onClick={() => setEditingItem(item)}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                      title="แก้ไขข้อมูล"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
+                    {canManageItems && (
+                      <button
+                        onClick={() => setEditingItem(item)}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+                        title="แก้ไขข้อมูล"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => handleDeleteItem(item.id, item.name)}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-600 transition"
-                      title="ลบ"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {canDeleteItems && (
+                      <button
+                        onClick={() => handleDeleteItem(item.id, item.name)}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-600 transition"
+                        title="ลบ"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,5 +1,34 @@
 export type TransactionType = 'IN' | 'OUT' | 'ADJUST';
 
+export type UserRole = 'SUPER_ADMIN' | 'INVENTORY_MANAGER' | 'TEACHER';
+
+export interface UserRoleRecord {
+  email: string;
+  role: UserRole;
+  name?: string;
+}
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  SUPER_ADMIN: '👑 Super Admin',
+  INVENTORY_MANAGER: '📦 เจ้าหน้าที่พัสดุ',
+  TEACHER: '👨‍🏫 ครู / บุคลากร'
+};
+
+// Whitelist mapping for school accounts
+export const DEFAULT_ROLE_MAP: Record<string, UserRole> = {
+  'chinnachot@roong-aroon.ac.th': 'SUPER_ADMIN',
+  'artima@roong-aroon.ac.th': 'INVENTORY_MANAGER',
+  'pakapol@roong-aroon.ac.th': 'INVENTORY_MANAGER',
+  'manusnan@roong-aroon.ac.th': 'INVENTORY_MANAGER',
+  'pattawadee.k@roong-aroon.ac.th': 'INVENTORY_MANAGER'
+};
+
+export function getUserRole(email?: string | null): UserRole {
+  if (!email) return 'TEACHER';
+  const cleanEmail = email.toLowerCase().trim();
+  return DEFAULT_ROLE_MAP[cleanEmail] || 'TEACHER';
+}
+
 export interface Item {
   id: string;
   code: string; // Barcode or QR Code string (e.g. "SK-001", "8850029012345")
