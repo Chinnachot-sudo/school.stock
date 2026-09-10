@@ -36,7 +36,7 @@ function getSanitizedConfig() {
 
 const { url: supabaseUrl, key: supabaseKey } = getSanitizedConfig();
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey && supabaseKey.startsWith('ey'));
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 
 let client: any = null;
 if (supabaseUrl && supabaseKey) {

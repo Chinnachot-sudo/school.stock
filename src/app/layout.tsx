@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import { AuthProvider } from '@/lib/auth-context';
+import AuthGuard from '@/components/AuthGuard';
 
 export const metadata: Metadata = {
   title: 'ระบบสต็อกสินค้าและตัดเบิกพัสดุในโรงเรียน',
@@ -31,7 +32,9 @@ export default function RootLayout({
         <AuthProvider>
           <Navbar />
           <main className="max-w-5xl mx-auto px-3 sm:px-6 py-4">
-            {children}
+            <AuthGuard>
+              {children}
+            </AuthGuard>
           </main>
         </AuthProvider>
       </body>
