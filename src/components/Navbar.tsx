@@ -32,11 +32,11 @@ export default function Navbar() {
               <School className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <span className="text-sm sm:text-base leading-tight block font-extrabold text-blue-900">
-                ระบบ ERP & สต็อกโรงเรียน
+              <span className="text-sm sm:text-base leading-tight block font-extrabold text-slate-900 tracking-tight">
+                Roong Aroon International School
               </span>
-              <span className="text-[9px] sm:text-[10px] font-medium text-slate-400 block">
-                Roong-Aroon School ERP
+              <span className="text-[10px] sm:text-[11px] font-semibold text-blue-600 block">
+                โรงเรียนนานาชาติรุ่งอรุณ • ERP & Inventory
               </span>
             </div>
           </Link>

@@ -61,11 +61,11 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
                 <School className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-extrabold text-sm text-slate-900 leading-tight">
-                  โรงเรียนรุ่งอรุณ (Roong-Aroon School)
+                <h3 className="font-black text-sm text-slate-900 leading-tight">
+                  Roong Aroon International School
                 </h3>
-                <p className="text-[10px] text-slate-500">
-                  ร้านค้าสวัสดิการและสหกรณ์โรงเรียน
+                <p className="text-[10px] font-medium text-slate-600">
+                  โรงเรียนนานาชาติรุ่งอรุณ • ร้านค้าสวัสดิการและสหกรณ์
                 </p>
               </div>
             </div>

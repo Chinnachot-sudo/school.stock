@@ -50,16 +50,16 @@ export default function LoginPage() {
           <School className="w-8 h-8" />
         </div>
 
-        <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200/60 px-3 py-1 rounded-full mb-2 flex items-center gap-1">
+        <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-3 py-1 rounded-full mb-2 flex items-center gap-1">
           <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-          ระบบคลังพัสดุโรงเรียนรุ่งอรุณ
+          Roong Aroon International School
         </span>
 
         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
-          เข้าสู่ระบบเพื่อใช้งาน
+          โรงเรียนนานาชาติรุ่งอรุณ
         </h1>
         <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
-          สำหรับครูและบุคลากร ใช้กล้องสแกนเช็คและตัดสต็อกพัสดุประจำกลุ่มสาระฯ
+          ระบบ ERP และคลังพัสดุ เข้าสู่ระบบด้วยอีเมลโรงเรียน (@roong-aroon.ac.th)
         </p>
 
         {error && (

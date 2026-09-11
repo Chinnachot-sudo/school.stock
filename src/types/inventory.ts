@@ -228,3 +228,57 @@ export interface Receipt {
   createdAt: string;
 }
 
+// Half-A4 Billing Invoice (ใบแจ้งการชำระเงิน)
+export type InvoiceStatus = 'PENDING' | 'PAID' | 'CANCELLED';
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, { label: string; color: string; bg: string }> = {
+  PENDING: { label: '⏳ รอชำระเงิน', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+  PAID: { label: '✅ ชำระแล้ว', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+  CANCELLED: { label: '🚫 ยกเลิก', color: 'text-red-700', bg: 'bg-red-50 border-red-200' }
+};
+
+export interface InvoiceItem {
+  itemId?: string;
+  itemCode?: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  unit: string;
+  totalPrice: number;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string; // e.g. "INV2609-0001"
+  customerName: string;
+  customerType: CustomerType;
+  studentClass?: string; // e.g. "Grade 7 (MYP 2)"
+  studentId?: string; // e.g. "RAIS-2024-042"
+  parentName?: string;
+  phone?: string;
+  dueDate?: string; // e.g. "2026-09-25"
+  items: InvoiceItem[];
+  subtotal: number;
+  discount: number;
+  totalAmount: number;
+  creatorName: string;
+  creatorEmail: string;
+  note?: string;
+  status: InvoiceStatus;
+  receiptId?: string;
+  paidAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// Official Bangkok Bank Thai QR payment metadata for Roong Aroon International School
+export const SCHOOL_BANK_INFO = {
+  bankName: 'ธนาคารกรุงเทพ (Bangkok Bank)',
+  accountName: 'ROONG AROON INTERN',
+  ref1: '002203089172',
+  ref3: '43008918',
+  mid: '002203089172',
+  tid: '43008918',
+  qrImagePath: '/images/promptpay_qr.jpg'
+};
+

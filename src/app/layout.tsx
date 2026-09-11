@@ -5,8 +5,8 @@ import { AuthProvider } from '@/lib/auth-context';
 import AuthGuard from '@/components/AuthGuard';
 
 export const metadata: Metadata = {
-  title: 'ระบบสต็อกสินค้าและตัดเบิกพัสดุในโรงเรียน',
-  description: 'ระบบตรวจเช็คและตัดสต็อกพัสดุสำหรับเจ้าหน้าที่และครู ใช้งานง่ายผ่านมือถือด้วยกล้องสแกน QR Code',
+  title: 'Roong Aroon International School | โรงเรียนนานาชาติรุ่งอรุณ - ERP & Inventory',
+  description: 'ระบบ ERP คลังพัสดุ และจุดขายสวัสดิการ โรงเรียนนานาชาติรุ่งอรุณ (Roong Aroon International School)',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon.png',

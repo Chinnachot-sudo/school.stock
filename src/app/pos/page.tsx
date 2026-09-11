@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Item, Category, CustomerType, PaymentMethod, Receipt, CUSTOMER_TYPE_LABELS, Customer, ALL_IB_GRADES } from '@/types/inventory';
+import { Item, Category, CustomerType, PaymentMethod, Receipt, CUSTOMER_TYPE_LABELS, Customer, ALL_IB_GRADES, Invoice, SCHOOL_BANK_INFO } from '@/types/inventory';
 import { useAuth } from '@/lib/auth-context';
 import { generatePromptPayPayload } from '@/lib/promptpay';
 import ScannerModal from '@/components/ScannerModal';
 import ReceiptModal from '@/components/ReceiptModal';
+import InvoiceModal from '@/components/InvoiceModal';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ShoppingCart,
@@ -28,7 +29,8 @@ import {
   Store,
   Edit2,
   Users,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -69,12 +71,15 @@ export default function PosPage() {
   const [cashReceived, setCashReceived] = useState<number>(0);
   const [promptPayId, setPromptPayId] = useState(DEFAULT_PROMPTPAY_ID);
   const [isEditingPromptPay, setIsEditingPromptPay] = useState(false);
+  const [qrMode, setQrMode] = useState<'OFFICIAL' | 'DYNAMIC'>('OFFICIAL');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // Scanner & Receipt Modal
+  // Scanner & Modals
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [completedReceipt, setCompletedReceipt] = useState<Receipt | null>(null);
+  const [completedInvoice, setCompletedInvoice] = useState<Invoice | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fetchInitialData = async () => {
@@ -316,6 +321,57 @@ export default function PosPage() {
       setCheckoutError(err.message || 'ไม่สามารถบันทึกรายการขายได้');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Convert cart to Half-A4 Invoice
+  const handleCreateInvoiceFromCart = async () => {
+    if (cart.length === 0) return;
+    setIsCreatingInvoice(true);
+    setCheckoutError(null);
+
+    try {
+      const creatorName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'จนท. สหกรณ์';
+      const creatorEmail = user?.email || '';
+
+      const res = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: customerName.trim() || 'ผู้ปกครอง / นักเรียน',
+          customerType,
+          studentClass: customerType === 'STUDENT' ? studentClass : undefined,
+          studentId: studentId.trim() || undefined,
+          parentName: selectedCustomer?.parentName || undefined,
+          phone: selectedCustomer?.phone || (customerType !== 'STUDENT' ? studentId : undefined),
+          items: cart.map(ci => ({
+            itemId: ci.item.id,
+            itemCode: ci.item.code,
+            itemName: ci.item.name,
+            quantity: ci.quantity,
+            unitPrice: ci.unitPrice,
+            unit: ci.item.unit,
+            totalPrice: ci.quantity * ci.unitPrice
+          })),
+          discount,
+          creatorName,
+          creatorEmail,
+          note: 'ออกใบแจ้งชำระจากระบบขายของ (POS)'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create invoice');
+
+      setIsCheckoutOpen(false);
+      setCart([]);
+      setDiscount(0);
+      setCompletedInvoice(data.invoice);
+      showToast(`📄 ออกใบแจ้งชำระ #${data.invoice.invoiceNumber} สำเร็จ`);
+    } catch (err: any) {
+      setCheckoutError(err.message || 'ไม่สามารถออกใบแจ้งชำระได้');
+    } finally {
+      setIsCreatingInvoice(false);
     }
   };
 
@@ -867,73 +923,161 @@ export default function PosPage() {
                 </div>
               )}
 
-              {/* If PROMPTPAY: Real Thai QR Code */}
+              {/* If PROMPTPAY: Dual Mode (Official School Card & Dynamic QR) */}
               {paymentMethod === 'PROMPTPAY' && (
-                <div className="space-y-2.5 bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-center text-xs">
-                  <div className="flex items-center justify-center gap-1.5 font-bold text-blue-900">
-                    <span>PromptPay QR Code</span>
+                <div className="space-y-3 bg-blue-50/60 p-3.5 sm:p-4 rounded-2xl border border-blue-200 text-center text-xs">
+                  
+                  {/* Sub-tab Selector */}
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-white/80 rounded-xl border border-blue-100">
                     <button
-                      onClick={() => setIsEditingPromptPay(!isEditingPromptPay)}
-                      className="text-slate-400 hover:text-blue-600 p-1"
-                      title="แก้ไขเลข PromptPay"
+                      type="button"
+                      onClick={() => setQrMode('OFFICIAL')}
+                      className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
+                        qrMode === 'OFFICIAL'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
                     >
-                      <Edit2 className="w-3 h-3" />
+                      🏦 ป้าย QR ทางการโรงเรียน
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQrMode('DYNAMIC')}
+                      className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
+                        qrMode === 'DYNAMIC'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      ⚡ Dynamic Amount QR
                     </button>
                   </div>
 
-                  {isEditingPromptPay && (
-                    <div className="flex gap-1 max-w-xs mx-auto">
-                      <input
-                        type="text"
-                        value={promptPayId}
-                        onChange={e => setPromptPayId(e.target.value)}
-                        placeholder="เบอร์โทรศัพท์ หรือ เลขผู้เสียภาษี 13 หลัก"
-                        className="flex-1 px-2 py-1 text-xs border rounded-lg bg-white font-mono"
-                      />
-                      <button
-                        onClick={() => setIsEditingPromptPay(false)}
-                        className="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold"
-                      >
-                        ตกลง
-                      </button>
+                  {/* Mode 1: Official Bangkok Bank School Card Image */}
+                  {qrMode === 'OFFICIAL' && (
+                    <div className="space-y-2">
+                      <div className="bg-white p-2 rounded-2xl inline-block shadow-sm border border-blue-200 mx-auto max-w-xs">
+                        <img
+                          src={SCHOOL_BANK_INFO.qrImagePath}
+                          alt="Bangkok Bank Thai QR Payment"
+                          className="w-48 h-auto max-h-56 mx-auto rounded-xl object-contain shadow-2xs"
+                        />
+                      </div>
+
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-blue-100 text-left space-y-1 text-[10px]">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">ธนาคาร:</span>
+                          <strong className="text-slate-800">{SCHOOL_BANK_INFO.bankName}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">ชื่อบัญชี:</span>
+                          <strong className="text-slate-800">{SCHOOL_BANK_INFO.accountName}</strong>
+                        </div>
+                        <div className="flex justify-between font-mono">
+                          <span className="text-slate-500">Ref.1 (MID):</span>
+                          <strong className="text-blue-700">{SCHOOL_BANK_INFO.ref1}</strong>
+                        </div>
+                        <div className="flex justify-between font-mono">
+                          <span className="text-slate-500">Ref.3 (TID):</span>
+                          <strong className="text-blue-700">{SCHOOL_BANK_INFO.ref3}</strong>
+                        </div>
+                        <div className="flex justify-between pt-1 border-t border-slate-100 text-xs font-black">
+                          <span className="text-slate-700">ยอดที่ต้องชำระ:</span>
+                          <span className="text-blue-700">฿{totalAmount.toFixed(2)} บาท</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-slate-500">
+                        สแกนด้วยแอปธนาคาร ระบุยอดชำระ <strong>฿{totalAmount.toFixed(2)} บาท</strong> แล้วแสดงสลิปแก่เจ้าหน้าที่
+                      </p>
                     </div>
                   )}
 
-                  <div className="bg-white p-3 rounded-2xl inline-block shadow-sm border border-blue-200 mx-auto">
-                    {promptPayPayload ? (
-                      <QRCodeSVG
-                        value={promptPayPayload}
-                        size={170}
-                        level="M"
-                        includeMargin={true}
-                      />
-                    ) : (
-                      <div className="w-[170px] h-[170px] flex items-center justify-center text-slate-400">
-                        ระบุเลข PromptPay
+                  {/* Mode 2: Dynamic Amount QR (Auto Fills Cart Total) */}
+                  {qrMode === 'DYNAMIC' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-1.5 font-bold text-blue-900">
+                        <span>QR พร้อมระบุยอดเงินอัตโนมัติ</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingPromptPay(!isEditingPromptPay)}
+                          className="text-slate-400 hover:text-blue-600 p-1"
+                          title="แก้ไขเลข PromptPay"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
                       </div>
-                    )}
-                  </div>
 
-                  <p className="text-[11px] text-slate-500">
-                    เปิดแอปธนาคาร สแกนจ่ายยอด <strong>฿{totalAmount.toFixed(2)} บาท</strong>
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-mono">
-                    (บัญชีพร้อมเพย์: {promptPayId})
-                  </p>
+                      {isEditingPromptPay && (
+                        <div className="flex gap-1 max-w-xs mx-auto">
+                          <input
+                            type="text"
+                            value={promptPayId}
+                            onChange={e => setPromptPayId(e.target.value)}
+                            placeholder="เบอร์โทรศัพท์ หรือ เลขผู้เสียภาษี 13 หลัก"
+                            className="flex-1 px-2 py-1 text-xs border rounded-lg bg-white font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingPromptPay(false)}
+                            className="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold"
+                          >
+                            ตกลง
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="bg-white p-3 rounded-2xl inline-block shadow-sm border border-blue-200 mx-auto">
+                        {promptPayPayload ? (
+                          <QRCodeSVG
+                            value={promptPayPayload}
+                            size={165}
+                            level="M"
+                            includeMargin={true}
+                          />
+                        ) : (
+                          <div className="w-[165px] h-[165px] flex items-center justify-center text-slate-400">
+                            ระบุเลข PromptPay
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        เปิดแอปธนาคาร สแกนจ่ายยอด <strong>฿{totalAmount.toFixed(2)} บาท</strong> ได้ทันที
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-mono">
+                        (PromptPay ID: {promptPayId})
+                      </p>
+                    </div>
+                  )}
+
                 </div>
               )}
 
-              {/* Confirm Button */}
-              <div className="pt-2">
+              {/* Action Buttons */}
+              <div className="pt-2 space-y-2">
                 <button
                   type="button"
                   onClick={handleConfirmSale}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isCreatingInvoice}
                   className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-98 transition"
                 >
                   <CheckCircle2 className="w-5 h-5" />
                   <span>
                     {isSubmitting ? 'กำลังบันทึกและหักสต็อก...' : 'ยืนยันการรับเงิน & พิมพ์ใบเสร็จ'}
+                  </span>
+                </button>
+
+                {/* Create Half-A4 Invoice Button */}
+                <button
+                  type="button"
+                  onClick={handleCreateInvoiceFromCart}
+                  disabled={isSubmitting || isCreatingInvoice}
+                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 border border-slate-300 transition"
+                >
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <span>
+                    {isCreatingInvoice ? 'กำลังออกใบแจ้งชำระ...' : 'ออกเป็นใบแจ้งชำระเงินครึ่ง A4 (ส่งผู้ปกครองชำระทีหลัง)'}
                   </span>
                 </button>
               </div>
@@ -955,6 +1099,13 @@ export default function PosPage() {
         receipt={completedReceipt}
         isOpen={Boolean(completedReceipt)}
         onClose={() => setCompletedReceipt(null)}
+      />
+
+      {/* Invoice Modal after invoice created */}
+      <InvoiceModal
+        invoice={completedInvoice}
+        isOpen={Boolean(completedInvoice)}
+        onClose={() => setCompletedInvoice(null)}
       />
 
     </div>
