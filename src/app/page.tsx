@@ -21,7 +21,11 @@ import {
   User,
   ArrowDownRight,
   ArrowUpRight,
-  Filter
+  Filter,
+  FileSpreadsheet,
+  TrendingUp,
+  PackageCheck,
+  PackageMinus
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -51,7 +55,7 @@ export default function HomePage() {
       setLoading(true);
       const [itemsRes, txRes, receiptsRes] = await Promise.all([
         fetch('/api/items'),
-        fetch('/api/transactions?limit=10'),
+        fetch('/api/transactions?limit=30'),
         fetch('/api/receipts').catch(() => null)
       ]);
 
@@ -78,12 +82,28 @@ export default function HomePage() {
     fetchData();
   }, []);
 
-  // Auto open deduct modal if ?code= or ?scan= in URL
+  // Listen to search query params: ?code=, ?scan=, ?action=
   useEffect(() => {
-    if (items.length > 0 && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
       const codeParam = params.get('code') || params.get('scan');
-      if (codeParam) {
+
+      if (action === 'scan') {
+        setIsScannerOpen(true);
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (action === 'deduct') {
+        if (items.length > 0) {
+          setSelectedItemForDeduct(items[0]);
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (action === 'restock') {
+        if (items.length > 0) {
+          const target = items.find(i => i.currentStock <= i.minStock) || items[0];
+          setSelectedItemForRestock(target);
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (codeParam && items.length > 0) {
         const found = items.find(
           i => i.code.toLowerCase() === codeParam.trim().toLowerCase() || i.id === codeParam.trim()
         );
@@ -106,7 +126,7 @@ export default function HomePage() {
   const handleDeductSuccess = (updatedItem: Item, qty: number) => {
     setItems(prev => prev.map(i => (i.id === updatedItem.id ? updatedItem : i)));
     showToast(`ตัดสต็อก "${updatedItem.name}" จำนวน -${qty} ${updatedItem.unit} เรียบร้อย`);
-    fetch('/api/transactions?limit=10')
+    fetch('/api/transactions?limit=30')
       .then(res => res.json())
       .then(data => setRecentTransactions(data.transactions || []))
       .catch(console.error);
@@ -115,7 +135,7 @@ export default function HomePage() {
   const handleRestockSuccess = (updatedItem: Item, qty: number) => {
     setItems(prev => prev.map(i => (i.id === updatedItem.id ? updatedItem : i)));
     showToast(`รับเข้า "${updatedItem.name}" จำนวน +${qty} ${updatedItem.unit} เรียบร้อย`);
-    fetch('/api/transactions?limit=10')
+    fetch('/api/transactions?limit=30')
       .then(res => res.json())
       .then(data => setRecentTransactions(data.transactions || []))
       .catch(console.error);
@@ -144,6 +164,39 @@ export default function HomePage() {
     return { count: inTxs.length, totalQty };
   }, [recentTransactions]);
 
+  // Last 7 days movement data for Donezo-style chart
+  const last7DaysTrends = useMemo(() => {
+    const days: { day: string; fullDate: string; inQty: number; outQty: number }[] = [];
+    const now = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const dayLabel = d.toLocaleDateString('th-TH', { weekday: 'short' });
+
+      const inQty = recentTransactions
+        .filter(tx => tx.type === 'IN' && tx.createdAt.slice(0, 10) === dateStr)
+        .reduce((sum, tx) => sum + tx.quantity, 0);
+
+      const outQty = recentTransactions
+        .filter(tx => (tx.type === 'OUT' || tx.type === 'SALE') && tx.createdAt.slice(0, 10) === dateStr)
+        .reduce((sum, tx) => sum + tx.quantity, 0);
+
+      days.push({ day: dayLabel, fullDate: dateStr, inQty, outQty });
+    }
+    return days;
+  }, [recentTransactions]);
+
+  const maxTrendQty = useMemo(() => {
+    let max = 10;
+    last7DaysTrends.forEach(d => {
+      if (d.inQty > max) max = d.inQty;
+      if (d.outQty > max) max = d.outQty;
+    });
+    return max;
+  }, [last7DaysTrends]);
+
   // Filtered items
   const filteredItems = useMemo(() => {
     return items.filter(item => {
@@ -158,153 +211,299 @@ export default function HomePage() {
     });
   }, [items, selectedCategory, lowStockOnly, searchQuery]);
 
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'เจ้าหน้าที่';
-
   return (
-    <div className="space-y-4">
-      
+    <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-[#1A1A1A] text-white px-3.5 py-2 rounded-lg border border-[#E5E0D8]/20 flex items-center gap-2 text-xs font-medium shadow-md animate-in fade-in slide-in-from-top-2 duration-150">
-          <CheckCircle2 className="w-4 h-4 text-[#027A48] shrink-0" />
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#111827] text-white px-4 py-2.5 rounded-xl border border-[#E5E7EB]/20 flex items-center gap-2.5 text-xs font-medium shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
+          <CheckCircle2 className="w-4 h-4 text-[#34D399] shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* 1. GREETING BAR (ลำดับ 1: แถบทักทาย: 'สวัสดี, [ชื่อผู้ใช้]' และไอคอนสถานะ) */}
-      <div className="flex items-center justify-between py-1">
+      {/* 1. TOP DASHBOARD HEADER & ACTIONS (Donezo Style) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-base sm:text-lg font-bold text-[#1A1A1A] tracking-tight">
-            สวัสดี, {userName}
+          <h1 className="text-2xl font-bold text-[#111827] tracking-tight">
+            แดชบอร์ด
           </h1>
-          <p className="text-xs text-[#6B6560]">
-            คลังพัสดุโรงเรียนนานาชาติรุ่งอรุณ
+          <p className="text-xs text-[#6B7280] mt-0.5">
+            ภาพรวมคลังพัสดุและการเคลื่อนไหวสต็อกประจำวัน โรงเรียนนานาชาติรุ่งอรุณ
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {canRestock && (
+            <button
+              onClick={() => {
+                if (lowStockItems.length > 0) {
+                  setSelectedItemForRestock(lowStockItems[0]);
+                } else if (items.length > 0) {
+                  setSelectedItemForRestock(items[0]);
+                } else {
+                  setIsScannerOpen(true);
+                }
+              }}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#0B6B4F] hover:bg-[#0F3D2E] active:scale-98 shadow-xs transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ รับเข้าพัสดุ</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#111827] bg-white hover:bg-[#F3F4F6] border border-[#E5E7EB] active:scale-98 transition shadow-2xs"
+          >
+            <ScanLine className="w-3.5 h-3.5 text-[#0B6B4F]" />
+            <span>สแกน / ตัดสต็อก</span>
+          </button>
+
           <button
             onClick={fetchData}
             title="รีเฟรชข้อมูล"
-            className="p-2 rounded-lg bg-white border border-[#E5E0D8] text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] transition"
+            className="p-2.5 rounded-xl bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition shadow-2xs"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* 2. SEARCH BAR WITH SCAN TRIGGER (ลำดับ 2: 'ค้นหาสินค้า / รหัส หรือสแกน') */}
-      <div className="relative">
-        <input
-          type="text"
-          placeholder="ค้นหาสินค้า / รหัส หรือสแกน"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="w-full pl-3.5 pr-11 py-2.5 bg-white border border-[#E5E0D8] rounded-lg text-xs text-[#1A1A1A] placeholder:text-[#6B6560] focus:outline-none focus:border-[#1F4D3A] transition"
-        />
-        <button
-          type="button"
-          onClick={() => setIsScannerOpen(true)}
-          className="absolute right-1.5 top-1.5 p-1.5 rounded-md text-[#1F4D3A] hover:bg-[#E8F0EB] transition"
-          title="เปิดกล้องสแกน"
-        >
-          <ScanLine className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* 3. HERO ACTIONS (ลำดับ 3: ปุ่มใหญ่ซ้าย 'ตัดสต็อก' สีส้มอิฐ #C45C26 + ขวา 'รับเข้า' ปุ่มขอบเส้น) */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Left: Focal Action Button (Single Primary Accent per Screen) */}
-        <button
-          onClick={() => setIsScannerOpen(true)}
-          className="min-h-[48px] bg-[#C45C26] hover:bg-[#A84B1E] active:scale-98 text-white font-medium px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm transition"
-        >
-          <Scissors className="w-4 h-4" />
-          <span>ตัดสต็อก</span>
-        </button>
-
-        {/* Right: Secondary Action (Outline) */}
-        <button
-          onClick={() => {
-            if (lowStockItems.length > 0) {
-              setSelectedItemForRestock(lowStockItems[0]);
-            } else {
-              setIsScannerOpen(true);
-            }
-          }}
-          className="min-h-[48px] bg-white hover:bg-[#E8F0EB] active:scale-98 text-[#1F4D3A] border border-[#1F4D3A] font-medium px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>รับเข้า</span>
-        </button>
-      </div>
-
-      {/* 4. LOW STOCK SECTION (ลำดับ 4: แถวรายการที่มีแถบสีส้มด้านซ้าย border-l-4 border-[#B54708], ไม่ใช้กล่องแดงทั้งบล็อก) */}
-      {lowStockItems.length > 0 && (
-        <div className="space-y-2 pt-1">
+      {/* 2. 4 DONEZO KPI CARDS (Card 1: Solid Green #0B6B4F, Cards 2-4: Surface White) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1: Highlight Card (Solid Green #0B6B4F with White Text) */}
+        <div className="bg-[#0B6B4F] text-white rounded-2xl p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-[#B54708] flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span>พัสดุใกล้หมดเกณฑ์สำรอง ({lowStockItems.length})</span>
-            </h2>
+            <span className="text-xs font-medium text-white/85">พัสดุใกล้เกณฑ์สำรอง</span>
+            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#34D399]">
+              <AlertCircle className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="my-3">
+            <span className="text-3xl font-extrabold font-mono tracking-tight block">
+              {loading ? '-' : lowStockItems.length}
+            </span>
+            <span className="text-[11px] text-white/80 block mt-1">
+              {lowStockItems.length > 0
+                ? 'ต้องสั่งซื้อหรือรับเข้าเติมคลังด่วน'
+                : 'สต็อกทุกรายการอยู่ในเกณฑ์ปกติ'}
+            </span>
+          </div>
+
+          <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[11px]">
+            <span className="text-white/75">เกณฑ์สำรองขั้นต่ำ</span>
             <button
               onClick={() => setLowStockOnly(!lowStockOnly)}
-              className="text-[11px] text-[#6B6560] hover:text-[#1A1A1A] underline underline-offset-2"
+              className="text-[#34D399] font-semibold hover:underline"
             >
               {lowStockOnly ? 'แสดงทั้งหมด' : 'กรองเฉพาะรายการนี้'}
             </button>
           </div>
+        </div>
 
-          <div className="space-y-1.5">
-            {lowStockItems.slice(0, 4).map(item => (
+        {/* KPI 2: Requisitions Today (White Card) */}
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-[#6B7280]">เบิกจ่ายวันนี้</span>
+            <div className="w-7 h-7 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#B54708]">
+              <ArrowDownRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="my-3">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold font-mono text-[#111827] tracking-tight">
+                {loading ? '-' : todayRequisitions.totalQty}
+              </span>
+              <span className="text-xs text-[#6B7280]">ชิ้น</span>
+            </div>
+            <span className="text-[11px] text-[#6B7280] block mt-1">
+              จาก {todayRequisitions.count} ธุรกรรม (ตัดสต็อกและ POS)
+            </span>
+          </div>
+
+          <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
+            <span>ตัดจ่ายออกคลัง</span>
+            <Link href="/history" className="text-[#0B6B4F] font-medium hover:underline">
+              ดูประวัติ
+            </Link>
+          </div>
+        </div>
+
+        {/* KPI 3: Restocks Today (White Card) */}
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-[#6B7280]">รับเข้าสต็อกวันนี้</span>
+            <div className="w-7 h-7 rounded-lg bg-[#E6F5EF] flex items-center justify-center text-[#027A48]">
+              <ArrowUpRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="my-3">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold font-mono text-[#027A48] tracking-tight">
+                {loading ? '-' : todayRestocks.totalQty}
+              </span>
+              <span className="text-xs text-[#6B7280]">ชิ้น</span>
+            </div>
+            <span className="text-[11px] text-[#6B7280] block mt-1">
+              จาก {todayRestocks.count} ธุรกรรมการรับเข้า
+            </span>
+          </div>
+
+          <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
+            <span>เติมพัสดุเข้าคลัง</span>
+            <span className="text-[#027A48] font-medium font-mono text-[10px]">
+              +{todayRestocks.totalQty} รายการ
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 4: Total Items in System (White Card) */}
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-[#6B7280]">พัสดุทั้งหมดในระบบ</span>
+            <div className="w-7 h-7 rounded-lg bg-[#E6F5EF] flex items-center justify-center text-[#0B6B4F]">
+              <Boxes className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="my-3">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold font-mono text-[#111827] tracking-tight">
+                {loading ? '-' : items.length}
+              </span>
+              <span className="text-xs text-[#6B7280]">รายการ</span>
+            </div>
+            <span className="text-[11px] text-[#6B7280] block mt-1">
+              ครอบคลุม {categories.length} หมวดหมู่งานโรงเรียน
+            </span>
+          </div>
+
+          <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
+            <span>คลังกลางรุ่งอรุณ</span>
+            <Link href="/inventory" className="text-[#0B6B4F] font-medium hover:underline">
+              จัดการคลัง
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. STOCK MOVEMENT TREND CHART (Donezo Style Weekly Visual) */}
+      <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#E6F5EF] text-[#0B6B4F] flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-[#111827]">
+                การเคลื่อนไหวสต็อก 7 วันล่าสุด (Stock Movement Trends)
+              </h2>
+              <p className="text-[11px] text-[#6B7280]">
+                เปรียบเทียบยอดการรับเข้า (+IN) และการเบิกจ่าย (-OUT) ประจำวัน
+              </p>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 text-xs font-medium">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-md bg-[#0B6B4F]"></span>
+              <span className="text-[#6B7280]">รับเข้า (+IN)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-md bg-[#34D399]"></span>
+              <span className="text-[#6B7280]">เบิกจ่าย (-OUT)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bar Visual */}
+        <div className="pt-2">
+          <div className="grid grid-cols-7 gap-2 sm:gap-4 h-36 items-end border-b border-[#E5E7EB] pb-2">
+            {last7DaysTrends.map((d, i) => {
+              const inHeight = Math.max(8, (d.inQty / maxTrendQty) * 100);
+              const outHeight = Math.max(8, (d.outQty / maxTrendQty) * 100);
+
+              return (
+                <div key={i} className="flex flex-col items-center justify-end h-full gap-1 group">
+                  <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-full">
+                    {/* IN Bar */}
+                    <div
+                      style={{ height: `${inHeight}%` }}
+                      className="w-3 sm:w-5 bg-[#0B6B4F] rounded-t-md transition-all duration-300 hover:opacity-90 relative"
+                      title={`รับเข้า: ${d.inQty} ชิ้น`}
+                    ></div>
+                    {/* OUT Bar */}
+                    <div
+                      style={{ height: `${outHeight}%` }}
+                      className="w-3 sm:w-5 bg-[#34D399] rounded-t-md transition-all duration-300 hover:opacity-90 relative"
+                      title={`เบิกจ่าย: ${d.outQty} ชิ้น`}
+                    ></div>
+                  </div>
+                  <span className="text-[11px] font-medium text-[#6B7280] group-hover:text-[#111827] mt-1">
+                    {d.day}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 4. URGENT LOW STOCK SECTION (if any) */}
+      {lowStockItems.length > 0 && (
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-[#B54708]" />
+              <h2 className="text-sm font-bold text-[#111827]">
+                พัสดุใกล้หมดเกณฑ์สำรอง ({lowStockItems.length})
+              </h2>
+            </div>
+            <button
+              onClick={() => setLowStockOnly(!lowStockOnly)}
+              className="text-xs text-[#6B7280] hover:text-[#111827] underline underline-offset-2"
+            >
+              {lowStockOnly ? 'แสดงรายการทั้งหมดในตาราง' : 'กรองในตารางด้านล่าง'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {lowStockItems.slice(0, 3).map(item => (
               <div
                 key={item.id}
-                className="bg-white border border-[#E5E0D8] border-l-4 border-l-[#B54708] rounded-lg p-3 flex items-center justify-between gap-3"
+                className="p-3.5 bg-[#F9FAFB] border border-[#E5E7EB] border-l-4 border-l-[#B54708] rounded-xl flex items-center justify-between gap-3"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-[#6B6560]">
-                      {item.code}
-                    </span>
-                    <span className="text-xs font-medium text-[#1A1A1A] truncate">
-                      {item.name}
-                    </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[10px] text-[#6B7280]">{item.code}</span>
+                    <span className="text-xs font-semibold text-[#111827] truncate">{item.name}</span>
                   </div>
-                  <div className="text-[10px] text-[#6B6560] mt-0.5 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 shrink-0 text-[#6B6560]" />
+                  <div className="text-[10px] text-[#6B7280] mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 shrink-0" />
                     <span className="truncate">{item.location || 'คลังกลาง'}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right">
-                    <span className="font-mono text-sm font-bold text-[#B54708]">
-                      {item.currentStock}
-                    </span>
-                    <span className="text-[10px] text-[#6B6560] ml-1">
-                      {item.unit}
-                    </span>
-                    <span className="text-[10px] text-[#6B6560] block">
-                      (เกณฑ์ {item.minStock})
-                    </span>
-                  </div>
+                <div className="text-right shrink-0">
+                  <span className="font-mono text-base font-bold text-[#B54708]">
+                    {item.currentStock}
+                  </span>
+                  <span className="text-[10px] text-[#6B7280] ml-1">{item.unit}</span>
+                  <span className="text-[10px] text-[#6B7280] block">(เกณฑ์ {item.minStock})</span>
 
-                  <div className="flex items-center gap-1">
-                    {canRestock && (
-                      <button
-                        onClick={() => setSelectedItemForRestock(item)}
-                        className="px-2 py-1 bg-[#E8F0EB] hover:bg-[#d5e7db] text-[#1F4D3A] rounded text-[11px] font-medium transition"
-                      >
-                        +รับเข้า
-                      </button>
-                    )}
+                  {canRestock && (
                     <button
-                      onClick={() => setSelectedItemForDeduct(item)}
-                      className="px-2 py-1 bg-[#FDF1EB] hover:bg-[#f6dfd2] text-[#C45C26] rounded text-[11px] font-medium transition"
+                      onClick={() => setSelectedItemForRestock(item)}
+                      className="mt-1 px-2 py-0.5 bg-[#E6F5EF] hover:bg-[#d4efe3] text-[#0B6B4F] text-[10px] font-semibold rounded transition"
                     >
-                      ตัด
+                      +เติมสต็อก
                     </button>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -312,336 +511,277 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 5. 3 SUMMARY CARDS (ลำดับ 5: บัตรสรุปสั้น 3 ใบ: ใกล้หมด, ตัดวันนี้, รับเข้าวันนี้ - ตัวเลขใหญ่ font-mono) */}
-      {loading ? (
-        <div className="grid grid-cols-3 gap-2.5">
-          {[1, 2, 3].map(n => (
-            <div key={n} className="rounded-lg border border-[#E5E0D8] bg-white p-3 h-20 animate-pulse flex flex-col justify-between">
-              <div className="h-2.5 w-16 bg-[#E5E0D8] rounded"></div>
-              <div className="h-6 w-12 bg-[#E5E0D8] rounded"></div>
+      {/* 5. HIGH DENSITY INVENTORY TABLE & LIVE STREAM (Donezo 2-column or full layout) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Table (2 Columns on Large Desktop) */}
+        <div className="lg:col-span-2 bg-white border border-[#E5E7EB] rounded-2xl shadow-2xs overflow-hidden flex flex-col">
+          {/* Table Header / Toolbar */}
+          <div className="p-4 border-b border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F9FAFB]">
+            <div className="flex items-center gap-2">
+              <Boxes className="w-4 h-4 text-[#0B6B4F]" />
+              <h3 className="text-sm font-bold text-[#111827]">
+                รายการพัสดุในคลัง ({filteredItems.length})
+              </h3>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-2.5">
-          {/* Card 1: ใกล้หมด */}
-          <div className="rounded-lg border border-[#E5E0D8] bg-white p-3 flex flex-col justify-between">
-            <span className="text-[11px] text-[#6B6560] font-medium">ใกล้หมด</span>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className={`text-2xl font-bold font-mono ${lowStockItems.length > 0 ? 'text-[#B54708]' : 'text-[#1A1A1A]'}`}>
-                {lowStockItems.length}
-              </span>
-              <span className="text-[10px] text-[#6B6560]">รายการ</span>
-            </div>
-          </div>
 
-          {/* Card 2: ตัดวันนี้ */}
-          <div className="rounded-lg border border-[#E5E0D8] bg-white p-3 flex flex-col justify-between">
-            <span className="text-[11px] text-[#6B6560] font-medium">ตัดวันนี้</span>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-2xl font-bold font-mono text-[#1A1A1A]">
-                {todayRequisitions.totalQty}
-              </span>
-              <span className="text-[10px] text-[#6B6560]">ชิ้น</span>
-            </div>
-          </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedCategory}
+                onChange={e => setSelectedCategory(e.target.value)}
+                className="px-3 py-1.5 bg-white border border-[#E5E7EB] rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#0B6B4F]"
+              >
+                <option value="ALL">ทุกหมวดหมู่ ({items.length})</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
 
-          {/* Card 3: รับเข้าวันนี้ */}
-          <div className="rounded-lg border border-[#E5E0D8] bg-white p-3 flex flex-col justify-between">
-            <span className="text-[11px] text-[#6B6560] font-medium">รับเข้าวันนี้</span>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-2xl font-bold font-mono text-[#027A48]">
-                {todayRestocks.totalQty}
-              </span>
-              <span className="text-[10px] text-[#6B6560]">ชิ้น</span>
+              <Link
+                href="/inventory"
+                className="px-3 py-1.5 bg-white hover:bg-[#F3F4F6] border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#6B7280] hover:text-[#111827] flex items-center gap-1 transition"
+              >
+                <span>จัดการคลัง</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* 6. HIGH DENSITY STOCK TABLE (ลำดับ 6: ตารางพัสดุ High Density, font-mono SKU และยอดคงเหลือ) */}
-      <div className="rounded-lg border border-[#E5E0D8] bg-white overflow-hidden">
-        
-        {/* Table Toolbar */}
-        <div className="p-3 border-b border-[#E5E0D8] bg-[#F7F4EF]/60 flex flex-col sm:flex-row gap-2.5 items-center justify-between">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Boxes className="w-4 h-4 text-[#6B6560] shrink-0" />
-            <span className="text-xs font-semibold text-[#1A1A1A]">
-              รายการพัสดุในระบบ ({filteredItems.length})
-            </span>
+          {/* Table Body (High Density) */}
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB] text-[#6B7280] font-medium text-[11px]">
+                <tr>
+                  <th className="py-2.5 px-3.5 w-28">รหัส SKU</th>
+                  <th className="py-2.5 px-3 min-w-[160px]">รายการพัสดุ</th>
+                  <th className="py-2.5 px-3 hidden sm:table-cell w-28">หมวดหมู่</th>
+                  <th className="py-2.5 px-3 w-24">สถานะ</th>
+                  <th className="py-2.5 px-3.5 w-24 text-right">คงเหลือ</th>
+                  <th className="py-2.5 px-3.5 w-24 text-right">จัดการ</th>
+                </tr>
+              </thead>
+
+              {loading ? (
+                <tbody className="divide-y divide-[#E5E7EB]">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="py-2.5 px-3.5"><div className="h-3 w-16 bg-[#E5E7EB] rounded"></div></td>
+                      <td className="py-2.5 px-3"><div className="h-3 w-32 bg-[#E5E7EB] rounded"></div></td>
+                      <td className="py-2.5 px-3 hidden sm:table-cell"><div className="h-3 w-20 bg-[#E5E7EB]/60 rounded"></div></td>
+                      <td className="py-2.5 px-3"><div className="h-4 w-14 bg-[#E5E7EB]/60 rounded"></div></td>
+                      <td className="py-2.5 px-3.5 text-right"><div className="h-3 w-8 bg-[#E5E7EB] rounded ml-auto"></div></td>
+                      <td className="py-2.5 px-3.5 text-right"><div className="h-4 w-12 bg-[#E5E7EB] rounded ml-auto"></div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              ) : filteredItems.length === 0 ? (
+                <tbody>
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-[#6B7280]">
+                      <p className="text-xs font-medium">ไม่พบรายการพัสดุ</p>
+                      <p className="text-[11px] mt-0.5">ลองปรับตัวกรองหรือคำค้นหา</p>
+                    </td>
+                  </tr>
+                </tbody>
+              ) : (
+                <tbody className="divide-y divide-[#E5E7EB]">
+                  {filteredItems.slice(0, 10).map(item => {
+                    const isLow = item.currentStock <= item.minStock;
+                    const isOut = item.currentStock <= 0;
+                    const cat = categories.find(c => c.id === item.categoryId);
+
+                    return (
+                      <tr key={item.id} className="hover:bg-[#F9FAFB] transition">
+                        {/* SKU (font-mono) */}
+                        <td className="py-2.5 px-3.5 font-mono text-xs text-[#6B7280] whitespace-nowrap">
+                          {item.code}
+                        </td>
+
+                        {/* Name */}
+                        <td className="py-2.5 px-3">
+                          <div className="font-medium text-[#111827] leading-tight">
+                            {item.name}
+                          </div>
+                          <div className="text-[10px] text-[#6B7280] mt-0.5 sm:hidden">
+                            {cat?.name}
+                          </div>
+                        </td>
+
+                        {/* Category */}
+                        <td className="py-2.5 px-3 hidden sm:table-cell text-[#6B7280] text-[11px] whitespace-nowrap">
+                          {cat?.name || 'ทั่วไป'}
+                        </td>
+
+                        {/* Muted Status Badge with Thin Border */}
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          {isOut ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#FEE4E2] text-[#B42318] border border-[#B42318]/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#B42318]"></span>
+                              <span>หมด</span>
+                            </span>
+                          ) : isLow ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#FEF0C7] text-[#B54708] border border-[#B54708]/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#B54708]"></span>
+                              <span>ใกล้หมด</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E6F5EF] text-[#0B6B4F] border border-[#0B6B4F]/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#027A48]"></span>
+                              <span>ปกติ</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Stock (font-mono) */}
+                        <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
+                          <span className={`font-mono text-xs font-bold ${isLow ? 'text-[#B54708]' : 'text-[#111827]'}`}>
+                            {item.currentStock}
+                          </span>
+                          <span className="text-[10px] text-[#6B7280] ml-1">
+                            {item.unit}
+                          </span>
+                        </td>
+
+                        {/* Action Buttons */}
+                        <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
+                            {canRestock && (
+                              <button
+                                onClick={() => setSelectedItemForRestock(item)}
+                                className="px-2 py-0.5 bg-[#E6F5EF] hover:bg-[#d6f0e4] text-[#0B6B4F] rounded text-[10px] font-medium transition"
+                                title="รับเข้า"
+                              >
+                                +รับ
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setSelectedItemForDeduct(item)}
+                              disabled={isOut}
+                              className="px-2 py-0.5 bg-[#0B6B4F] hover:bg-[#0F3D2E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
+                              title="ตัดสต็อก"
+                            >
+                              ตัด
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              )}
+            </table>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
-            {/* Category Filter */}
-            <select
-              value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}
-              className="px-2.5 py-1.5 bg-white border border-[#E5E0D8] rounded-md text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
-            >
-              <option value="ALL">ทุกหมวดหมู่ ({items.length})</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-
-            <Link
-              href="/inventory"
-              className="px-2.5 py-1.5 bg-white hover:bg-[#F7F4EF] border border-[#E5E0D8] rounded-md text-xs font-medium text-[#6B6560] hover:text-[#1A1A1A] flex items-center gap-1 transition whitespace-nowrap"
-            >
-              <span>จัดการคลัง</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+          {/* Table Footer */}
+          <div className="p-3 bg-[#F9FAFB] border-t border-[#E5E7EB] text-[11px] text-[#6B7280] flex items-center justify-between">
+            <span>แสดง {filteredItems.slice(0, 10).length} จาก {filteredItems.length} รายการ</span>
+            <Link href="/inventory" className="text-[#0B6B4F] font-semibold hover:underline flex items-center gap-1">
+              <span>ดูพัสดุทั้งหมด</span>
+              <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
         </div>
 
-        {/* High Density Table Body */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-[#F7F4EF] border-b border-[#E5E0D8] text-[#6B6560] font-medium text-[11px]">
-              <tr>
-                <th className="py-2 px-3 w-28">รหัส SKU</th>
-                <th className="py-2 px-3 min-w-[180px]">รายการพัสดุ</th>
-                <th className="py-2 px-3 hidden sm:table-cell w-32">หมวดหมู่</th>
-                <th className="py-2 px-3 hidden md:table-cell w-32">จุดจัดเก็บ</th>
-                <th className="py-2 px-3 w-28">สถานะ</th>
-                <th className="py-2 px-3 w-24 text-right">คงเหลือ</th>
-                <th className="py-2 px-3 w-28 text-right">การกระทำ</th>
-              </tr>
-            </thead>
-            
-            {loading ? (
-              <tbody className="divide-y divide-[#E5E0D8]">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="py-2 px-3"><div className="h-3 w-16 bg-[#E5E0D8] rounded"></div></td>
-                    <td className="py-2 px-3"><div className="h-3 w-36 bg-[#E5E0D8] rounded"></div></td>
-                    <td className="py-2 px-3 hidden sm:table-cell"><div className="h-3 w-20 bg-[#E5E0D8]/60 rounded"></div></td>
-                    <td className="py-2 px-3 hidden md:table-cell"><div className="h-3 w-20 bg-[#E5E0D8]/60 rounded"></div></td>
-                    <td className="py-2 px-3"><div className="h-3.5 w-14 bg-[#E5E0D8]/60 rounded"></div></td>
-                    <td className="py-2 px-3 text-right"><div className="h-3 w-8 bg-[#E5E0D8] rounded ml-auto"></div></td>
-                    <td className="py-2 px-3 text-right"><div className="h-5 w-12 bg-[#E5E0D8] rounded ml-auto"></div></td>
-                  </tr>
-                ))}
-              </tbody>
-            ) : filteredItems.length === 0 ? (
-              <tbody>
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-[#6B6560]">
-                    <p className="text-xs font-medium">ไม่พบรายการพัสดุ</p>
-                    <p className="text-[11px] mt-0.5">ลองปรับคำค้นหา หรือเลือกหมวดหมู่อื่น</p>
-                  </td>
-                </tr>
-              </tbody>
+        {/* Live Activity Stream (1 Column on Large Desktop) */}
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl shadow-2xs p-5 space-y-4 flex flex-col">
+          <div className="flex items-center justify-between pb-1 border-b border-[#E5E7EB]">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-[#0B6B4F]" />
+              <h3 className="text-sm font-bold text-[#111827]">
+                กิจกรรมล่าสุด (Activity Stream)
+              </h3>
+            </div>
+            <Link href="/history" className="text-xs text-[#0B6B4F] font-medium hover:underline">
+              ดูทั้งหมด
+            </Link>
+          </div>
+
+          {/* Activity List */}
+          <div className="space-y-2.5 flex-1 overflow-y-auto">
+            {recentTransactions.length === 0 ? (
+              <p className="text-xs text-[#6B7280] text-center py-6">
+                ยังไม่มีบันทึกกิจกรรมล่าสุด
+              </p>
             ) : (
-              <tbody className="divide-y divide-[#E5E0D8]/70">
-                {filteredItems.slice(0, 10).map(item => {
-                  const isLow = item.currentStock <= item.minStock;
-                  const isOut = item.currentStock <= 0;
-                  const cat = categories.find(c => c.id === item.categoryId);
-
-                  return (
-                    <tr key={item.id} className="hover:bg-[#F7F4EF]/70 transition">
-                      {/* SKU (font-mono) */}
-                      <td className="py-2 px-3 font-mono text-xs text-[#6B6560] whitespace-nowrap">
-                        {item.code}
-                      </td>
-
-                      {/* Name */}
-                      <td className="py-2 px-3">
-                        <div className="font-medium text-[#1A1A1A] leading-tight">
-                          {item.name}
-                        </div>
-                      </td>
-
-                      {/* Category */}
-                      <td className="py-2 px-3 hidden sm:table-cell text-[#6B6560] whitespace-nowrap text-[11px]">
-                        {cat?.name || 'ทั่วไป'}
-                      </td>
-
-                      {/* Location */}
-                      <td className="py-2 px-3 hidden md:table-cell text-[#6B6560] whitespace-nowrap text-[11px]">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-[#6B6560] shrink-0" />
-                          <span className="truncate">{item.location || 'คลังกลาง'}</span>
+              recentTransactions.slice(0, 8).map(tx => {
+                const isOut = tx.type === 'OUT' || tx.type === 'SALE';
+                return (
+                  <div
+                    key={tx.id}
+                    className="p-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-between gap-2.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-[#111827] truncate">
+                          {tx.itemName}
                         </span>
-                      </td>
-
-                      {/* Muted Status Badge with thin border & dot indicator */}
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        {isOut ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEE4E2] text-[#B42318] border border-[#B42318]/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#B42318]"></span>
-                            <span>หมด</span>
-                          </span>
-                        ) : isLow ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEF0C7] text-[#B54708] border border-[#B54708]/30">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#B54708]"></span>
-                            <span>ใกล้หมด</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A]/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#027A48]"></span>
-                            <span>ปกติ</span>
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Stock Quantity (font-mono) */}
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
-                        <span className={`font-mono text-xs font-bold ${isLow ? 'text-[#B54708]' : 'text-[#1A1A1A]'}`}>
-                          {item.currentStock}
-                        </span>
-                        <span className="text-[10px] text-[#6B6560] ml-1">
-                          {item.unit}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          {canRestock && (
-                            <button
-                              onClick={() => setSelectedItemForRestock(item)}
-                              className="px-2 py-0.5 bg-white hover:bg-[#F7F4EF] text-[#1F4D3A] border border-[#E5E0D8] rounded text-[10px] font-medium transition"
-                              title="รับเข้าสต็อก"
-                            >
-                              +รับ
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => setSelectedItemForDeduct(item)}
-                            disabled={isOut}
-                            className="px-2 py-0.5 bg-[#C45C26] hover:bg-[#A84B1E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
-                            title="ตัดสต็อก"
-                          >
-                            ตัด
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            )}
-          </table>
-        </div>
-
-        {/* Table Footer */}
-        <div className="p-2.5 bg-[#F7F4EF] border-t border-[#E5E0D8] text-[11px] text-[#6B6560] flex items-center justify-between">
-          <span>แสดง {filteredItems.slice(0, 10).length} จาก {filteredItems.length} รายการ</span>
-          <Link href="/inventory" className="text-[#1F4D3A] font-medium hover:underline flex items-center gap-1">
-            <span>ดูพัสดุทั้งหมด</span>
-            <ChevronRight className="w-3 h-3" />
-          </Link>
-        </div>
-      </div>
-
-      {/* 7. LIVE ACTIVITY STREAM (High Density, Calm Neutral Styling) */}
-      <div className="rounded-lg border border-[#E5E0D8] bg-white p-3.5 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-[#6B6560]" />
-            <h2 className="text-xs font-semibold text-[#1A1A1A]">
-              ประวัติการทำรายการล่าสุด
-            </h2>
-          </div>
-          <Link
-            href="/history"
-            className="text-xs text-[#6B6560] hover:text-[#1A1A1A] flex items-center gap-0.5"
-          >
-            <span>ดูประวัติทั้งหมด</span>
-            <ChevronRight className="w-3 h-3" />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="space-y-1.5">
-            {[1, 2, 3].map(n => (
-              <div key={n} className="h-8 bg-[#F7F4EF] animate-pulse rounded"></div>
-            ))}
-          </div>
-        ) : recentTransactions.length === 0 ? (
-          <p className="text-xs text-[#6B6560] py-4 text-center">ยังไม่มีประวัติการทำรายการ</p>
-        ) : (
-          <div className="divide-y divide-[#E5E0D8]/60">
-            {recentTransactions.map(tx => {
-              const isOut = tx.type === 'OUT';
-              const isSale = tx.type === 'SALE';
-              const isIn = tx.type === 'IN';
-              const timeStr = new Date(tx.createdAt).toLocaleTimeString('th-TH', {
-                hour: '2-digit',
-                minute: '2-digit'
-              }) + ' น.';
-
-              return (
-                <div key={tx.id} className="py-2 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span
-                      className={`text-[9px] font-mono font-medium px-1.5 py-0.5 rounded border shrink-0 ${
-                        isSale
-                          ? 'bg-[#E8F0EB] text-[#1F4D3A] border-[#1F4D3A]/20'
-                          : isOut
-                          ? 'bg-[#FDF1EB] text-[#C45C26] border-[#C45C26]/20'
-                          : isIn
-                          ? 'bg-[#D1FADF] text-[#027A48] border-[#027A48]/20'
-                          : 'bg-[#F7F4EF] text-[#6B6560] border-[#E5E0D8]'
-                      }`}
-                    >
-                      {isSale ? 'POS' : isOut ? 'ตัด' : isIn ? 'รับ' : 'ปรับ'}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="font-medium text-[#1A1A1A] truncate leading-tight">{tx.itemName}</p>
-                      <p className="text-[10px] text-[#6B6560] truncate mt-0.5">
-                        {tx.department} {tx.requesterName ? `• ${tx.requesterName}` : ''} • {timeStr}
-                      </p>
+                      </div>
+                      <div className="text-[10px] text-[#6B7280] flex items-center gap-1.5 mt-0.5">
+                        <span>{tx.requesterName || tx.userName || tx.department || 'เจ้าหน้าที่'}</span>
+                        <span>•</span>
+                        <span>{new Date(tx.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="text-right shrink-0">
                     <span
-                      className={`font-mono text-xs font-semibold block ${
-                        isOut || isSale ? 'text-[#C45C26]' : 'text-[#027A48]'
+                      className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                        isOut
+                          ? 'bg-[#FEE4E2] text-[#B42318]'
+                          : 'bg-[#E6F5EF] text-[#027A48]'
                       }`}
                     >
-                      {isOut || isSale ? `-${tx.quantity}` : `+${tx.quantity}`}
-                    </span>
-                    <span className="font-mono text-[10px] text-[#6B6560]">
-                      เหลือ {tx.balanceAfter}
+                      {isOut ? `-${tx.quantity}` : `+${tx.quantity}`}
                     </span>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* MODALS */}
-      <ScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        items={items}
-        onDeduct={(item) => setSelectedItemForDeduct(item)}
-        onRestock={(item) => setSelectedItemForRestock(item)}
-      />
+      {/* 1. Quick Deduct Modal */}
+      {selectedItemForDeduct && (
+        <QuickDeductModal
+          isOpen={!!selectedItemForDeduct}
+          item={selectedItemForDeduct}
+          departments={departments}
+          onClose={() => setSelectedItemForDeduct(null)}
+          onSuccess={handleDeductSuccess}
+        />
+      )}
 
-      <QuickDeductModal
-        item={selectedItemForDeduct}
-        departments={departments}
-        isOpen={Boolean(selectedItemForDeduct)}
-        onClose={() => setSelectedItemForDeduct(null)}
-        onSuccess={handleDeductSuccess}
-      />
+      {/* 2. Quick Restock Modal */}
+      {selectedItemForRestock && (
+        <QuickRestockModal
+          isOpen={!!selectedItemForRestock}
+          item={selectedItemForRestock}
+          departments={departments}
+          onClose={() => setSelectedItemForRestock(null)}
+          onSuccess={handleRestockSuccess}
+        />
+      )}
 
-      <QuickRestockModal
-        item={selectedItemForRestock}
-        departments={departments}
-        isOpen={Boolean(selectedItemForRestock)}
-        onClose={() => setSelectedItemForRestock(null)}
-        onSuccess={handleRestockSuccess}
-      />
-
+      {/* 3. Scanner Modal */}
+      {isScannerOpen && (
+        <ScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScanSuccess={code => {
+            setIsScannerOpen(false);
+            const found = items.find(
+              i => i.code.toLowerCase() === code.trim().toLowerCase() || i.id === code.trim()
+            );
+            if (found) {
+              setSelectedItemForDeduct(found);
+              showToast(`พบพัสดุ: ${found.name}`);
+            } else {
+              showToast(`ไม่พบรหัส: ${code}`);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -157,6 +157,7 @@ export interface Transaction {
   balanceAfter: number; // e.g. 38
   department: string; // e.g. "MYP Sciences" or "School Store / Co-op"
   requesterName?: string;
+  userName?: string;
   note?: string;
   receiptId?: string;
   createdAt: string; // ISO 8601

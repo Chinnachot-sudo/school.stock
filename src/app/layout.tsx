@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import Navbar from '@/components/Navbar';
+import AppLayout from '@/components/AppLayout';
 import { AuthProvider } from '@/lib/auth-context';
 import AuthGuard from '@/components/AuthGuard';
 
@@ -18,7 +18,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#1F4D3A'
+  themeColor: '#0B6B4F'
 };
 
 export default function RootLayout({
@@ -28,14 +28,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th">
-      <body className="min-h-screen bg-[#F7F4EF] text-[#1A1A1A] pb-24 md:pb-8 antialiased selection:bg-[#E8F0EB] selection:text-[#1F4D3A]">
+      <body className="min-h-screen bg-[#F3F4F6] text-[#111827] antialiased selection:bg-[#E6F5EF] selection:text-[#0B6B4F]">
         <AuthProvider>
-          <Navbar />
-          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-            <AuthGuard>
+          <AuthGuard>
+            <AppLayout>
               {children}
-            </AuthGuard>
-          </main>
+            </AppLayout>
+          </AuthGuard>
         </AuthProvider>
       </body>
     </html>

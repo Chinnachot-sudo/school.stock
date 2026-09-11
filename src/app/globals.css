@@ -5,21 +5,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg: #F7F4EF;
+  --bg: #F3F4F6;
   --surface: #FFFFFF;
-  --border: #E5E0D8;
-  --text: #1A1A1A;
-  --text-muted: #6B6560;
-  --primary: #1F4D3A;
-  --primary-hover: #183D2E;
-  --primary-soft: #E8F0EB;
-  --accent: #C45C26;
-  --accent-hover: #A84B1E;
-  --accent-soft: #FDF1EB;
+  --border: #E5E7EB;
+  --text: #111827;
+  --text-muted: #6B7280;
+  --primary: #0B6B4F;
+  --primary-dark: #0F3D2E;
+  --primary-hover: #0F3D2E;
+  --primary-soft: #E6F5EF;
+  --accent-mint: #34D399;
+  --accent: #34D399;
+  --accent-hover: #0B6B4F;
+  --accent-soft: #E6F5EF;
+  --danger: #B42318;
   --warning: #B54708;
   --warning-soft: #FEF0C7;
-  --danger: #B42318;
-  --danger-soft: #FEE4E2;
   --success: #027A48;
   --success-soft: #D1FADF;
 }

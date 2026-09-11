@@ -136,13 +136,25 @@ export default function CustomersPage() {
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingCustomer || !editingCustomer.name.trim()) return;
+    if (!editingCustomer || !editingCustomer.name?.trim()) return;
 
     try {
+      const payload = {
+        ...editingCustomer,
+        name: editingCustomer.name.trim(),
+        nickname: (editingCustomer.nickname || '').trim() || null,
+        grade: (editingCustomer.grade || '').trim(),
+        studentId: (editingCustomer.studentId || '').trim() || null,
+        parentName: (editingCustomer.parentName || '').trim() || null,
+        phone: (editingCustomer.phone || '').trim() || null,
+        email: (editingCustomer.email || '').trim() || null,
+        note: (editingCustomer.note || '').trim() || null
+      };
+
       const res = await fetch(`/api/customers/${editingCustomer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingCustomer)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -426,7 +438,16 @@ export default function CustomersPage() {
                       <td className="py-2.5 px-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => setEditingCustomer(customer)}
+                            onClick={() => setEditingCustomer({
+                              ...customer,
+                              nickname: customer.nickname || '',
+                              studentId: customer.studentId || '',
+                              parentName: customer.parentName || '',
+                              phone: customer.phone || '',
+                              email: customer.email || '',
+                              note: customer.note || '',
+                              grade: customer.grade || ''
+                            })}
                             className="p-1.5 text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] rounded-lg transition"
                             title="แก้ไขข้อมูล"
                           >

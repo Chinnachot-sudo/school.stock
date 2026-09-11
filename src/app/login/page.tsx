@@ -40,26 +40,26 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white border border-[#E5E0D8] rounded-xl p-6 sm:p-8 flex flex-col items-center text-center">
+      <div className="w-full max-w-sm bg-white border border-[#E5E7EB] rounded-2xl p-6 sm:p-8 flex flex-col items-center text-center shadow-xs">
         
         {/* School Icon */}
-        <div className="w-12 h-12 rounded-xl bg-[#1F4D3A] text-white flex items-center justify-center mb-4">
+        <div className="w-12 h-12 rounded-2xl bg-[#0B6B4F] text-white flex items-center justify-center mb-4 shadow-xs">
           <School className="w-6 h-6" />
         </div>
 
-        <p className="text-[11px] font-mono text-[#6B6560] tracking-wide uppercase">
+        <p className="text-[11px] font-mono text-[#6B7280] tracking-wide uppercase">
           Roong Aroon International School
         </p>
 
-        <h1 className="text-xl font-bold text-[#1A1A1A] mt-1">
+        <h1 className="text-xl font-bold text-[#111827] mt-1">
           เข้าสู่ระบบ
         </h1>
-        <p className="text-xs text-[#6B6560] mt-1">
+        <p className="text-xs text-[#6B7280] mt-1">
           ใช้บัญชีโรงเรียนเท่านั้น
         </p>
 
         {error && (
-          <div className="w-full mt-4 p-3 bg-[#FEE4E2] border border-[#B42318]/20 text-[#B42318] text-xs rounded-lg flex items-start gap-2 text-left">
+          <div className="w-full mt-4 p-3 bg-[#FEE4E2] border border-[#B42318]/20 text-[#B42318] text-xs rounded-xl flex items-start gap-2 text-left">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -70,7 +70,7 @@ export default function LoginPage() {
           <button
             onClick={handleGoogleLogin}
             disabled={isSigningIn}
-            className="w-full min-h-[48px] bg-[#1F4D3A] hover:bg-[#183D2E] active:scale-98 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 text-xs transition disabled:opacity-60"
+            className="w-full min-h-[48px] bg-[#0B6B4F] hover:bg-[#0F3D2E] active:scale-98 text-white font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-3 text-xs transition disabled:opacity-60 shadow-xs"
           >
             {isSigningIn ? (
               <Loader2 className="w-4 h-4 animate-spin text-white" />

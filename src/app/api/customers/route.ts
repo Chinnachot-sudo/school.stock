@@ -83,14 +83,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, nickname = '', type = 'STUDENT', programme = 'MYP', grade = '', studentId = '', parentName = '', phone = '', email = '', note = '' } = body;
+    const { name, nickname, type = 'STUDENT', programme = 'MYP', grade, studentId, parentName, phone, email, note } = body;
 
-    if (!name || !name.trim()) {
+    const cleanName = (name || '').trim();
+    if (!cleanName) {
       return NextResponse.json({ error: 'กรุณากรอกชื่อลูกค้า / นักเรียน' }, { status: 400 });
     }
 
-    const cleanName = name.trim();
     const cleanNickname = (nickname || '').trim() || undefined;
+    const cleanGrade = (grade || '').trim();
+    const cleanStudentId = (studentId || '').trim() || undefined;
+    const cleanParentName = (parentName || '').trim() || undefined;
+    const cleanPhone = (phone || '').trim() || undefined;
+    const cleanEmail = (email || '').trim() || undefined;
+    const cleanNote = (note || '').trim() || undefined;
+
     const customerId = `cust-${Date.now()}`;
     const now = new Date().toISOString();
 
@@ -100,12 +107,12 @@ export async function POST(request: Request) {
       nickname: cleanNickname,
       type,
       programme,
-      grade: grade.trim(),
-      studentId: studentId.trim() || undefined,
-      parentName: parentName.trim() || undefined,
-      phone: phone.trim() || undefined,
-      email: email.trim() || undefined,
-      note: note.trim() || undefined,
+      grade: cleanGrade,
+      studentId: cleanStudentId,
+      parentName: cleanParentName,
+      phone: cleanPhone,
+      email: cleanEmail,
+      note: cleanNote,
       createdAt: now,
       updatedAt: now
     };
@@ -118,12 +125,12 @@ export async function POST(request: Request) {
         nickname: cleanNickname || null,
         type,
         programme,
-        grade: grade.trim(),
-        student_id: studentId.trim() || null,
-        parent_name: parentName.trim() || null,
-        phone: phone.trim() || null,
-        email: email.trim() || null,
-        note: note.trim() || null,
+        grade: cleanGrade,
+        student_id: cleanStudentId || null,
+        parent_name: cleanParentName || null,
+        phone: cleanPhone || null,
+        email: cleanEmail || null,
+        note: cleanNote || null,
         created_at: now,
         updated_at: now
       }).select().single();

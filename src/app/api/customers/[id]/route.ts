@@ -16,16 +16,16 @@ export async function PUT(
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
       const updateData: any = { updated_at: now };
-      if (name !== undefined) updateData.name = name.trim();
-      if (nickname !== undefined) updateData.nickname = nickname.trim() || null;
+      if (name !== undefined) updateData.name = (name || '').trim();
+      if (nickname !== undefined) updateData.nickname = (nickname || '').trim() || null;
       if (type !== undefined) updateData.type = type;
       if (programme !== undefined) updateData.programme = programme;
-      if (grade !== undefined) updateData.grade = grade.trim();
-      if (studentId !== undefined) updateData.student_id = studentId.trim() || null;
-      if (parentName !== undefined) updateData.parent_name = parentName.trim() || null;
-      if (phone !== undefined) updateData.phone = phone.trim() || null;
-      if (email !== undefined) updateData.email = email.trim() || null;
-      if (note !== undefined) updateData.note = note.trim() || null;
+      if (grade !== undefined) updateData.grade = (grade || '').trim();
+      if (studentId !== undefined) updateData.student_id = (studentId || '').trim() || null;
+      if (parentName !== undefined) updateData.parent_name = (parentName || '').trim() || null;
+      if (phone !== undefined) updateData.phone = (phone || '').trim() || null;
+      if (email !== undefined) updateData.email = (email || '').trim() || null;
+      if (note !== undefined) updateData.note = (note || '').trim() || null;
 
       const { data, error } = await supabase
         .from('customers')
@@ -55,16 +55,16 @@ export async function PUT(
     const current = db.customers[index];
     db.customers[index] = {
       ...current,
-      name: name !== undefined ? name.trim() : current.name,
-      nickname: nickname !== undefined ? nickname.trim() || undefined : current.nickname,
+      name: name !== undefined ? (name || '').trim() : current.name,
+      nickname: nickname !== undefined ? (nickname || '').trim() || undefined : current.nickname,
       type: type !== undefined ? type : current.type,
       programme: programme !== undefined ? programme : current.programme,
-      grade: grade !== undefined ? grade.trim() : current.grade,
-      studentId: studentId !== undefined ? studentId.trim() : current.studentId,
-      parentName: parentName !== undefined ? parentName.trim() : current.parentName,
-      phone: phone !== undefined ? phone.trim() : current.phone,
-      email: email !== undefined ? email.trim() : current.email,
-      note: note !== undefined ? note.trim() : current.note,
+      grade: grade !== undefined ? (grade || '').trim() : current.grade,
+      studentId: studentId !== undefined ? (studentId || '').trim() || undefined : current.studentId,
+      parentName: parentName !== undefined ? (parentName || '').trim() || undefined : current.parentName,
+      phone: phone !== undefined ? (phone || '').trim() || undefined : current.phone,
+      email: email !== undefined ? (email || '').trim() || undefined : current.email,
+      note: note !== undefined ? (note || '').trim() || undefined : current.note,
       updatedAt: now
     };
 
