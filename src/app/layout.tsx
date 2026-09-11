@@ -5,12 +5,12 @@ import { AuthProvider } from '@/lib/auth-context';
 import AuthGuard from '@/components/AuthGuard';
 
 export const metadata: Metadata = {
-  title: 'Roong Aroon International School | โรงเรียนนานาชาติรุ่งอรุณ - ERP & Inventory',
-  description: 'ระบบ ERP คลังพัสดุ และจุดขายสวัสดิการ โรงเรียนนานาชาติรุ่งอรุณ (Roong Aroon International School)',
+  title: 'Romaneeya | โรงเรียนนานาชาติรุ่งอรุณ - ERP & Inventory',
+  description: 'Romaneeya - ระบบ ERP คลังพัสดุ และจุดขายสวัสดิการ โรงเรียนนานาชาติรุ่งอรุณ (Roong Aroon International School)',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icon.png',
-    apple: '/icon.png'
+    icon: '/images/romaneeya_leaf_logo.svg',
+    apple: '/images/romaneeya_leaf_logo.svg'
   }
 };
 

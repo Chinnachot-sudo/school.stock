@@ -148,12 +148,16 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     <aside className="w-64 bg-white border-r border-[#E5E7EB] flex flex-col h-full select-none">
       {/* Brand Header */}
       <div className="h-16 px-5 flex items-center gap-3 border-b border-[#E5E7EB] shrink-0">
-        <div className="w-9 h-9 rounded-xl bg-[#0B6B4F] text-white flex items-center justify-center shrink-0 shadow-xs">
-          <School className="w-5 h-5" />
+        <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-xs border border-[#E5E7EB] bg-[#E6F5EF] p-0.5">
+          <img
+            src="/images/romaneeya_leaf_logo.svg"
+            alt="Romaneeya Logo"
+            className="w-full h-full object-contain"
+          />
         </div>
         <div className="min-w-0 flex-1">
           <span className="text-sm font-bold text-[#111827] tracking-tight block leading-tight truncate">
-            Roong Aroon · พัสดุ
+            Romaneeya
           </span>
           <span className="text-[10px] text-[#6B7280] block font-mono truncate">
             โรงเรียนนานาชาติรุ่งอรุณ

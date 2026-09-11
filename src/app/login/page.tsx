@@ -42,20 +42,27 @@ export default function LoginPage() {
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-white border border-[#E5E7EB] rounded-2xl p-6 sm:p-8 flex flex-col items-center text-center shadow-xs">
         
-        {/* School Icon */}
-        <div className="w-12 h-12 rounded-2xl bg-[#0B6B4F] text-white flex items-center justify-center mb-4 shadow-xs">
-          <School className="w-6 h-6" />
+        {/* Romaneeya Green Leaf Icon */}
+        <div className="w-14 h-14 rounded-2xl overflow-hidden mb-3 shadow-xs border border-[#E5E7EB] bg-[#E6F5EF] p-1">
+          <img
+            src="/images/romaneeya_leaf_logo.svg"
+            alt="Romaneeya Logo"
+            className="w-full h-full object-contain"
+          />
         </div>
 
+        <span className="text-base font-extrabold text-[#111827] tracking-tight block">
+          Romaneeya
+        </span>
         <p className="text-[11px] font-mono text-[#6B7280] tracking-wide uppercase">
           Roong Aroon International School
         </p>
 
-        <h1 className="text-xl font-bold text-[#111827] mt-1">
+        <h1 className="text-lg font-bold text-[#111827] mt-3">
           เข้าสู่ระบบ
         </h1>
-        <p className="text-xs text-[#6B7280] mt-1">
-          ใช้บัญชีโรงเรียนเท่านั้น
+        <p className="text-xs text-[#6B7280] mt-0.5">
+          ระบบ ERP & คลังพัสดุ (ใช้บัญชีโรงเรียนเท่านั้น)
         </p>
 
         {error && (

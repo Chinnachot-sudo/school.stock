@@ -1,8 +1,8 @@
 'use client';
 
-import { Invoice, INVOICE_STATUS_LABELS, CUSTOMER_TYPE_LABELS, SCHOOL_BANK_INFO } from '@/types/inventory';
+import { Invoice, INVOICE_STATUS_LABELS, SCHOOL_BANK_INFO } from '@/types/inventory';
 import { thaiBahtText } from '@/lib/thai-baht';
-import { X, Printer, Copy, School, AlertCircle, Calendar, CreditCard, Scissors, CheckCircle2, FileText } from 'lucide-react';
+import { X, Printer, Copy, CheckCircle2, FileText, Download } from 'lucide-react';
 import { useState } from 'react';
 
 interface InvoiceModalProps {
@@ -33,14 +33,14 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
 
   const thaiCreatedDate = new Date(invoice.createdAt).toLocaleDateString('th-TH', {
     year: 'numeric',
-    month: 'short',
+    month: 'long',
     day: 'numeric'
   });
 
   const thaiDueDate = invoice.dueDate
     ? new Date(invoice.dueDate).toLocaleDateString('th-TH', {
         year: 'numeric',
-        month: 'short',
+        month: 'long',
         day: 'numeric'
       })
     : '-';
@@ -73,55 +73,70 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
     }
   };
 
+  // Ensure minimum rows so table looks proportional matching reference image
+  const minDisplayRows = Math.max(invoice.items.length, 5);
+  const emptyRowsCount = minDisplayRows - invoice.items.length;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto">
       
-      {/* Print Specific CSS to enforce Half-A4 sizing */}
+      {/* Print Specific CSS to enforce Full-A4 sizing and prevent tiny box distortion */}
       <style jsx global>{`
         @media print {
-          body * {
-            visibility: hidden;
+          @page {
+            size: A4 portrait;
+            margin: 12mm 15mm 12mm 15mm;
           }
-          .invoice-print-container,
-          .invoice-print-container * {
-            visibility: visible;
-          }
-          .invoice-print-container {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            max-width: 210mm;
-            background: white !important;
-            padding: 0 !important;
+          html, body {
             margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #111827 !important;
+            font-size: 11pt !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-invoice,
+          #printable-invoice * {
+            visibility: visible !important;
+          }
+          #printable-invoice {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            min-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            z-index: 9999999 !important;
           }
           .no-print {
             display: none !important;
           }
-          @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
-          }
         }
       `}</style>
 
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[95vh] flex flex-col">
+      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[96vh] flex flex-col">
         
         {/* Top Control Bar (Screen Only) */}
-        <div className="no-print p-3 sm:p-4 bg-[#1F4D3A] text-white flex items-center justify-between gap-3 shrink-0">
+        <div className="no-print p-3 sm:p-4 bg-[#0B6B4F] text-white flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
+            <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center text-white">
               <FileText className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-semibold text-xs sm:text-sm flex items-center gap-1.5">
-                <span>ใบแจ้งการชำระเงิน (Half-A4 Invoice)</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusInfo.bg} ${statusInfo.color}`}>
+              <h2 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                <span>ใบแจ้งหนี้ (A4 Invoice)</span>
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${statusInfo.bg} ${statusInfo.color}`}>
                   {statusInfo.label}
                 </span>
               </h2>
-              <p className="text-[10px] text-white/70 font-mono">
+              <p className="text-[10px] text-white/80 font-mono">
                 #{invoice.invoiceNumber}
               </p>
             </div>
@@ -132,7 +147,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
               <button
                 onClick={handleMarkAsPaid}
                 disabled={updating}
-                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition"
+                className="bg-[#027A48] hover:bg-[#036039] disabled:opacity-50 text-white font-medium text-xs px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 transition"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>บันทึกชำระแล้ว</span>
@@ -141,24 +156,24 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
 
             <button
               onClick={handleCopyLink}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1 font-medium transition"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs flex items-center gap-1 font-medium transition"
               title="คัดลอกลิงก์"
             >
-              <Copy className="w-4 h-4" />
-              <span className="hidden sm:inline">{copied ? 'คัดลอกแล้ว!' : 'แชร์ลิงก์'}</span>
+              <Copy className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{copied ? 'คัดลอกแล้ว!' : 'แชร์'}</span>
             </button>
 
             <button
               onClick={handlePrint}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition active:scale-95"
+              className="bg-white hover:bg-white/90 text-[#0B6B4F] font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 transition active:scale-95"
             >
               <Printer className="w-4 h-4" />
-              <span>พิมพ์ครึ่ง A4</span>
+              <span>พิมพ์ใบแจ้งหนี้ (A4)</span>
             </button>
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              className="p-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition"
             >
               <X className="w-5 h-5" />
             </button>
@@ -166,246 +181,297 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
         </div>
 
         {/* Modal Body / Scrollable Content */}
-        <div className="overflow-y-auto p-3 sm:p-5 bg-slate-100 flex-1">
+        <div className="overflow-y-auto p-4 sm:p-8 bg-slate-100 flex-1 flex justify-center">
           
-          {/* Printable Container: Half A4 Page */}
-          <div className="invoice-print-container bg-white border border-slate-300 shadow-md rounded-2xl p-4 sm:p-6 text-slate-800 text-[11px] leading-relaxed relative flex flex-col justify-between min-h-[460px]">
+          {/* Printable Invoice Container (Matching Reference Design) */}
+          <div
+            id="printable-invoice"
+            className="bg-white border border-[#E5E7EB] shadow-md rounded-xl p-6 sm:p-10 text-[#111827] text-xs leading-relaxed w-full max-w-[210mm] relative flex flex-col justify-between"
+          >
             
             {/* Watermark for Cancelled */}
             {invoice.status === 'CANCELLED' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                <div className="text-red-500/20 text-6xl font-black border-8 border-red-500/20 px-8 py-4 rounded-3xl -rotate-12 select-none">
+                <div className="text-red-500/20 text-7xl font-black border-8 border-red-500/20 px-10 py-5 rounded-3xl -rotate-12 select-none">
                   ยกเลิก / CANCELLED
                 </div>
               </div>
             )}
 
             <div>
-              {/* Header: School Branding & Doc Title */}
-              <div className="flex items-start justify-between border-b-2 border-slate-800 pb-3 mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
-                    <School className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h1 className="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight leading-tight">
-                      Roong Aroon International School
-                    </h1>
-                    <p className="text-[11px] font-bold text-blue-700">
-                      โรงเรียนนานาชาติรุ่งอรุณ
-                    </p>
-                    <p className="text-[9px] text-slate-400">
-                      แผนกการเงินและสวัสดิการพัสดุการศึกษา • Finance & Educational Store
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="inline-block bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide uppercase mb-1">
-                    ใบแจ้งการชำระเงิน
-                  </span>
-                  <h2 className="font-bold text-xs text-slate-800 tracking-tight">
-                    INVOICE / BILLING SLIP
+              {/* 1. TOP HEADER: INVOICE & LOGO (สอดคล้องตามภาพตัวอย่าง) */}
+              <div className="flex items-start justify-between pb-6 mb-6">
+                <div>
+                  <h1 className="text-4xl sm:text-5xl font-extrabold text-[#111827] tracking-tight font-sans">
+                    INVOICE
+                  </h1>
+                  <h2 className="text-base sm:text-lg font-bold text-[#111827] mt-0.5">
+                    ใบแจ้งหนี้
                   </h2>
-                  <p className="font-mono font-bold text-blue-700 text-xs mt-0.5">
-                    #{invoice.invoiceNumber}
-                  </p>
+                </div>
+
+                {/* Romaneeya Green Leaf Logo */}
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0">
+                    <img
+                      src="/images/romaneeya_leaf_transparent.svg"
+                      alt="Romaneeya Logo"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="hidden sm:block text-right">
+                    <span className="text-lg font-extrabold text-[#0B6B4F] tracking-tight block leading-tight">
+                      Romaneeya
+                    </span>
+                    <span className="text-[10px] text-[#6B7280] block font-mono">
+                      Roong Aroon International School
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Invoice Meta Grid */}
-              <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-2.5 rounded-xl mb-3 border border-slate-200/80 text-[10px]">
-                {/* Bill To */}
-                <div className="space-y-0.5">
-                  <p className="text-slate-400 font-bold uppercase text-[9px] tracking-wider mb-1">
-                    ข้อมูลผู้รับใบแจ้ง / นักเรียน (Bill To)
-                  </p>
-                  <p>
-                    <span className="text-slate-500">ชื่อ-สกุล: </span>
-                    <strong className="text-slate-900 text-xs font-extrabold">{invoice.customerName}</strong>
-                  </p>
-                  {invoice.studentClass && (
-                    <p>
-                      <span className="text-slate-500">ระดับชั้น IB: </span>
-                      <strong className="text-slate-800">{invoice.studentClass}</strong>
-                      {invoice.studentId && <span className="text-slate-500"> (รหัส: {invoice.studentId})</span>}
-                    </p>
-                  )}
-                  {invoice.parentName && (
-                    <p>
-                      <span className="text-slate-500">ผู้ปกครอง: </span>
-                      <span className="text-slate-700">{invoice.parentName}</span>
-                    </p>
-                  )}
-                  {invoice.phone && (
-                    <p>
-                      <span className="text-slate-500">โทรศัพท์: </span>
-                      <span className="text-slate-700 font-mono">{invoice.phone}</span>
-                    </p>
-                  )}
+              {/* 2. METADATA SECTION: CUSTOMER, DOCUMENT & ISSUER DETAILS (ตาราง 2 คอลัมน์ตามรูปตัวอย่าง) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 pb-6 mb-6 text-xs">
+                {/* Column 1: Customer Details */}
+                <div className="space-y-1.5">
+                  <div className="flex">
+                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">ชื่อลูกค้า</span>
+                    <span className="font-bold text-[#111827] flex-1">{invoice.customerName}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">ที่อยู่</span>
+                    <span className="text-[#111827] flex-1">
+                      {invoice.studentClass || 'โรงเรียนนานาชาติรุ่งอรุณ'} (ชั้นเรียน/แผนก)
+                    </span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">เลขผู้เสียภาษี</span>
+                    <span className="text-[#111827] flex-1 font-mono">{invoice.studentId || '-'}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">อีเมล</span>
+                    <span className="text-[#111827] flex-1 truncate font-mono">
+                      {(invoice as any).email || (invoice.studentId ? `${invoice.studentId}@roong-aroon.ac.th` : '-')}
+                    </span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">ผู้ติดต่อ</span>
+                    <span className="text-[#111827] flex-1">{invoice.parentName || invoice.customerName}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">เบอร์โทรศัพท์</span>
+                    <span className="text-[#111827] flex-1 font-mono">{invoice.phone || '-'}</span>
+                  </div>
                 </div>
 
-                {/* Dates & Status */}
-                <div className="text-right space-y-0.5">
-                  <p className="text-slate-400 font-bold uppercase text-[9px] tracking-wider mb-1">
-                    กำหนดและสถานะ (Details)
-                  </p>
-                  <p>
-                    <span className="text-slate-500">วันที่ออกเอกสาร: </span>
-                    <span className="text-slate-800">{thaiCreatedDate}</span>
-                  </p>
-                  <p>
-                    <span className="text-slate-500">กำหนดชำระภายใน: </span>
-                    <strong className="text-red-700 font-bold">{thaiDueDate}</strong>
-                  </p>
-                  <p>
-                    <span className="text-slate-500">สถานะ: </span>
-                    <strong className={`font-bold ${invoice.status === 'PAID' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                      {statusInfo.label}
-                    </strong>
-                  </p>
-                  <p>
-                    <span className="text-slate-500">ผู้ออกใบแจ้ง: </span>
-                    <span className="text-slate-700">{invoice.creatorName}</span>
-                  </p>
+                {/* Column 2: Document Metadata & Dates */}
+                <div className="space-y-1.5 md:text-right">
+                  <div className="flex md:justify-end">
+                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">เลขที่</span>
+                    <span className="font-bold text-[#111827] font-mono">#{invoice.invoiceNumber}</span>
+                  </div>
+                  <div className="flex md:justify-end">
+                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">วันที่</span>
+                    <span className="text-[#111827]">{thaiCreatedDate}</span>
+                  </div>
+                  <div className="flex md:justify-end">
+                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">ครบกำหนด</span>
+                    <span className="font-bold text-[#B42318]">{thaiDueDate}</span>
+                  </div>
+                  <div className="flex md:justify-end">
+                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">เครดิต</span>
+                    <span className="text-[#111827]">7 วัน (ชำระตามกำหนด)</span>
+                  </div>
+                  <div className="flex md:justify-end">
+                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">อ้างอิง</span>
+                    <span className="text-[#111827]">ใบเบิกพัสดุและสวัสดิการการศึกษา</span>
+                  </div>
+                </div>
+
+                {/* Issuer Info (Full Width / Split) */}
+                <div className="md:col-span-2 pt-3 border-t border-[#E5E7EB] grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] text-[#4B5563]">
+                  <div className="space-y-1">
+                    <div className="flex">
+                      <span className="w-24 text-[#6B7280] shrink-0 font-medium">ผู้ออก</span>
+                      <span className="font-medium text-[#111827]">
+                        โรงเรียนนานาชาติรุ่งอรุณ (Roong Aroon International School) • Romaneeya
+                      </span>
+                    </div>
+                    <div className="flex">
+                      <span className="w-24 text-[#6B7280] shrink-0 font-medium">ที่อยู่</span>
+                      <span>392 ถนนริมคลองชักพระ แขวงคลองขวาง เขตภาษีเจริญ กรุงเทพฯ 10160</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 md:text-right">
+                    <div className="flex md:justify-end">
+                      <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">เลขประจำตัวผู้เสียภาษี</span>
+                      <span className="font-mono">0105541008918</span>
+                    </div>
+                    <div className="flex md:justify-end">
+                      <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">เบอร์โทร / อีเมล</span>
+                      <span>02-870-7512 / finance@roong-aroon.ac.th</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Items Table */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden mb-3">
-                <table className="w-full text-[10px]">
+              {/* 3. TABLE OF ITEMS (กรอบตารางเส้นบางแบบภาพตัวอย่าง) */}
+              <div className="border border-[#E5E7EB] rounded-lg overflow-hidden mb-6">
+                <table className="w-full text-xs text-left">
                   <thead>
-                    <tr className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200">
-                      <th className="py-1.5 px-2.5 text-center w-8">#</th>
-                      <th className="py-1.5 px-2 text-left">รายการพัสดุ / บริการ (Description)</th>
-                      <th className="py-1.5 px-2 text-center w-14">จำนวน</th>
-                      <th className="py-1.5 px-2 text-right w-16">ราคา/หน่วย</th>
-                      <th className="py-1.5 px-2.5 text-right w-20">จำนวนเงิน</th>
+                    <tr className="border-b border-[#E5E7EB] text-[#111827] font-semibold text-[11px] bg-[#F9FAFB]">
+                      <th className="py-2.5 px-3 text-center w-12">ลำดับ</th>
+                      <th className="py-2.5 px-4 text-left">รายการสินค้า</th>
+                      <th className="py-2.5 px-3 text-center w-20">จำนวน</th>
+                      <th className="py-2.5 px-4 text-right w-28">ราคา/หน่วย</th>
+                      <th className="py-2.5 px-4 text-right w-32">ราคารวม</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-[#E5E7EB]">
                     {invoice.items.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/60">
-                        <td className="py-1.5 px-2.5 text-center text-slate-400">{idx + 1}</td>
-                        <td className="py-1.5 px-2">
-                          <span className="font-semibold text-slate-900">{item.itemName}</span>
+                      <tr key={idx} className="hover:bg-slate-50/50">
+                        <td className="py-2.5 px-3 text-center text-[#6B7280] font-mono">{idx + 1}</td>
+                        <td className="py-2.5 px-4">
+                          <span className="font-medium text-[#111827]">{item.itemName}</span>
                           {item.itemCode && (
-                            <span className="text-[9px] text-slate-400 font-mono ml-1.5">[{item.itemCode}]</span>
+                            <span className="text-[10px] text-[#6B7280] font-mono ml-2">[{item.itemCode}]</span>
                           )}
                         </td>
-                        <td className="py-1.5 px-2 text-center text-slate-700">
+                        <td className="py-2.5 px-3 text-center text-[#111827] font-mono">
                           {item.quantity} {item.unit}
                         </td>
-                        <td className="py-1.5 px-2 text-right text-slate-700">
-                          ฿{item.unitPrice.toFixed(2)}
+                        <td className="py-2.5 px-4 text-right text-[#111827] font-mono">
+                          {item.unitPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                        <td className="py-1.5 px-2.5 text-right font-bold text-slate-900">
-                          ฿{item.totalPrice.toFixed(2)}
+                        <td className="py-2.5 px-4 text-right font-semibold text-[#111827] font-mono">
+                          {item.totalPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
+                      </tr>
+                    ))}
+
+                    {/* Empty placeholder rows to maintain document height */}
+                    {Array.from({ length: emptyRowsCount }).map((_, i) => (
+                      <tr key={`empty-${i}`} className="h-8">
+                        <td className="py-2 px-3 text-center text-[#9CA3AF] font-mono text-[10px]">
+                          {invoice.items.length + i + 1}
+                        </td>
+                        <td className="py-2 px-4"></td>
+                        <td className="py-2 px-3"></td>
+                        <td className="py-2 px-4"></td>
+                        <td className="py-2 px-4"></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Total Calculation & Thai Baht Text */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-[10px] mb-3">
+              {/* 4. SUBTOTALS & NOTES ROW */}
+              <div className="border-t border-[#E5E7EB] pt-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                {/* Notes */}
                 <div>
-                  <span className="text-slate-500 font-medium">จำนวนเงินตัวอักษร: </span>
-                  <strong className="text-blue-900 font-bold text-[11px]">
-                    ({thaiBahtText(invoice.totalAmount)})
-                  </strong>
-                  {invoice.note && (
-                    <p className="text-[9px] text-slate-500 mt-0.5">
-                      หมายเหตุ: {invoice.note}
-                    </p>
-                  )}
+                  <span className="font-bold text-[#111827] block mb-1">หมายเหตุ</span>
+                  <p className="text-[#6B7280] text-[11px] leading-relaxed">
+                    {invoice.note || 'โปรดชำระภายในกำหนดเวลา และส่งหลักฐานการโอนเงินเพื่อออกใบเสร็จรับเงินฉบับจริง'}
+                  </p>
                 </div>
 
-                <div className="text-right space-y-0.5 min-w-[170px] shrink-0">
-                  {invoice.discount > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span>ส่วนลด:</span>
-                      <span className="text-red-600 font-bold">-฿{invoice.discount.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center text-xs font-black text-slate-900 pt-0.5">
-                    <span>ยอดรวมสุทธิ:</span>
-                    <span className="text-sm text-blue-700">฿{invoice.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                {/* Subtotals */}
+                <div className="space-y-1.5 md:text-right">
+                  <div className="flex md:justify-end">
+                    <span className="w-32 text-[#6B7280]">ราคารวม</span>
+                    <span className="w-32 font-mono font-medium text-[#111827]">
+                      {invoice.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex md:justify-end">
+                    <span className="w-32 text-[#6B7280]">ส่วนลด</span>
+                    <span className="w-32 font-mono text-[#6B7280]">
+                      {invoice.discount > 0 ? `-${invoice.discount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                    </span>
+                  </div>
+                  <div className="flex md:justify-end">
+                    <span className="w-32 text-[#6B7280]">ภาษีมูลค่าเพิ่ม 7%</span>
+                    <span className="w-32 font-mono text-[#6B7280]">
+                      0.00 (ยกเว้น)
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* PAYMENT SECTION WITH OFFICIAL SCHOOL BANGKOK BANK QR */}
-              <div className="border border-blue-200 bg-blue-50/40 rounded-2xl p-3 flex flex-col sm:flex-row items-center gap-3.5">
-                {/* Official QR Image */}
-                <div className="shrink-0 bg-white p-1.5 rounded-xl border border-blue-200 shadow-xs flex flex-col items-center">
-                  <img
-                    src={SCHOOL_BANK_INFO.qrImagePath}
-                    alt="PromptPay QR Code ทางการ"
-                    className="w-24 h-24 sm:w-28 sm:h-28 object-contain rounded-lg"
-                  />
-                  <span className="text-[8px] font-bold text-blue-800 mt-1 uppercase tracking-tight">
-                    Thai QR Payment
+              {/* 5. GRAND TOTAL BOX (สไตล์แถบไฮไลต์ตามตัวอย่าง) */}
+              <div className="border border-[#E5E7EB] rounded-lg p-4 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F9FAFB]/50">
+                <div>
+                  <span className="font-bold text-sm text-[#111827] block">
+                    จำนวนเงินรวมทั้งสิ้น
+                  </span>
+                  <span className="text-xs text-[#0B6B4F] font-semibold mt-0.5 block">
+                    ({thaiBahtText(invoice.totalAmount)})
                   </span>
                 </div>
 
-                {/* Bank Account Details */}
-                <div className="flex-1 text-[10px] space-y-1 w-full text-left">
-                  <div className="flex items-center gap-1.5 text-blue-900 font-extrabold text-xs">
-                    <CreditCard className="w-3.5 h-3.5 text-blue-700" />
-                    <span>ช่องทางชำระเงิน / Payment Instructions</span>
-                  </div>
-
-                  <p className="text-slate-600">
-                    กรุณาสแกนจ่ายด้วยแอปพลิเคชันธนาคารผ่าน <strong>PromptPay QR Code</strong>
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-1.5 bg-white/90 p-2 rounded-lg border border-blue-100 text-[9px] font-mono">
-                    <div>
-                      <span className="text-slate-400 block">ธนาคาร:</span>
-                      <strong className="text-slate-800">{SCHOOL_BANK_INFO.bankName}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">ชื่อบัญชี:</span>
-                      <strong className="text-slate-800">{SCHOOL_BANK_INFO.accountName}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">Ref.1 (MID):</span>
-                      <strong className="text-blue-800 text-[10px]">{SCHOOL_BANK_INFO.ref1}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">Ref.3 (TID):</span>
-                      <strong className="text-blue-800 text-[10px]">{SCHOOL_BANK_INFO.ref3}</strong>
-                    </div>
-                  </div>
-
-                  <p className="text-[9px] text-slate-400 leading-tight">
-                    * เมื่อชำระเงินเรียบร้อย กรุณาส่งสลิปหลักฐานแจ้งเจ้าหน้าที่การเงินโรงเรียนเพื่อรับใบเสร็จฉบับจริง
-                  </p>
+                <div className="text-right">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[#111827] font-mono tracking-tight block">
+                    ฿{invoice.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
 
-              {/* Signatures Row */}
-              <div className="grid grid-cols-2 gap-4 text-center text-[9px] text-slate-500 pt-5 mt-3 border-t border-slate-200">
-                <div>
-                  <div className="border-b border-slate-300 w-36 mx-auto mb-1"></div>
-                  <p>ผู้รับใบแจ้ง / นักเรียน / ผู้ปกครอง</p>
-                  <p className="text-[8px] text-slate-400">วันที่ ......./......./............</p>
+              {/* 6. DUAL SIGNATURES (ช่องลงชื่อผู้รับใบแจ้งหนี้ และ ผู้อนุมัติ ตามตัวอย่าง) */}
+              <div className="grid grid-cols-2 gap-8 text-center text-xs text-[#6B7280] mb-8 pt-4">
+                <div className="space-y-1.5">
+                  <div className="border-b border-[#D1D5DB] w-48 sm:w-60 mx-auto h-12"></div>
+                  <p className="font-medium text-[#111827]">ผู้รับใบแจ้งหนี้</p>
+                  <p className="text-[11px] text-[#6B7280]">({invoice.customerName})</p>
+                  <p className="text-[10px] text-[#9CA3AF]">วันที่ ..... / ..... / ..........</p>
                 </div>
-                <div>
-                  <div className="border-b border-slate-300 w-36 mx-auto mb-1"></div>
-                  <p>เจ้าหน้าที่ผู้มีอำนาจออกเอกสาร</p>
-                  <p className="text-[8px] text-slate-400">โรงเรียนนานาชาติรุ่งอรุณ</p>
+
+                <div className="space-y-1.5">
+                  <div className="border-b border-[#D1D5DB] w-48 sm:w-60 mx-auto h-12"></div>
+                  <p className="font-medium text-[#111827]">ผู้อนุมัติ</p>
+                  <p className="text-[11px] text-[#6B7280]">({invoice.creatorName || 'เจ้าหน้าที่การเงินโรงเรียน'})</p>
+                  <p className="text-[10px] text-[#9CA3AF]">วันที่ ..... / ..... / ..........</p>
                 </div>
               </div>
 
-            </div>
+              {/* 7. FOOTER: TERMS & PAYMENT METHODS (สอดคล้องตามตัวอย่าง) */}
+              <div className="border-t border-[#E5E7EB] pt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                {/* Terms */}
+                <div>
+                  <h4 className="font-bold text-[#111827] mb-1.5">เงื่อนไข</h4>
+                  <ul className="text-[11px] text-[#6B7280] space-y-1 list-disc list-inside">
+                    <li>เอกสารนี้เป็นใบแจ้งหนี้สำหรับชำระค่าสวัสดิการการศึกษาและพัสดุ</li>
+                    <li>เมื่อชำระเงินเรียบร้อย กรุณาส่งสลิปหลักฐานเพื่อออกใบเสร็จรับเงินฉบับจริง</li>
+                    <li>หากพ้นกำหนดชำระ กรุณาติดต่อฝ่ายการเงินโรงเรียนเพื่อปรับปรุงเอกสาร</li>
+                  </ul>
+                </div>
 
-            {/* Scissors Cut Guideline for Half-A4 */}
-            <div className="no-print mt-4 pt-3 border-t-2 border-dashed border-slate-300 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium">
-              <Scissors className="w-3.5 h-3.5 text-slate-400" />
-              <span>เส้นปรุสำหรับตัดขนาดครึ่งกระดาษ A4 (A4 Half Sheet Cut Line)</span>
+                {/* Payment Instructions + Mini PromptPay QR */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-[#111827] mb-1">ช่องทางการชำระเงิน</h4>
+                    <div className="text-[11px] text-[#4B5563] space-y-0.5">
+                      <p><span className="text-[#6B7280]">ชื่อบัญชี:</span> <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong></p>
+                      <p><span className="text-[#6B7280]">เลขที่บัญชี:</span> <strong className="font-mono text-[#0B6B4F]">002203089172</strong></p>
+                      <p><span className="text-[#6B7280]">ธนาคาร:</span> {SCHOOL_BANK_INFO.bankName}</p>
+                      <p className="text-[10px] text-[#6B7280] font-mono mt-1">Ref 1: {SCHOOL_BANK_INFO.ref1} | Ref 3: {SCHOOL_BANK_INFO.ref3}</p>
+                    </div>
+                  </div>
+
+                  {/* QR Image */}
+                  <div className="shrink-0 text-center bg-[#F9FAFB] p-1.5 rounded-lg border border-[#E5E7EB]">
+                    <img
+                      src={SCHOOL_BANK_INFO.qrImagePath}
+                      alt="Thai QR Payment"
+                      className="w-20 h-auto object-contain rounded"
+                    />
+                    <span className="text-[9px] text-[#0B6B4F] font-bold block mt-1">
+                      Thai QR
+                    </span>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
           </div>
