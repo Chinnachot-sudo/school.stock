@@ -28,7 +28,8 @@ import {
   FileText,
   Users,
   ChevronRight,
-  School
+  School,
+  ArrowUpRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -45,6 +46,7 @@ export default function HomePage() {
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
 
   // Modals state
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -74,7 +76,7 @@ export default function HomePage() {
         setReceipts(rcData.receipts || []);
       }
     } catch (err) {
-      console.error('Error fetching home data:', err);
+      console.error('Error fetching dashboard data:', err);
     } finally {
       setLoading(false);
     }
@@ -84,7 +86,7 @@ export default function HomePage() {
     fetchData();
   }, []);
 
-  // Auto open deduct modal if ?code= or ?scan= in URL (e.g. when scanned by native iPhone Camera)
+  // Auto open deduct modal if ?code= or ?scan= in URL (e.g. when scanned by native camera)
   useEffect(() => {
     if (items.length > 0 && typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -105,8 +107,8 @@ export default function HomePage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
-      setToastMessage(null), 3500;
-    });
+      setToastMessage(null);
+    }, 3500);
   };
 
   const extractCodeFromText = (raw: string): string => {
@@ -156,14 +158,14 @@ export default function HomePage() {
       .catch(console.error);
   };
 
-  // --- Executive Analytics Calculations (Shopeers-inspired) ---
+  // --- Executive Analytics Calculations ---
   const lowStockItems = useMemo(() => {
     return items.filter(i => i.currentStock <= i.minStock);
   }, [items]);
 
   const totalInventoryValuation = useMemo(() => {
     return items.reduce((sum, i) => {
-      const unitValue = i.cost || i.price || 50; // fallback standard estimate
+      const unitValue = i.cost || i.price || 50;
       return sum + i.currentStock * unitValue;
     }, 0);
   }, [items]);
@@ -198,14 +200,15 @@ export default function HomePage() {
   const filteredItems = useMemo(() => {
     return items.filter(item => {
       const matchCategory = selectedCategory === 'ALL' || item.categoryId === selectedCategory;
+      const matchLowStock = !lowStockOnly || item.currentStock <= item.minStock;
       const matchSearch =
         searchQuery === '' ||
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.location.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCategory && matchSearch;
+      return matchCategory && matchLowStock && matchSearch;
     });
-  }, [items, selectedCategory, searchQuery]);
+  }, [items, selectedCategory, lowStockOnly, searchQuery]);
 
   const formattedDate = new Date().toLocaleDateString('th-TH', {
     weekday: 'long',
@@ -215,461 +218,443 @@ export default function HomePage() {
   });
 
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className="space-y-4">
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 text-xs sm:text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-top-3 duration-200">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white px-3.5 py-2 rounded-lg shadow-lg flex items-center gap-2 text-xs font-medium border border-zinc-800 animate-in fade-in slide-in-from-top-2 duration-150">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* 1. EXECUTIVE OPERATIONAL HEADER (Shopeers B2B Analytics Style) */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-4 sm:p-6 shadow-xs relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-100/50 via-indigo-50/30 to-transparent rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* 1. EXECUTIVE OPERATIONAL HEADER (Linear / shadcn/ui Neutral Style) */}
+      <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200/80">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 <span>IB World School ERP</span>
               </span>
-              <span className="text-[11px] text-slate-400 font-medium">
+              <span className="text-[11px] text-zinc-400 font-normal">
                 {formattedDate}
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+            <h1 className="text-lg sm:text-xl font-bold text-zinc-900 tracking-tight">
               Roong Aroon International School
             </h1>
-            <p className="text-xs sm:text-sm text-blue-700 font-bold mt-0.5">
+            <p className="text-xs text-zinc-500 mt-0.5">
               โรงเรียนนานาชาติรุ่งอรุณ • ระบบจัดการคลังพัสดุและวิเคราะห์ทรัพยากรการศึกษา
             </p>
           </div>
 
-          {/* Quick Action Command Bar */}
+          {/* Action Command Bar */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsScannerOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold px-4 py-2.5 rounded-2xl shadow-md shadow-blue-500/20 flex items-center gap-2 text-xs transition"
+              className="bg-zinc-900 hover:bg-zinc-800 active:scale-98 text-white font-medium px-3.5 py-2 rounded-lg shadow-2xs flex items-center gap-1.5 text-xs transition"
             >
-              <Scan className="w-4 h-4" />
-              <span>เปิดกล้องสแกนทันที</span>
+              <Scan className="w-3.5 h-3.5" />
+              <span>เปิดกล้องสแกน</span>
             </button>
 
             <Link
               href="/pos"
-              className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold px-3.5 py-2.5 rounded-2xl shadow-sm flex items-center gap-1.5 text-xs transition"
+              className="bg-white hover:bg-zinc-50 active:scale-98 text-zinc-700 font-medium px-3.5 py-2 rounded-lg border border-zinc-200 shadow-2xs flex items-center gap-1.5 text-xs transition"
             >
-              <Store className="w-4 h-4 text-emerald-400" />
-              <span>ขายของ POS</span>
+              <Store className="w-3.5 h-3.5 text-zinc-500" />
+              <span>ขายของ (POS)</span>
             </Link>
 
             {isInventoryManager && (
               <Link
                 href="/finance"
-                className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold px-3.5 py-2.5 rounded-2xl shadow-xs flex items-center gap-1.5 text-xs transition"
+                className="bg-white hover:bg-zinc-50 active:scale-98 text-zinc-700 font-medium px-3.5 py-2 rounded-lg border border-zinc-200 shadow-2xs flex items-center gap-1.5 text-xs transition"
               >
-                <FileText className="w-4 h-4 text-amber-600" />
-                <span>ใบแจ้งชำระ/การเงิน</span>
+                <FileText className="w-3.5 h-3.5 text-zinc-500" />
+                <span>การเงิน/ใบเสร็จ</span>
               </Link>
             )}
 
             <button
               onClick={fetchData}
               title="รีเฟรชข้อมูล"
-              className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+              className="p-2 rounded-lg bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-500 transition"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* 2. EXECUTIVE KPI CARDS (Shopeers-inspired 4-Card Analytics Grid) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Card 1: Total Inventory Valuation */}
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">มูลค่าคลังพัสดุรวม</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Boxes className="w-4 h-4" />
+      {/* 2. 4 EXECUTIVE KPI CARDS (With Skeleton Loading State) */}
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(n => (
+            <div key={n} className="rounded-xl border border-zinc-200 bg-white p-4 h-28 animate-pulse flex flex-col justify-between">
+              <div className="flex justify-between items-center">
+                <div className="h-3 w-24 bg-zinc-200 rounded"></div>
+                <div className="h-4 w-4 bg-zinc-200 rounded"></div>
+              </div>
+              <div className="h-7 w-32 bg-zinc-200 rounded my-1"></div>
+              <div className="h-2.5 w-40 bg-zinc-100 rounded"></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Card 1: Total Valuation */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-2xs hover:border-zinc-300 transition">
+            <div className="flex items-center justify-between text-zinc-500">
+              <span className="text-xs font-medium">มูลค่าคลังพัสดุรวม</span>
+              <Boxes className="h-4 w-4 text-zinc-400" />
+            </div>
+            <div className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 font-mono">
+              ฿{totalInventoryValuation.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+            </div>
+            <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
+              <span>พัสดุทั้งหมด</span>
+              <span className="font-mono text-zinc-700">{items.length} รายการ</span>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 tracking-tight">
-            ฿{totalInventoryValuation.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+
+          {/* Card 2: Today's Store Sales */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-2xs hover:border-zinc-300 transition">
+            <div className="flex items-center justify-between text-zinc-500">
+              <span className="text-xs font-medium">ยอดจำหน่ายวันนี้</span>
+              <DollarSign className="h-4 w-4 text-zinc-400" />
+            </div>
+            <div className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 font-mono">
+              ฿{todaySales.total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </div>
+            <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
+              <span>สด ฿{todaySales.cash.toFixed(0)} • QR ฿{todaySales.promptPay.toFixed(0)}</span>
+              <span className="font-mono text-zinc-700">{todaySales.count} บิล</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px]">
-            <span className="text-slate-400">พัสดุในระบบ</span>
-            <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-              {items.length} รายการ
-            </span>
+
+          {/* Card 3: Daily Requisitions */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-2xs hover:border-zinc-300 transition">
+            <div className="flex items-center justify-between text-zinc-500">
+              <span className="text-xs font-medium">การเบิกพัสดุวันนี้</span>
+              <Activity className="h-4 w-4 text-zinc-400" />
+            </div>
+            <div className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 font-mono">
+              {todayRequisitions.totalQty}{' '}
+              <span className="text-xs font-normal text-zinc-500 font-sans">ชิ้น</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
+              <span>บันทึกการเบิก</span>
+              <span className="font-mono text-zinc-700">{todayRequisitions.count} รายการ</span>
+            </div>
+          </div>
+
+          {/* Card 4: Stock Health & Alerts */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-2xs hover:border-zinc-300 transition">
+            <div className="flex items-center justify-between text-zinc-500">
+              <span className="text-xs font-medium">สถานะความพร้อมสต็อก</span>
+              <ShieldCheck className="h-4 w-4 text-zinc-400" />
+            </div>
+            <div className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 font-mono">
+              {stockHealthScore}%
+            </div>
+            <div className="mt-1 flex items-center justify-between text-[11px]">
+              <span className="text-zinc-500">พัสดุใกล้หมด</span>
+              {lowStockItems.length > 0 ? (
+                <span className="font-mono font-medium text-amber-700">
+                  {lowStockItems.length} รายการ
+                </span>
+              ) : (
+                <span className="font-medium text-emerald-700">ครบถ้วน 100%</span>
+              )}
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Card 2: Today's Store Sales */}
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-700">ยอดจำหน่ายวันนี้</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-700 mt-2 tracking-tight">
-            ฿{todaySales.total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-          </div>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px]">
-            <span className="text-slate-400">
-              สด: ฿{todaySales.cash.toFixed(0)} | QR: ฿{todaySales.promptPay.toFixed(0)}
+      {/* 3. AI ADVISOR & IB PROGRAMME OVERVIEW (Neutral Minimalist Container) */}
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-2xs space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-3 border-b border-zinc-100">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200/80">
+              <Sparkles className="w-3 h-3 text-zinc-500" />
+              <span>AI Stock Intelligence</span>
             </span>
-            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-              {todaySales.count} บิล
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3: Daily Requisitions */}
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-700">การเบิกพัสดุวันนี้</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Activity className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-indigo-700 mt-2 tracking-tight">
-            {todayRequisitions.totalQty}{' '}
-            <span className="text-sm font-semibold text-slate-400">ชิ้น</span>
-          </div>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px]">
-            <span className="text-slate-400">รายการเบิกทั้งหมด</span>
-            <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
-              {todayRequisitions.count} ครั้ง
-            </span>
-          </div>
-        </div>
-
-        {/* Card 4: Stock Health & Critical Alerts */}
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-700">สถานะความพร้อมสต็อก</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 tracking-tight flex items-baseline gap-1.5">
-            <span>{stockHealthScore}%</span>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-              Optimal
-            </span>
-          </div>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px]">
-            <span className="text-slate-400">พัสดุใกล้หมด</span>
-            {lowStockItems.length > 0 ? (
-              <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
-                ⚠️ {lowStockItems.length} รายการ
-              </span>
-            ) : (
-              <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                ครบถ้วน
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 3. SHOPEERS AI STOCK INTELLIGENCE & ADVISOR WIDGET */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-72 h-full bg-blue-500/10 blur-2xl pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
-                <Sparkles className="w-3 h-3 text-amber-300 animate-spin" />
-                <span>AI Stock Intelligence & Advisor</span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                Predictive Analytics Engine
-              </span>
-            </div>
-
-            <h2 className="text-base sm:text-lg font-black tracking-tight">
-              คำแนะนำอัจฉริยะสำหรับคลังพัสดุโรงเรียนนานาชาติรุ่งอรุณ
-            </h2>
-            <p className="text-xs text-indigo-200/80 max-w-2xl leading-relaxed">
+            <p className="text-xs text-zinc-600">
               {lowStockItems.length > 0
-                ? `💡 ระบบตรวจพบวัสดุใกล้หมด ${lowStockItems.length} รายการ (เช่น ${lowStockItems.slice(0, 2).map(i => i.name).join(', ')}) แนะนำกดรับเข้าเพื่อสำรองสำหรับการเรียนการสอน IB`
-                : '💡 คลังพัสดุอยู่ในสถานะสมบูรณ์พร้อมสำหรับทุกหลักสูตร PYP, MYP, DP และ CP ทั้งอุปกรณ์วิทยาศาสตร์ เครื่องเขียน และสื่อการสอน'}
+                ? `ระบบตรวจพบพัสดุใกล้หมดเกณฑ์สำรอง ${lowStockItems.length} รายการ (เช่น ${lowStockItems.slice(0, 2).map(i => i.name).join(', ')}) แนะนำกดรับเข้าสต็อก`
+                : 'คลังพัสดุอยู่ในสถานะสมบูรณ์พร้อมสำหรับทุกหลักสูตร PYP, MYP, DP และ CP ทั้งอุปกรณ์วิทยาศาสตร์และสื่อการสอน'}
             </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/inventory"
-              className="bg-white/10 hover:bg-white/20 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl border border-white/15 transition flex items-center gap-1.5"
-            >
-              <span>จัดการคลังพัสดุ</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. IB CURRICULUM DISTRIBUTION MATRIX & LOW STOCK MONITOR */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        
-        {/* IB Programmes Quick Hub */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <School className="w-4 h-4 text-blue-600" />
-              <h2 className="text-xs sm:text-sm font-bold text-slate-900">
-                การกระจายพัสดุตามกลุ่มหลักสูตร IB Curriculum
-              </h2>
-            </div>
-            <span className="text-[10px] text-slate-400 font-medium">
-              Roong Aroon International School
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-            {/* PYP */}
-            <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-2xl">
-              <span className="text-[10px] font-bold text-emerald-800 block">🌱 PYP</span>
-              <h3 className="text-xs font-black text-slate-800 mt-0.5">Primary Years</h3>
-              <p className="text-[10px] text-slate-500 mt-1">อนุบาล - ประถม (EY1-G5)</p>
-            </div>
-
-            {/* MYP */}
-            <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-2xl">
-              <span className="text-[10px] font-bold text-blue-800 block">📘 MYP</span>
-              <h3 className="text-xs font-black text-slate-800 mt-0.5">Middle Years</h3>
-              <p className="text-[10px] text-slate-500 mt-1">มัธยมต้น (Grade 6-10)</p>
-            </div>
-
-            {/* DP */}
-            <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-2xl">
-              <span className="text-[10px] font-bold text-purple-800 block">🎓 DP</span>
-              <h3 className="text-xs font-black text-slate-800 mt-0.5">Diploma Prog.</h3>
-              <p className="text-[10px] text-slate-500 mt-1">มัธยมปลาย Diploma</p>
-            </div>
-
-            {/* CP */}
-            <div className="p-3 bg-amber-50/60 border border-amber-100 rounded-2xl">
-              <span className="text-[10px] font-bold text-amber-800 block">💼 CP</span>
-              <h3 className="text-xs font-black text-slate-800 mt-0.5">Career Prog.</h3>
-              <p className="text-[10px] text-slate-500 mt-1">มัธยมปลาย อาชีพ/ทักษะ</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Urgent Low Stock Alerts Monitor */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 text-amber-800 font-bold text-xs">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span>พัสดุต้องสั่งเพิ่มด่วน</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {lowStockItems.length} รายการ
-              </span>
-            </div>
-
-            {lowStockItems.length === 0 ? (
-              <div className="py-6 text-center text-slate-400">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-1 opacity-80" />
-                <p className="text-xs font-semibold text-slate-600">สต็อกพัสดุพร้อมทุกรายการ</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
-                {lowStockItems.slice(0, 4).map(item => (
-                  <div key={item.id} className="py-2 flex items-center justify-between gap-2 text-xs">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-slate-900 truncate">{item.name}</p>
-                      <p className="text-[10px] text-red-600 font-medium">
-                        เหลือ {item.currentStock} {item.unit} (เกณฑ์ {item.minStock})
-                      </p>
-                    </div>
-
-                    {canRestock && (
-                      <button
-                        onClick={() => setSelectedItemForRestock(item)}
-                        className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-[10px] shrink-0"
-                      >
-                        +รับเข้า
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <Link
             href="/inventory"
-            className="pt-2 mt-2 border-t border-slate-100 text-xs text-blue-600 font-bold flex items-center justify-between hover:underline"
+            className="text-xs font-medium text-zinc-600 hover:text-zinc-900 flex items-center gap-1 shrink-0 transition"
           >
-            <span>ดูรายการคลังทั้งหมด</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <span>เปิดหน้าคลังพัสดุ</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
+        {/* IB Curriculum Badges */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="p-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50">
+            <span className="font-mono text-[10px] text-zinc-500 block">IB-PYP</span>
+            <span className="font-medium text-zinc-900 text-xs">Primary Years</span>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Early Years - Grade 5</p>
+          </div>
+          <div className="p-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50">
+            <span className="font-mono text-[10px] text-zinc-500 block">IB-MYP</span>
+            <span className="font-medium text-zinc-900 text-xs">Middle Years</span>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Grade 6 - Grade 10</p>
+          </div>
+          <div className="p-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50">
+            <span className="font-mono text-[10px] text-zinc-500 block">IB-DP</span>
+            <span className="font-medium text-zinc-900 text-xs">Diploma Programme</span>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Grade 11 - Grade 12</p>
+          </div>
+          <div className="p-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50">
+            <span className="font-mono text-[10px] text-zinc-500 block">IB-CP</span>
+            <span className="font-medium text-zinc-900 text-xs">Career-related</span>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Grade 11 - Grade 12</p>
+          </div>
+        </div>
       </div>
 
-      {/* 5. SEARCH & CATALOG WITH DEDUCT / RESTOCK ACTIONS */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
+      {/* 4. HIGH DENSITY ENTERPRISE STOCK TABLE */}
+      <div className="rounded-xl border border-zinc-200 bg-white shadow-2xs overflow-hidden">
         
-        {/* Search & Category Filter */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5">
+        {/* Table Toolbar */}
+        <div className="p-3 border-b border-zinc-200 bg-zinc-50/50 flex flex-col sm:flex-row gap-2.5 items-center justify-between">
           <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-400" />
             <input
               type="text"
-              placeholder="ค้นหาชื่อพัสดุ, รหัสบาร์โค้ด หรือตำแหน่ง..."
+              placeholder="ค้นหาตามรหัส SKU, ชื่อพัสดุ, จุดจัดเก็บ..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-8 pr-3 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
             />
           </div>
 
-          {/* Category Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+          <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+            {/* Category Dropdown Filter */}
+            <select
+              value={selectedCategory}
+              onChange={e => setSelectedCategory(e.target.value)}
+              className="px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs font-medium text-zinc-700 focus:outline-none"
+            >
+              <option value="ALL">หมวดหมู่ทั้งหมด ({items.length})</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+
+            {/* Low stock filter toggle */}
             <button
-              onClick={() => setSelectedCategory('ALL')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
-                selectedCategory === 'ALL'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              onClick={() => setLowStockOnly(!lowStockOnly)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1 ${
+                lowStockOnly
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
+                  : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'
               }`}
             >
-              ทั้งหมด
+              <AlertTriangle className="w-3 h-3" />
+              <span>เฉพาะใกล้หมด ({lowStockItems.length})</span>
             </button>
-            {categories.slice(0, 5).map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
-                  selectedCategory === cat.id
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {cat.name.split(' ')[0]}
-              </button>
-            ))}
+
+            <Link
+              href="/inventory"
+              className="px-2.5 py-1.5 bg-white hover:bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-700 flex items-center gap-1 transition"
+            >
+              <span>ดูทั้งหมด</span>
+              <ChevronRight className="w-3 h-3 text-zinc-400" />
+            </Link>
           </div>
         </div>
 
-        {/* Item Cards Grid */}
-        {filteredItems.length === 0 ? (
-          <div className="py-12 text-center text-slate-400">
-            <Boxes className="w-8 h-8 mx-auto mb-1 opacity-30" />
-            <p className="text-xs font-semibold">ไม่พบรายการพัสดุที่ตรงกับคำค้นหา</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-            {filteredItems.slice(0, 9).map(item => {
-              const isLow = item.currentStock <= item.minStock;
-              const isOut = item.currentStock <= 0;
+        {/* High Density Table Body */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-zinc-50/80 border-b border-zinc-200 text-zinc-500 font-semibold text-[11px] tracking-wide uppercase">
+              <tr>
+                <th className="py-2 px-3 w-28">รหัส SKU</th>
+                <th className="py-2 px-3 min-w-[200px]">รายการพัสดุ</th>
+                <th className="py-2 px-3 hidden sm:table-cell w-36">หมวดหมู่</th>
+                <th className="py-2 px-3 hidden md:table-cell w-36">จุดจัดเก็บ</th>
+                <th className="py-2 px-3 w-28">สถานะสต็อก</th>
+                <th className="py-2 px-3 w-28 text-right">คงเหลือ</th>
+                <th className="py-2 px-3 w-28 text-right">ดำเนินการ</th>
+              </tr>
+            </thead>
+            
+            {loading ? (
+              <tbody className="divide-y divide-zinc-100">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-2 px-3"><div className="h-3.5 w-16 bg-zinc-200 rounded"></div></td>
+                    <td className="py-2 px-3"><div className="h-3.5 w-44 bg-zinc-200 rounded"></div></td>
+                    <td className="py-2 px-3 hidden sm:table-cell"><div className="h-3.5 w-24 bg-zinc-100 rounded"></div></td>
+                    <td className="py-2 px-3 hidden md:table-cell"><div className="h-3.5 w-20 bg-zinc-100 rounded"></div></td>
+                    <td className="py-2 px-3"><div className="h-4 w-16 bg-zinc-100 rounded"></div></td>
+                    <td className="py-2 px-3 text-right"><div className="h-3.5 w-10 bg-zinc-200 rounded ml-auto"></div></td>
+                    <td className="py-2 px-3 text-right"><div className="h-6 w-14 bg-zinc-100 rounded ml-auto"></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            ) : filteredItems.length === 0 ? (
+              <tbody>
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-zinc-400">
+                    <Boxes className="w-8 h-8 mx-auto mb-1 opacity-40 text-zinc-400" />
+                    <p className="text-xs font-medium text-zinc-600">ไม่พบรายการพัสดุที่ค้นหา</p>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">ลองปรับคำค้นหา หรือเลือกหมวดหมู่อื่น</p>
+                  </td>
+                </tr>
+              </tbody>
+            ) : (
+              <tbody className="divide-y divide-zinc-100">
+                {filteredItems.slice(0, 10).map(item => {
+                  const isLow = item.currentStock <= item.minStock;
+                  const isOut = item.currentStock <= 0;
+                  const cat = categories.find(c => c.id === item.categoryId);
 
-              return (
-                <div
-                  key={item.id}
-                  className="border border-slate-200/80 rounded-2xl p-3.5 bg-slate-50/40 hover:bg-white hover:shadow-md transition flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-[9px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  return (
+                    <tr key={item.id} className="hover:bg-zinc-50/80 transition group">
+                      {/* SKU (font-mono) */}
+                      <td className="py-2 px-3 font-mono text-xs text-zinc-600 whitespace-nowrap">
                         {item.code}
-                      </span>
-                      {isOut ? (
-                        <span className="text-[9px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-md">
-                          หมดสต็อก
+                      </td>
+
+                      {/* Name & Notes */}
+                      <td className="py-2 px-3">
+                        <div className="font-medium text-zinc-900 leading-tight">
+                          {item.name}
+                        </div>
+                        {item.note && (
+                          <div className="text-[10px] text-zinc-400 truncate max-w-xs mt-0.5">
+                            {item.note}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Category */}
+                      <td className="py-2 px-3 hidden sm:table-cell text-zinc-600 whitespace-nowrap text-[11px]">
+                        <span className="inline-flex items-center gap-1 bg-zinc-100 px-2 py-0.5 rounded text-zinc-600">
+                          {cat?.icon} {cat?.name ? cat.name.split(' ')[0] : 'ทั่วไป'}
                         </span>
-                      ) : isLow ? (
-                        <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md">
-                          ใกล้หมด
+                      </td>
+
+                      {/* Location */}
+                      <td className="py-2 px-3 hidden md:table-cell text-zinc-500 whitespace-nowrap text-[11px]">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
+                          <span className="truncate">{item.location || 'คลังกลาง'}</span>
                         </span>
-                      ) : (
-                        <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md">
-                          พร้อมเบิก
+                      </td>
+
+                      {/* Muted Status Badge with thin border */}
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        {isOut ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-800 border border-rose-200/70">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                            <span>หมดสต็อก</span>
+                          </span>
+                        ) : isLow ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            <span>ใกล้หมด (≤{item.minStock})</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200/80">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>ปกติ</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Stock Quantity (font-mono) */}
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                        <span className={`font-mono text-xs font-bold ${isLow ? 'text-rose-600' : 'text-zinc-900'}`}>
+                          {item.currentStock}
                         </span>
-                      )}
-                    </div>
+                        <span className="text-[10px] text-zinc-500 font-sans ml-1">
+                          {item.unit}
+                        </span>
+                      </td>
 
-                    <h3 className="font-bold text-slate-900 text-xs leading-snug line-clamp-2">
-                      {item.name}
-                    </h3>
+                      {/* Actions */}
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          {canRestock && (
+                            <button
+                              onClick={() => setSelectedItemForRestock(item)}
+                              className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded text-[10px] font-medium border border-zinc-200 transition"
+                              title="รับเข้าสต็อก"
+                            >
+                              +รับเข้า
+                            </button>
+                          )}
 
-                    <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1">
-                      <MapPin className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{item.location || 'คลังกลาง'}</span>
-                    </div>
-                  </div>
+                          <button
+                            onClick={() => setSelectedItemForDeduct(item)}
+                            disabled={isOut}
+                            className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white rounded text-[10px] font-medium shadow-2xs transition"
+                            title="ตัดสต็อกเบิก"
+                          >
+                            เบิก
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            )}
+          </table>
+        </div>
 
-                  <div className="mt-3 pt-2 border-t border-slate-200/80 flex items-center justify-between">
-                    <div>
-                      <span className="text-[9px] text-slate-400 block leading-none">คงเหลือ</span>
-                      <span className={`text-base font-black ${isLow ? 'text-red-600' : 'text-blue-700'}`}>
-                        {item.currentStock}{' '}
-                        <span className="text-[10px] font-normal text-slate-500">{item.unit}</span>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      {canRestock && (
-                        <button
-                          onClick={() => setSelectedItemForRestock(item)}
-                          className="p-1.5 rounded-xl bg-slate-200/70 hover:bg-slate-300 text-slate-700 transition"
-                          title="รับเข้าสต็อก"
-                        >
-                          <PackagePlus className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => setSelectedItemForDeduct(item)}
-                        disabled={isOut}
-                        className="bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 active:scale-95 transition"
-                      >
-                        <Scissors className="w-3 h-3" />
-                        <span>เบิก</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {/* Table Footer Summary */}
+        <div className="p-2.5 bg-zinc-50/50 border-t border-zinc-200 text-[11px] text-zinc-500 flex items-center justify-between">
+          <span>แสดง {filteredItems.slice(0, 10).length} จาก {filteredItems.length} รายการ</span>
+          <Link href="/inventory" className="text-zinc-700 font-medium hover:underline flex items-center gap-1">
+            <span>ดูพัสดุทั้งหมดในระบบ</span>
+            <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
       </div>
 
-      {/* 6. REAL-TIME ACTIVITY STREAM (Shopeers-inspired Live Feed) */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
+      {/* 5. LIVE ACTIVITY STREAM (High Density Linear Style) */}
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-500" />
-            <h2 className="text-xs sm:text-sm font-bold text-slate-900">
-              บันทึกธุรกรรมความเคลื่อนไหวล่าสุด (Live Activity Stream)
+            <Clock className="w-4 h-4 text-zinc-400" />
+            <h2 className="text-xs sm:text-sm font-bold text-zinc-900">
+              ประวัติการทำรายการล่าสุด (Live Activity Stream)
             </h2>
           </div>
           <Link
             href="/history"
-            className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+            className="text-xs font-medium text-zinc-600 hover:text-zinc-900 flex items-center gap-1"
           >
             <span>ดูประวัติทั้งหมด</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
-        <div className="divide-y divide-slate-100">
-          {recentTransactions.length === 0 ? (
-            <p className="text-xs text-slate-400 py-4 text-center">ยังไม่มีประวัติการทำรายการ</p>
-          ) : (
-            recentTransactions.map(tx => {
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map(n => (
+              <div key={n} className="h-9 bg-zinc-100 animate-pulse rounded"></div>
+            ))}
+          </div>
+        ) : recentTransactions.length === 0 ? (
+          <p className="text-xs text-zinc-400 py-6 text-center">ยังไม่มีประวัติการทำรายการ</p>
+        ) : (
+          <div className="divide-y divide-zinc-100">
+            {recentTransactions.map(tx => {
               const isOut = tx.type === 'OUT';
               const isSale = tx.type === 'SALE';
               const isIn = tx.type === 'IN';
@@ -679,24 +664,24 @@ export default function HomePage() {
               }) + ' น.';
 
               return (
-                <div key={tx.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                <div key={tx.id} className="py-2 flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <span
-                      className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md shrink-0 ${
+                      className={`text-[9px] font-mono font-medium px-2 py-0.5 rounded border shrink-0 ${
                         isSale
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-zinc-100 text-zinc-800 border-zinc-200'
                           : isOut
-                          ? 'bg-red-100 text-red-800'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200/60'
                           : isIn
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-slate-100 text-slate-700'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                          : 'bg-zinc-100 text-zinc-700 border-zinc-200'
                       }`}
                     >
-                      {isSale ? 'จำหน่าย POS' : isOut ? 'เบิกใช้งาน' : isIn ? 'รับเข้า' : 'ปรับยอด'}
+                      {isSale ? 'POS' : isOut ? 'OUT' : isIn ? 'IN' : 'ADJ'}
                     </span>
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-900 truncate">{tx.itemName}</p>
-                      <p className="text-[10px] text-slate-400 truncate">
+                      <p className="font-medium text-zinc-900 truncate leading-tight">{tx.itemName}</p>
+                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">
                         {tx.department} {tx.requesterName ? `• ${tx.requesterName}` : ''} • {timeStr}
                       </p>
                     </div>
@@ -704,21 +689,21 @@ export default function HomePage() {
 
                   <div className="text-right shrink-0">
                     <span
-                      className={`font-black text-sm block ${
-                        isOut || isSale ? 'text-red-600' : 'text-emerald-600'
+                      className={`font-mono text-xs font-semibold block ${
+                        isOut || isSale ? 'text-zinc-900' : 'text-emerald-600'
                       }`}
                     >
                       {isOut || isSale ? `-${tx.quantity}` : `+${tx.quantity}`}
                     </span>
-                    <span className="text-[9px] text-slate-400">
+                    <span className="font-mono text-[10px] text-zinc-400">
                       คงเหลือ {tx.balanceAfter}
                     </span>
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
 
       {/* MODALS */}

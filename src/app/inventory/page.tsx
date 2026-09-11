@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Item, Category, Department } from '@/types/inventory';
 import QuickDeductModal from '@/components/QuickDeductModal';
 import QuickRestockModal from '@/components/QuickRestockModal';
@@ -18,7 +18,10 @@ import {
   MapPin,
   CheckCircle2,
   QrCode,
-  Tag
+  Tag,
+  RefreshCw,
+  ChevronRight,
+  Filter
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -98,7 +101,7 @@ export default function InventoryPage() {
     setFormError(null);
 
     if (!formData.code.trim() || !formData.name.trim() || !formData.unit.trim()) {
-      setFormError('กรุณากรอกรหัสสินค้า, ชื่อสินค้า และหน่วยนับ');
+      setFormError('กรุณากรอกข้อมูลที่จำเป็น (รหัส, ชื่อสินค้า, หน่วยนับ)');
       return;
     }
 
@@ -110,14 +113,16 @@ export default function InventoryPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถเพิ่มสินค้าได้');
+      if (!res.ok) {
+        throw new Error(data.error || 'ไม่สามารถเพิ่มสินค้าได้');
+      }
 
-      setItems(prev => [...prev, data.item]);
+      setItems(prev => [data.item, ...prev]);
       setIsAddModalOpen(false);
       setFormData({
         code: '',
         name: '',
-        categoryId: categories[0]?.id || '',
+        categoryId: categories.length > 0 ? categories[0].id : '',
         currentStock: 10,
         minStock: 5,
         unit: 'ชิ้น',
@@ -128,7 +133,7 @@ export default function InventoryPage() {
         note: '',
         isBorrowable: false
       });
-      showToast(`✅ เพิ่มสินค้า "${data.item.name}" สำเร็จ`);
+      showToast(`✅ เพิ่มพัสดุ "${data.item.name}" เรียบร้อยแล้ว`);
     } catch (err: any) {
       setFormError(err.message);
     }
@@ -144,64 +149,89 @@ export default function InventoryPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingItem)
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถแก้ไขสินค้าได้');
+      if (!res.ok) {
+        throw new Error(data.error || 'ไม่สามารถแก้ไขสินค้าได้');
+      }
 
       setItems(prev => prev.map(i => (i.id === data.item.id ? data.item : i)));
       setEditingItem(null);
-      showToast(`✅ อัปเดตข้อมูล "${data.item.name}" เรียบร้อย`);
+      showToast(`✅ อัปเดตข้อมูล "${data.item.name}" สำเร็จ`);
     } catch (err: any) {
       alert(err.message);
     }
   };
 
   const handleDeleteItem = async (id: string, name: string) => {
-    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบ "${name}" ออกจากระบบ?`)) return;
+    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบพัสดุ "${name}" ออกจากระบบ?`)) {
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('ไม่สามารถลบสินค้าได้');
+      const res = await fetch(`/api/items/${id}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'ไม่สามารถลบสินค้าได้');
+      }
 
       setItems(prev => prev.filter(i => i.id !== id));
-      showToast(`🗑️ ลบ "${name}" เรียบร้อยแล้ว`);
+      showToast(`🗑️ ลบพัสดุ "${name}" เรียบร้อยแล้ว`);
     } catch (err: any) {
       alert(err.message);
     }
   };
 
   // Filter items
-  const filtered = items.filter(item => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase());
+  const filtered = useMemo(() => {
+    return items.filter(item => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.location.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesCategory = selectedCategory === 'ALL' || item.categoryId === selectedCategory;
-    const matchesLowStock = !lowStockOnly || item.currentStock <= item.minStock;
+      const matchesCategory = selectedCategory === 'ALL' || item.categoryId === selectedCategory;
+      const matchesLowStock = !lowStockOnly || item.currentStock <= item.minStock;
 
-    return matchesSearch && matchesCategory && matchesLowStock;
-  });
+      return matchesSearch && matchesCategory && matchesLowStock;
+    });
+  }, [items, searchQuery, selectedCategory, lowStockOnly]);
+
+  const lowStockCount = useMemo(() => {
+    return items.filter(i => i.currentStock <= i.minStock).length;
+  }, [items]);
 
   return (
     <div className="space-y-4">
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs sm:text-sm font-medium border border-slate-700">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white px-3.5 py-2 rounded-lg shadow-lg flex items-center gap-2 text-xs font-medium border border-zinc-800 animate-in fade-in slide-in-from-top-2 duration-150">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+      {/* Header Bar (Modern Linear / shadcn/ui Neutral Style) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-xl border border-zinc-200 shadow-2xs">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Boxes className="w-5 h-5 text-blue-600" />
-            คลังพัสดุและอุปกรณ์ทั้งหมด ({items.length} รายการ)
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-mono font-medium text-zinc-500 uppercase tracking-wider">
+              INVENTORY MANAGEMENT
+            </span>
+            <span className="text-[10px] text-zinc-400">•</span>
+            <span className="text-[10px] font-mono text-zinc-500">
+              {items.length} TOTAL ITEMS
+            </span>
+          </div>
+          <h1 className="text-lg sm:text-xl font-bold text-zinc-900 flex items-center gap-2 tracking-tight">
+            <Boxes className="w-5 h-5 text-zinc-700" />
+            <span>คลังพัสดุและอุปกรณ์ (Inventory Table)</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            จัดการรายการพัสดุ, เพิ่มสินค้าใหม่, กำหนดจุดเตือนของใกล้หมด
+          <p className="text-xs text-zinc-500 mt-0.5">
+            ตรวจเช็คสต็อก จัดการรายการพัสดุ เพิ่มสินค้าใหม่ และกำหนดจุดเตือนของใกล้หมด
           </p>
         </div>
 
@@ -209,21 +239,23 @@ export default function InventoryPage() {
           {canPrintQr && (
             <Link
               href="/print-qr"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-medium transition shadow-2xs"
             >
-              <QrCode className="w-4 h-4 text-slate-600" />
+              <QrCode className="w-3.5 h-3.5 text-zinc-500" />
               <span>พิมพ์ป้าย QR</span>
             </Link>
           )}
+
           {canManageItems && (
             <button
               onClick={() => setIsCategoryModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-xs active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-medium transition shadow-2xs"
             >
-              <Tag className="w-4 h-4 text-slate-500" />
+              <Tag className="w-3.5 h-3.5 text-zinc-500" />
               <span>จัดการหมวดหมู่</span>
             </button>
           )}
+
           {canManageItems && (
             <button
               onClick={() => {
@@ -232,232 +264,276 @@ export default function InventoryPage() {
                 }
                 setIsAddModalOpen(true);
               }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium shadow-2xs transition active:scale-98"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               <span>เพิ่มพัสดุใหม่</span>
             </button>
           )}
+
+          <button
+            onClick={fetchItems}
+            title="รีเฟรชข้อมูล"
+            className="p-2 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-500 transition shadow-2xs"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
-      {/* Search & Category Filter Pills */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-3">
-        {/* Search box */}
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+      {/* Filter & Toolbar */}
+      <div className="bg-white p-3 rounded-xl border border-zinc-200 shadow-2xs flex flex-col sm:flex-row gap-2.5 items-center justify-between">
+        {/* Search input */}
+        <div className="relative w-full sm:w-80">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-400" />
           <input
             type="text"
-            placeholder="ค้นหาชื่อสินค้า, รหัส, จุดจัดเก็บ..."
+            placeholder="ค้นหาชื่อพัสดุ, รหัส SKU, จุดจัดเก็บ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-zinc-50/50 border border-zinc-200 rounded-lg text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
           />
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          <button
-            onClick={() => setSelectedCategory('ALL')}
-            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition ${
-              selectedCategory === 'ALL'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+        {/* Categories & Filter Controls */}
+        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+          <select
+            value={selectedCategory}
+            onChange={e => setSelectedCategory(e.target.value)}
+            className="px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs font-medium text-zinc-700 focus:outline-none"
           >
-            ทั้งหมด ({items.length})
-          </button>
-
-          {categories.map(cat => {
-            const count = items.filter(i => i.categoryId === cat.id).length;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition flex items-center gap-1 ${
-                  selectedCategory === cat.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.name}</span>
-                <span className="opacity-70 text-[10px]">({count})</span>
-              </button>
-            );
-          })}
+            <option value="ALL">หมวดหมู่ทั้งหมด ({items.length})</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>
+                {cat.icon} {cat.name}
+              </option>
+            ))}
+          </select>
 
           <button
             onClick={() => setLowStockOnly(!lowStockOnly)}
-            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition flex items-center gap-1 ml-auto ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 whitespace-nowrap ${
               lowStockOnly
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
+                ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
+                : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'
             }`}
           >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>เฉพาะใกล้หมด</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+            <span>ใกล้หมด ({lowStockCount})</span>
           </button>
         </div>
       </div>
 
-      {/* Item List / Cards */}
-      <div className="space-y-2">
-        {filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl p-10 text-center border border-slate-200">
-            <Boxes className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-            <p className="font-bold text-slate-700 text-sm">ไม่พบรายการพัสดุ</p>
-            <p className="text-xs text-slate-400 mt-1">ลองเปลี่ยนคำค้นหา หรือหมวดหมู่</p>
-          </div>
-        ) : (
-          filtered.map(item => {
-            const isLow = item.currentStock <= item.minStock;
-            const isOut = item.currentStock <= 0;
+      {/* HIGH DENSITY ENTERPRISE DATA TABLE */}
+      <div className="rounded-xl border border-zinc-200 bg-white shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-zinc-50/80 border-b border-zinc-200 text-zinc-500 font-semibold text-[11px] tracking-wide uppercase">
+              <tr>
+                <th className="py-2 px-3 w-28">รหัส SKU</th>
+                <th className="py-2 px-3 min-w-[200px]">รายการพัสดุ</th>
+                <th className="py-2 px-3 hidden sm:table-cell w-36">หมวดหมู่</th>
+                <th className="py-2 px-3 hidden md:table-cell w-36">จุดจัดเก็บ</th>
+                <th className="py-2 px-3 hidden lg:table-cell w-24 text-right">ราคา</th>
+                <th className="py-2 px-3 w-32">สถานะสต็อก</th>
+                <th className="py-2 px-3 w-28 text-right">คงเหลือ</th>
+                <th className="py-2 px-3 w-40 text-right">ดำเนินการ</th>
+              </tr>
+            </thead>
 
-            return (
-              <div
-                key={item.id}
-                className="bg-white border border-slate-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-blue-300 transition shadow-xs"
-              >
-                {/* Left info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                      {item.code}
-                    </span>
-                    {item.price !== undefined && item.price > 0 && (
-                      <span className="text-[10px] font-black bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md">
-                        ฿{item.price.toFixed(2)}
-                      </span>
-                    )}
-                    {item.isForSale && (
-                      <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">
-                        🛒 สินค้าขาย
-                      </span>
-                    )}
-                    {isOut ? (
-                      <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-md">
-                        หมดสต็อก
-                      </span>
-                    ) : isLow ? (
-                      <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md">
-                        ใกล้หมด (เตือนที่ ≤ {item.minStock})
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md">
-                        ปกติ
-                      </span>
-                    )}
-                    {item.isBorrowable && (
-                      <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md">
-                        ยืม-คืนได้
-                      </span>
-                    )}
-                  </div>
+            {/* SKELETON LOADING STATE */}
+            {loading ? (
+              <tbody className="divide-y divide-zinc-100">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                  <tr key={n} className="animate-pulse">
+                    <td className="py-2 px-3"><div className="h-3.5 w-16 bg-zinc-200 rounded"></div></td>
+                    <td className="py-2 px-3"><div className="h-3.5 w-44 bg-zinc-200 rounded"></div></td>
+                    <td className="py-2 px-3 hidden sm:table-cell"><div className="h-3.5 w-24 bg-zinc-100 rounded"></div></td>
+                    <td className="py-2 px-3 hidden md:table-cell"><div className="h-3.5 w-20 bg-zinc-100 rounded"></div></td>
+                    <td className="py-2 px-3 hidden lg:table-cell text-right"><div className="h-3.5 w-12 bg-zinc-100 rounded ml-auto"></div></td>
+                    <td className="py-2 px-3"><div className="h-4 w-16 bg-zinc-100 rounded"></div></td>
+                    <td className="py-2 px-3 text-right"><div className="h-3.5 w-10 bg-zinc-200 rounded ml-auto"></div></td>
+                    <td className="py-2 px-3 text-right"><div className="h-6 w-24 bg-zinc-100 rounded ml-auto"></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            ) : filtered.length === 0 ? (
+              <tbody>
+                <tr>
+                  <td colSpan={8} className="py-16 text-center text-zinc-400">
+                    <Boxes className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
+                    <p className="font-semibold text-zinc-700 text-xs">ไม่พบรายการพัสดุ</p>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">ลองปรับคำค้นหา หรือรีเซ็ตหมวดหมู่</p>
+                  </td>
+                </tr>
+              </tbody>
+            ) : (
+              <tbody className="divide-y divide-zinc-100">
+                {filtered.map(item => {
+                  const isLow = item.currentStock <= item.minStock;
+                  const isOut = item.currentStock <= 0;
+                  const cat = categories.find(c => c.id === item.categoryId);
 
-                  <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-tight">
-                    {item.name}
-                  </h3>
+                  return (
+                    <tr key={item.id} className="hover:bg-zinc-50/80 transition group">
+                      
+                      {/* SKU (font-mono) */}
+                      <td className="py-2 px-3 font-mono text-xs text-zinc-600 whitespace-nowrap">
+                        {item.code}
+                      </td>
 
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1.5">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                      {item.location || 'ไม่ระบุจุดจัดเก็บ'}
-                    </span>
-                    {item.note && (
-                      <span className="text-slate-400 text-[11px] truncate max-w-xs">
-                        • {item.note}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                      {/* Item Name & Details */}
+                      <td className="py-2 px-3">
+                        <div className="font-medium text-zinc-900 leading-tight">
+                          {item.name}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 mt-0.5">
+                          {item.isForSale && (
+                            <span className="text-zinc-600 font-mono">[POS Sale]</span>
+                          )}
+                          {item.isBorrowable && (
+                            <span className="text-purple-700 font-medium">ยืม-คืน</span>
+                          )}
+                          {item.note && (
+                            <span className="truncate max-w-xs">• {item.note}</span>
+                          )}
+                        </div>
+                      </td>
 
-                {/* Right controls */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                  {/* Stock counter */}
-                  <div className="text-left sm:text-right">
-                    <span className="text-[10px] text-slate-400 block">ยอดคงเหลือ</span>
-                    <span className={`text-xl font-black ${isLow ? 'text-red-600' : 'text-blue-700'}`}>
-                      {item.currentStock}{' '}
-                      <span className="text-xs font-semibold text-slate-500">{item.unit}</span>
-                    </span>
-                  </div>
+                      {/* Category */}
+                      <td className="py-2 px-3 hidden sm:table-cell text-zinc-600 whitespace-nowrap text-[11px]">
+                        <span className="inline-flex items-center gap-1 bg-zinc-100 px-2 py-0.5 rounded text-zinc-600">
+                          {cat?.icon} {cat?.name ? cat.name.split(' ')[0] : 'ทั่วไป'}
+                        </span>
+                      </td>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1.5">
-                    {canRestock && (
-                      <button
-                        onClick={() => setSelectedItemForRestock(item)}
-                        className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1 transition"
-                        title="รับเข้าสต็อก"
-                      >
-                        <PackagePlus className="w-4 h-4" />
-                        <span className="hidden sm:inline">รับเข้า</span>
-                      </button>
-                    )}
+                      {/* Location */}
+                      <td className="py-2 px-3 hidden md:table-cell text-zinc-500 whitespace-nowrap text-[11px]">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
+                          <span className="truncate">{item.location || 'คลังกลาง'}</span>
+                        </span>
+                      </td>
 
-                    <button
-                      onClick={() => setSelectedItemForDeduct(item)}
-                      disabled={isOut}
-                      className="p-2 rounded-xl bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-700 text-xs font-bold flex items-center gap-1 transition"
-                      title="ตัดสต็อก (เบิก)"
-                    >
-                      <Scissors className="w-4 h-4" />
-                      <span className="hidden sm:inline">เบิก</span>
-                    </button>
+                      {/* Price / Cost (font-mono) */}
+                      <td className="py-2 px-3 hidden lg:table-cell text-right whitespace-nowrap font-mono text-xs text-zinc-700">
+                        {item.price ? `฿${item.price.toFixed(2)}` : '-'}
+                      </td>
 
-                    {canManageItems && (
-                      <button
-                        onClick={() => setEditingItem(item)}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                        title="แก้ไขข้อมูล"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                    )}
+                      {/* Muted Status Badge with thin border & dot */}
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        {isOut ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-800 border border-rose-200/70">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                            <span>หมดสต็อก</span>
+                          </span>
+                        ) : isLow ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            <span>ใกล้หมด (≤{item.minStock})</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200/80">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>ปกติ</span>
+                          </span>
+                        )}
+                      </td>
 
-                    {canDeleteItems && (
-                      <button
-                        onClick={() => handleDeleteItem(item.id, item.name)}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-600 transition"
-                        title="ลบ"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+                      {/* Current Stock (font-mono) */}
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                        <span className={`font-mono text-xs font-bold ${isLow ? 'text-rose-600' : 'text-zinc-900'}`}>
+                          {item.currentStock}
+                        </span>
+                        <span className="text-[10px] text-zinc-500 font-sans ml-1">
+                          {item.unit}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          {canRestock && (
+                            <button
+                              onClick={() => setSelectedItemForRestock(item)}
+                              className="px-2 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded text-[10px] font-medium border border-zinc-200 transition"
+                              title="รับเข้าสต็อก"
+                            >
+                              +รับเข้า
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => setSelectedItemForDeduct(item)}
+                            disabled={isOut}
+                            className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white rounded text-[10px] font-medium shadow-2xs transition"
+                            title="ตัดสต็อกเบิก"
+                          >
+                            เบิก
+                          </button>
+
+                          {canManageItems && (
+                            <button
+                              onClick={() => setEditingItem(item)}
+                              className="p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition"
+                              title="แก้ไข"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {canDeleteItems && (
+                            <button
+                              onClick={() => handleDeleteItem(item.id, item.name)}
+                              className="p-1 rounded text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              title="ลบ"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+
+                    </tr>
+                  );
+                })}
+              </tbody>
+            )}
+          </table>
+        </div>
+
+        {/* Footer info */}
+        <div className="p-2.5 bg-zinc-50/50 border-t border-zinc-200 text-[11px] text-zinc-500 flex items-center justify-between">
+          <span>แสดง {filtered.length} จากทั้งหมด {items.length} รายการ</span>
+          <span className="font-mono text-zinc-400">High-Density Enterprise Table</span>
+        </div>
       </div>
 
       {/* ADD ITEM MODAL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="bg-blue-600 text-white px-5 py-3.5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-zinc-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="bg-zinc-900 text-white px-5 py-3.5 flex items-center justify-between">
               <h2 className="font-bold text-sm flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                เพิ่มพัสดุ / อุปกรณ์ใหม่
+                <Plus className="w-4 h-4 text-zinc-400" />
+                <span>เพิ่มพัสดุ / อุปกรณ์ใหม่</span>
               </h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-white/80 hover:text-white">
+              <button onClick={() => setIsAddModalOpen(false)} className="text-zinc-400 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveNewItem} className="p-5 overflow-y-auto space-y-3.5">
+            <form onSubmit={handleSaveNewItem} className="p-5 overflow-y-auto space-y-3.5 text-xs">
               {formError && (
-                <div className="bg-red-50 text-red-700 p-2.5 rounded-xl text-xs border border-red-200">
+                <div className="bg-rose-50 text-rose-700 p-2.5 rounded-lg text-xs border border-rose-200">
                   {formError}
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    รหัสสินค้า / บาร์โค้ด *
+                  <label className="block font-medium text-zinc-700 mb-1">
+                    รหัสสินค้า / SKU *
                   </label>
                   <input
                     type="text"
@@ -465,22 +541,22 @@ export default function InventoryPage() {
                     placeholder="เช่น A4-DOUBLE หรือ 8850029..."
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+                    className="w-full font-mono bg-zinc-50 border border-zinc-200 rounded-lg p-2 focus:ring-1 focus:ring-zinc-400"
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    * รหัสนี้จะถูกใช้สร้างเป็น QR Code สำหรับพิมพ์ติดกล่อง
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    * ใช้สร้างเป็น Barcode / QR Code
                   </p>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-slate-700">
+                    <label className="block font-medium text-zinc-700">
                       หมวดหมู่ *
                     </label>
                     <button
                       type="button"
                       onClick={() => setIsCategoryModalOpen(true)}
-                      className="text-[11px] text-blue-600 hover:text-blue-700 font-bold underline"
+                      className="text-[11px] text-zinc-600 hover:text-zinc-900 font-medium underline"
                     >
                       + จัดการหมวดหมู่
                     </button>
@@ -488,10 +564,10 @@ export default function InventoryPage() {
                   <select
                     value={formData.categoryId}
                     onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 font-medium"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 font-medium focus:ring-1 focus:ring-zinc-400"
                   >
                     {categories.length === 0 ? (
-                      <option value="">-- ยังไม่มีหมวดหมู่ (คลิก + จัดการหมวดหมู่) --</option>
+                      <option value="">-- ยังไม่มีหมวดหมู่ --</option>
                     ) : (
                       categories.map(c => (
                         <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
@@ -502,7 +578,7 @@ export default function InventoryPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block font-medium text-zinc-700 mb-1">
                   ชื่อสินค้า / รายการพัสดุ *
                 </label>
                 <input
@@ -511,97 +587,85 @@ export default function InventoryPage() {
                   placeholder="เช่น กระดาษ A4 Double A 80 แกรม"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 focus:ring-1 focus:ring-zinc-400"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    ยอดเริ่มต้น
+                  <label className="block font-medium text-zinc-700 mb-1">
+                    สต็อกแรกเริ่ม
                   </label>
                   <input
                     type="number"
                     min="0"
+                    required
                     value={formData.currentStock}
-                    onChange={(e) => setFormData({ ...formData, currentStock: Number(e.target.value) })}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => setFormData({ ...formData, currentStock: parseInt(e.target.value) || 0 })}
+                    className="w-full font-mono bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    เตือนเมื่อต่ำกว่า
+                  <label className="block font-medium text-zinc-700 mb-1">
+                    เกณฑ์เตือนใกล้หมด
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
+                    required
                     value={formData.minStock}
-                    onChange={(e) => setFormData({ ...formData, minStock: Number(e.target.value) })}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })}
+                    className="w-full font-mono bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block font-medium text-zinc-700 mb-1">
                     หน่วยนับ *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="รีม, ด้าม, ชิ้น"
+                    placeholder="เช่น รีม, กล่อง"
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  จุดจัดเก็บในโรงเรียน
+                <label className="block font-medium text-zinc-700 mb-1">
+                  จุดจัดเก็บ / ชั้นวาง
                 </label>
                 <input
                   type="text"
-                  placeholder="เช่น ตู้พัสดุ A ชั้น 2, ห้องกลุ่มสาระฯ วิทย์"
+                  placeholder="เช่น ตู้พัสดุ A ชั้น 2, ห้องพักครูวิทย์"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  หมายเหตุเพิ่มเติม
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น สำหรับใช้กับเครื่องปริ้นเตอร์ห้องวิชาการ"
-                  value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Sales & Pricing Section */}
-              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-blue-900">การจำหน่ายหน้าร้าน / สหกรณ์</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.isForSale}
-                      onChange={e => setFormData({ ...formData, isForSale: e.target.checked })}
-                      className="rounded text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-xs font-bold text-blue-800">เปิดขายในระบบ POS</span>
+              <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isForSale"
+                    checked={formData.isForSale}
+                    onChange={e => setFormData({ ...formData, isForSale: e.target.checked })}
+                    className="rounded text-zinc-900 focus:ring-zinc-500"
+                  />
+                  <label htmlFor="isForSale" className="font-medium text-zinc-800">
+                    เปิดจำหน่ายที่ร้านสหกรณ์โรงเรียน (POS)
                   </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                      ราคาขาย (บาท)
+                    <label className="block text-[11px] font-medium text-zinc-600 mb-0.5">
+                      ราคาจำหน่าย (บาท)
                     </label>
                     <input
                       type="number"
@@ -610,11 +674,11 @@ export default function InventoryPage() {
                       placeholder="0.00"
                       value={formData.price || ''}
                       onChange={e => setFormData({ ...formData, price: Number(e.target.value) || 0 })}
-                      className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                      className="w-full font-mono bg-white border border-zinc-200 rounded-lg p-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                    <label className="block text-[11px] font-medium text-zinc-600 mb-0.5">
                       ราคาทุน (บาท)
                     </label>
                     <input
@@ -624,7 +688,7 @@ export default function InventoryPage() {
                       placeholder="0.00"
                       value={formData.cost || ''}
                       onChange={e => setFormData({ ...formData, cost: Number(e.target.value) || 0 })}
-                      className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                      className="w-full font-mono bg-white border border-zinc-200 rounded-lg p-2"
                     />
                   </div>
                 </div>
@@ -636,9 +700,9 @@ export default function InventoryPage() {
                   id="isBorrowable"
                   checked={formData.isBorrowable}
                   onChange={(e) => setFormData({ ...formData, isBorrowable: e.target.checked })}
-                  className="rounded text-blue-600 focus:ring-blue-500"
+                  className="rounded text-zinc-900 focus:ring-zinc-500"
                 />
-                <label htmlFor="isBorrowable" className="text-xs text-slate-700 font-medium">
+                <label htmlFor="isBorrowable" className="text-zinc-700 font-medium">
                   เป็นอุปกรณ์ยืม-คืน (เช่น โปรเจคเตอร์, สายสัญญาณ, กุญแจ)
                 </label>
               </div>
@@ -647,13 +711,13 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="flex-1 py-2 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md"
+                  className="flex-1 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-white shadow-2xs"
                 >
                   บันทึกสินค้าใหม่
                 </button>
@@ -665,35 +729,35 @@ export default function InventoryPage() {
 
       {/* EDIT ITEM MODAL */}
       {editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-zinc-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="bg-zinc-900 text-white px-5 py-3.5 flex items-center justify-between">
               <h2 className="font-bold text-sm flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-blue-400" />
-                แก้ไขข้อมูล: {editingItem.name}
+                <Pencil className="w-4 h-4 text-zinc-400" />
+                <span>แก้ไขข้อมูล: {editingItem.name}</span>
               </h2>
-              <button onClick={() => setEditingItem(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setEditingItem(null)} className="text-zinc-400 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditItem} className="p-5 overflow-y-auto space-y-3.5">
+            <form onSubmit={handleSaveEditItem} className="p-5 overflow-y-auto space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">รหัสสินค้า</label>
+                  <label className="block font-medium text-zinc-700 mb-1">รหัสสินค้า / SKU</label>
                   <input
                     type="text"
                     value={editingItem.code}
                     onChange={(e) => setEditingItem({ ...editingItem, code: e.target.value })}
-                    className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                    className="w-full font-mono bg-zinc-50 border border-zinc-200 rounded-lg p-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">หมวดหมู่</label>
+                  <label className="block font-medium text-zinc-700 mb-1">หมวดหมู่</label>
                   <select
                     value={editingItem.categoryId}
                     onChange={(e) => setEditingItem({ ...editingItem, categoryId: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 font-medium"
                   >
                     {categories.map(c => (
                       <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
@@ -703,75 +767,73 @@ export default function InventoryPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">ชื่อสินค้า</label>
+                <label className="block font-medium text-zinc-700 mb-1">ชื่อสินค้า / รายการ</label>
                 <input
                   type="text"
                   value={editingItem.name}
                   onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">เตือนเมื่อต่ำกว่า (Min Stock)</label>
+                  <label className="block font-medium text-zinc-700 mb-1">สต็อกคงเหลือ</label>
                   <input
                     type="number"
-                    value={editingItem.minStock}
-                    onChange={(e) => setEditingItem({ ...editingItem, minStock: Number(e.target.value) })}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                    value={editingItem.currentStock}
+                    onChange={(e) => setEditingItem({ ...editingItem, currentStock: parseInt(e.target.value) || 0 })}
+                    className="w-full font-mono bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">หน่วยนับ</label>
+                  <label className="block font-medium text-zinc-700 mb-1">เกณฑ์เตือนใกล้หมด</label>
+                  <input
+                    type="number"
+                    value={editingItem.minStock}
+                    onChange={(e) => setEditingItem({ ...editingItem, minStock: parseInt(e.target.value) || 0 })}
+                    className="w-full font-mono bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-zinc-700 mb-1">หน่วยนับ</label>
                   <input
                     type="text"
                     value={editingItem.unit}
                     onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">จุดจัดเก็บ</label>
+                <label className="block font-medium text-zinc-700 mb-1">จุดจัดเก็บ / ชั้นวาง</label>
                 <input
                   type="text"
-                  value={editingItem.location}
+                  value={editingItem.location || ''}
                   onChange={(e) => setEditingItem({ ...editingItem, location: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">หมายเหตุ</label>
-                <input
-                  type="text"
-                  value={editingItem.note || ''}
-                  onChange={(e) => setEditingItem({ ...editingItem, note: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5"
-                />
-              </div>
-
-              {/* Sales & Pricing Section */}
-              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-blue-900">การจำหน่ายหน้าร้าน / สหกรณ์</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(editingItem.isForSale)}
-                      onChange={e => setEditingItem({ ...editingItem, isForSale: e.target.checked })}
-                      className="rounded text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-xs font-bold text-blue-800">เปิดขายในระบบ POS</span>
+              <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="editIsForSale"
+                    checked={Boolean(editingItem.isForSale)}
+                    onChange={e => setEditingItem({ ...editingItem, isForSale: e.target.checked })}
+                    className="rounded text-zinc-900 focus:ring-zinc-500"
+                  />
+                  <label htmlFor="editIsForSale" className="font-medium text-zinc-800">
+                    เปิดจำหน่ายที่ร้านค้าสหกรณ์ (POS)
                   </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                      ราคาขาย (บาท)
+                    <label className="block text-[11px] font-medium text-zinc-600 mb-0.5">
+                      ราคาจำหน่าย (บาท)
                     </label>
                     <input
                       type="number"
@@ -780,11 +842,11 @@ export default function InventoryPage() {
                       placeholder="0.00"
                       value={editingItem.price || ''}
                       onChange={e => setEditingItem({ ...editingItem, price: Number(e.target.value) || 0 })}
-                      className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                      className="w-full font-mono bg-white border border-zinc-200 rounded-lg p-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                    <label className="block text-[11px] font-medium text-zinc-600 mb-0.5">
                       ราคาทุน (บาท)
                     </label>
                     <input
@@ -794,7 +856,7 @@ export default function InventoryPage() {
                       placeholder="0.00"
                       value={editingItem.cost || ''}
                       onChange={e => setEditingItem({ ...editingItem, cost: Number(e.target.value) || 0 })}
-                      className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                      className="w-full font-mono bg-white border border-zinc-200 rounded-lg p-2"
                     />
                   </div>
                 </div>
@@ -804,13 +866,13 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={() => setEditingItem(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="flex-1 py-2 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-white shadow-md"
+                  className="flex-1 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-white shadow-2xs"
                 >
                   บันทึกการแก้ไข
                 </button>
