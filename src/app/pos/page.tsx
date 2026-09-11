@@ -157,7 +157,7 @@ export default function PosPage() {
   // Add to cart
   const addToCart = (item: Item) => {
     if (item.currentStock <= 0) {
-      showToast(`⚠️ สินค้า "${item.name}" หมดสต็อกแล้ว`);
+      showToast(`สินค้า "${item.name}" หมดสต็อกแล้ว`);
       return;
     }
 
@@ -165,7 +165,7 @@ export default function PosPage() {
       const existing = prev.find(ci => ci.item.id === item.id);
       if (existing) {
         if (existing.quantity >= item.currentStock) {
-          showToast(`⚠️ สินค้าคงเหลือเพียง ${item.currentStock} ${item.unit}`);
+          showToast(`สินค้าคงเหลือเพียง ${item.currentStock} ${item.unit}`);
           return prev;
         }
         return prev.map(ci =>
@@ -186,7 +186,7 @@ export default function PosPage() {
           if (ci.item.id === itemId) {
             const newQty = ci.quantity + delta;
             if (newQty > ci.item.currentStock) {
-              showToast(`⚠️ ไม่สามารถเพิ่มได้เกินสต็อกคงเหลือ (${ci.item.currentStock} ${ci.item.unit})`);
+              showToast(`ไม่สามารถเพิ่มได้เกินสต็อกคงเหลือ (${ci.item.currentStock} ${ci.item.unit})`);
               return ci;
             }
             return newQty > 0 ? { ...ci, quantity: newQty } : null;
@@ -250,7 +250,7 @@ export default function PosPage() {
 
     if (found) {
       addToCart(found);
-      showToast(`🎯 เพิ่ม: ${found.name}`);
+      showToast(`เพิ่ม: ${found.name}`);
     } else {
       alert(`ไม่พบสินค้าที่มีรหัส "${code}" ในระบบ`);
     }
@@ -316,7 +316,7 @@ export default function PosPage() {
       setCart([]);
       setDiscount(0);
       setCompletedReceipt(data.receipt);
-      showToast(`🎉 ออกใบเสร็จ #${data.receipt.receiptNumber} สำเร็จ`);
+      showToast(`ออกใบเสร็จ #${data.receipt.receiptNumber} สำเร็จ`);
     } catch (err: any) {
       setCheckoutError(err.message || 'ไม่สามารถบันทึกรายการขายได้');
     } finally {
@@ -367,7 +367,7 @@ export default function PosPage() {
       setCart([]);
       setDiscount(0);
       setCompletedInvoice(data.invoice);
-      showToast(`📄 ออกใบแจ้งชำระ #${data.invoice.invoiceNumber} สำเร็จ`);
+      showToast(`ออกใบแจ้งชำระ #${data.invoice.invoiceNumber} สำเร็จ`);
     } catch (err: any) {
       setCheckoutError(err.message || 'ไม่สามารถออกใบแจ้งชำระได้');
     } finally {
@@ -617,48 +617,48 @@ export default function PosPage() {
                 /* Customer Fast Search Autocomplete */
                 <div className="relative">
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#6B6560]" />
                     <input
                       type="text"
-                      placeholder="🔍 ค้นหานักเรียนในระบบ (ชื่อ, ชื่อเล่น, รหัส)..."
+                      placeholder="ค้นหานักเรียนในระบบ (ชื่อ, ชื่อเล่น, รหัส)..."
                       value={customerSearch}
                       onChange={e => {
                         setCustomerSearch(e.target.value);
                         setShowCustomerList(true);
                       }}
                       onFocus={() => setShowCustomerList(true)}
-                      className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500"
+                      className="w-full pl-8 pr-3 py-1.5 bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg text-xs placeholder:text-[#6B6560] focus:outline-none focus:border-[#1F4D3A]"
                     />
                   </div>
 
                   {showCustomerList && filteredCustomers.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#E5E0D8] rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto divide-y divide-[#E5E0D8]">
                       {filteredCustomers.map(c => (
                         <button
                           key={c.id}
                           type="button"
                           onClick={() => handleSelectCustomer(c)}
-                          className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center justify-between gap-2 transition"
+                          className="w-full px-3 py-2 text-left hover:bg-[#F7F4EF] flex items-center justify-between gap-2 transition"
                         >
                           <div>
-                            <span className="font-bold text-slate-800 text-xs">{c.name}</span>
-                            {c.nickname && <span className="text-slate-500 text-xs ml-1">({c.nickname})</span>}
-                            <div className="text-[10px] text-slate-400">
+                            <span className="font-semibold text-[#1A1A1A] text-xs">{c.name}</span>
+                            {c.nickname && <span className="text-[#6B6560] text-xs ml-1">({c.nickname})</span>}
+                            <div className="text-[10px] text-[#6B6560]">
                               {c.grade} {c.studentId && `• รหัส ${c.studentId}`}
                             </div>
                           </div>
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A]/20">
                             {c.programme}
                           </span>
                         </button>
                       ))}
-                      <div className="p-1.5 text-center bg-slate-50">
+                      <div className="p-1.5 text-center bg-[#F7F4EF]">
                         <button
                           type="button"
                           onClick={() => setShowCustomerList(false)}
-                          className="text-[10px] text-slate-500 hover:text-slate-700 font-semibold"
+                          className="text-[10px] text-[#6B6560] hover:text-[#1A1A1A] font-medium"
                         >
-                          ปิดเมนูค้นหา ✕
+                          ปิดเมนูค้นหา
                         </button>
                       </div>
                     </div>
@@ -798,7 +798,7 @@ export default function PosPage() {
               <button
                 onClick={handleOpenCheckout}
                 disabled={cart.length === 0}
-                className="w-full mt-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 active:scale-98 transition"
+                className="w-full mt-2 py-2.5 rounded-lg bg-[#C45C26] hover:bg-[#A84A1C] disabled:opacity-40 text-white font-semibold text-xs flex items-center justify-center gap-2 transition"
               >
                 <Banknote className="w-4 h-4" />
                 <span>ชำระเงิน (฿{totalAmount.toFixed(2)})</span>
@@ -813,56 +813,56 @@ export default function PosPage() {
 
       {/* CHECKOUT MODAL (Cash vs PromptPay QR) */}
       {isCheckoutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-md rounded-xl border border-[#E5E0D8] overflow-hidden flex flex-col max-h-[92vh]">
             
             {/* Header */}
-            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+            <div className="bg-[#1F4D3A] text-white px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Banknote className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-sm">การชำระเงินและออกใบเสร็จ</h3>
+                <Banknote className="w-4 h-4 text-white/80" />
+                <h3 className="font-semibold text-sm">การชำระเงินและออกใบเสร็จ</h3>
               </div>
               <button
                 onClick={() => setIsCheckoutOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-white/80 hover:text-white"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto">
+            <div className="p-5 space-y-3.5 overflow-y-auto text-xs">
               
               {checkoutError && (
-                <div className="bg-red-50 text-red-700 border border-red-200 p-2.5 rounded-xl text-xs flex items-center gap-2">
+                <div className="bg-[#FEF0C7] text-[#B54708] border border-[#B54708]/20 p-2.5 rounded-lg text-xs flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{checkoutError}</span>
                 </div>
               )}
 
               {/* Total Summary */}
-              <div className="text-center p-3 bg-blue-50/70 border border-blue-100 rounded-2xl">
-                <span className="text-xs text-slate-500 font-medium">ยอดที่ต้องชำระ</span>
-                <div className="text-3xl font-black text-blue-700 mt-0.5">
+              <div className="text-center p-3 bg-[#F7F4EF] border border-[#E5E0D8] rounded-xl">
+                <span className="text-xs text-[#6B6560] font-medium">ยอดที่ต้องชำระ</span>
+                <div className="text-2xl font-bold font-mono text-[#1F4D3A] mt-0.5">
                   ฿{totalAmount.toFixed(2)}
                 </div>
-                <p className="text-[10px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-[#6B6560] mt-0.5">
                   {customerName} {customerType === 'STUDENT' && `(${studentClass})`}
                 </p>
               </div>
 
               {/* Payment Method Selector */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block font-medium text-[#1A1A1A] mb-1.5">
                   เลือกช่องทางชำระเงิน
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('CASH')}
-                    className={`py-2.5 px-3 rounded-xl font-bold text-xs border flex items-center justify-center gap-2 transition ${
+                    className={`py-2 px-3 rounded-lg font-medium text-xs border flex items-center justify-center gap-2 transition ${
                       paymentMethod === 'CASH'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-[#1F4D3A] text-white border-[#1F4D3A]'
+                        : 'bg-[#F7F4EF] text-[#1A1A1A] border-[#E5E0D8] hover:bg-[#E5E0D8]/40'
                     }`}
                   >
                     <Banknote className="w-4 h-4" />
@@ -872,10 +872,10 @@ export default function PosPage() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('PROMPTPAY')}
-                    className={`py-2.5 px-3 rounded-xl font-bold text-xs border flex items-center justify-center gap-2 transition ${
+                    className={`py-2 px-3 rounded-lg font-medium text-xs border flex items-center justify-center gap-2 transition ${
                       paymentMethod === 'PROMPTPAY'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-[#1F4D3A] text-white border-[#1F4D3A]'
+                        : 'bg-[#F7F4EF] text-[#1A1A1A] border-[#E5E0D8] hover:bg-[#E5E0D8]/40'
                     }`}
                   >
                     <QrCode className="w-4 h-4" />
@@ -886,16 +886,16 @@ export default function PosPage() {
 
               {/* If CASH: Tender input & change */}
               {paymentMethod === 'CASH' && (
-                <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+                <div className="space-y-2.5 bg-[#F7F4EF] p-3 rounded-xl border border-[#E5E0D8] text-xs">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">
+                    <label className="block font-medium text-[#1A1A1A] mb-1">
                       รับเงินสดมา (บาท)
                     </label>
                     <input
                       type="number"
                       value={cashReceived || ''}
                       onChange={e => setCashReceived(Number(e.target.value) || 0)}
-                      className="w-full text-center text-xl font-black py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                      className="w-full text-center text-xl font-mono font-bold py-1.5 bg-white border border-[#E5E0D8] rounded-lg text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
                     />
                   </div>
 
@@ -906,7 +906,7 @@ export default function PosPage() {
                         key={amt}
                         type="button"
                         onClick={() => setCashReceived(amt)}
-                        className="py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700"
+                        className="py-1 bg-white hover:bg-[#F7F4EF] border border-[#E5E0D8] rounded text-xs font-mono text-[#1A1A1A]"
                       >
                         {amt === totalAmount ? 'พอดี' : `฿${amt}`}
                       </button>
@@ -914,9 +914,9 @@ export default function PosPage() {
                   </div>
 
                   {/* Change Calculation */}
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-200 font-bold">
-                    <span className="text-slate-600">เงินทอน:</span>
-                    <span className={`text-base font-black ${changeAmount >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <div className="flex justify-between items-center pt-2 border-t border-[#E5E0D8]">
+                    <span className="text-[#6B6560]">เงินทอน:</span>
+                    <span className={`text-sm font-bold font-mono ${changeAmount >= 0 ? 'text-[#1F4D3A]' : 'text-[#B42318]'}`}>
                       ฿{changeAmount.toFixed(2)}
                     </span>
                   </div>
@@ -925,70 +925,70 @@ export default function PosPage() {
 
               {/* If PROMPTPAY: Dual Mode (Official School Card & Dynamic QR) */}
               {paymentMethod === 'PROMPTPAY' && (
-                <div className="space-y-3 bg-blue-50/60 p-3.5 sm:p-4 rounded-2xl border border-blue-200 text-center text-xs">
+                <div className="space-y-3 bg-[#F7F4EF] p-3 sm:p-4 rounded-xl border border-[#E5E0D8] text-center text-xs">
                   
                   {/* Sub-tab Selector */}
-                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-white/80 rounded-xl border border-blue-100">
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-white rounded-lg border border-[#E5E0D8]">
                     <button
                       type="button"
                       onClick={() => setQrMode('OFFICIAL')}
-                      className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
+                      className={`py-1.5 px-2 rounded font-medium text-xs transition ${
                         qrMode === 'OFFICIAL'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:bg-slate-100'
+                          ? 'bg-[#1F4D3A] text-white'
+                          : 'text-[#6B6560] hover:bg-[#F7F4EF]'
                       }`}
                     >
-                      🏦 ป้าย QR ทางการโรงเรียน
+                      ป้าย QR ทางการโรงเรียน
                     </button>
                     <button
                       type="button"
                       onClick={() => setQrMode('DYNAMIC')}
-                      className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
+                      className={`py-1.5 px-2 rounded font-medium text-xs transition ${
                         qrMode === 'DYNAMIC'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:bg-slate-100'
+                          ? 'bg-[#1F4D3A] text-white'
+                          : 'text-[#6B6560] hover:bg-[#F7F4EF]'
                       }`}
                     >
-                      ⚡ Dynamic Amount QR
+                      QR ระบุยอดเงินอัตโนมัติ
                     </button>
                   </div>
 
                   {/* Mode 1: Official Bangkok Bank School Card Image */}
                   {qrMode === 'OFFICIAL' && (
                     <div className="space-y-2">
-                      <div className="bg-white p-2 rounded-2xl inline-block shadow-sm border border-blue-200 mx-auto max-w-xs">
+                      <div className="bg-white p-2 rounded-xl inline-block border border-[#E5E0D8] mx-auto max-w-xs">
                         <img
                           src={SCHOOL_BANK_INFO.qrImagePath}
                           alt="Bangkok Bank Thai QR Payment"
-                          className="w-48 h-auto max-h-56 mx-auto rounded-xl object-contain shadow-2xs"
+                          className="w-48 h-auto max-h-56 mx-auto rounded-lg object-contain"
                         />
                       </div>
 
-                      <div className="bg-white/90 p-2.5 rounded-xl border border-blue-100 text-left space-y-1 text-[10px]">
+                      <div className="bg-white p-2.5 rounded-lg border border-[#E5E0D8] text-left space-y-1 text-[11px]">
                         <div className="flex justify-between">
-                          <span className="text-slate-500">ธนาคาร:</span>
-                          <strong className="text-slate-800">{SCHOOL_BANK_INFO.bankName}</strong>
+                          <span className="text-[#6B6560]">ธนาคาร:</span>
+                          <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.bankName}</strong>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">ชื่อบัญชี:</span>
-                          <strong className="text-slate-800">{SCHOOL_BANK_INFO.accountName}</strong>
+                          <span className="text-[#6B6560]">ชื่อบัญชี:</span>
+                          <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.accountName}</strong>
                         </div>
                         <div className="flex justify-between font-mono">
-                          <span className="text-slate-500">Ref.1 (MID):</span>
-                          <strong className="text-blue-700">{SCHOOL_BANK_INFO.ref1}</strong>
+                          <span className="text-[#6B6560]">Ref.1 (MID):</span>
+                          <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.ref1}</strong>
                         </div>
                         <div className="flex justify-between font-mono">
-                          <span className="text-slate-500">Ref.3 (TID):</span>
-                          <strong className="text-blue-700">{SCHOOL_BANK_INFO.ref3}</strong>
+                          <span className="text-[#6B6560]">Ref.3 (TID):</span>
+                          <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.ref3}</strong>
                         </div>
-                        <div className="flex justify-between pt-1 border-t border-slate-100 text-xs font-black">
-                          <span className="text-slate-700">ยอดที่ต้องชำระ:</span>
-                          <span className="text-blue-700">฿{totalAmount.toFixed(2)} บาท</span>
+                        <div className="flex justify-between pt-1 border-t border-[#E5E0D8] text-xs font-semibold">
+                          <span className="text-[#1A1A1A]">ยอดที่ต้องชำระ:</span>
+                          <span className="text-[#1F4D3A] font-mono">฿{totalAmount.toFixed(2)} บาท</span>
                         </div>
                       </div>
 
-                      <p className="text-[10px] text-slate-500">
-                        สแกนด้วยแอปธนาคาร ระบุยอดชำระ <strong>฿{totalAmount.toFixed(2)} บาท</strong> แล้วแสดงสลิปแก่เจ้าหน้าที่
+                      <p className="text-[11px] text-[#6B6560]">
+                        สแกนด้วยแอปธนาคาร ระบุยอดชำระ <strong className="text-[#1A1A1A]">฿{totalAmount.toFixed(2)} บาท</strong> แล้วแสดงสลิปแก่เจ้าหน้าที่
                       </p>
                     </div>
                   )}
@@ -996,12 +996,12 @@ export default function PosPage() {
                   {/* Mode 2: Dynamic Amount QR (Auto Fills Cart Total) */}
                   {qrMode === 'DYNAMIC' && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-1.5 font-bold text-blue-900">
+                      <div className="flex items-center justify-center gap-1.5 font-medium text-[#1A1A1A]">
                         <span>QR พร้อมระบุยอดเงินอัตโนมัติ</span>
                         <button
                           type="button"
                           onClick={() => setIsEditingPromptPay(!isEditingPromptPay)}
-                          className="text-slate-400 hover:text-blue-600 p-1"
+                          className="text-[#6B6560] hover:text-[#1A1A1A] p-1"
                           title="แก้ไขเลข PromptPay"
                         >
                           <Edit2 className="w-3 h-3" />
@@ -1015,19 +1015,19 @@ export default function PosPage() {
                             value={promptPayId}
                             onChange={e => setPromptPayId(e.target.value)}
                             placeholder="เบอร์โทรศัพท์ หรือ เลขผู้เสียภาษี 13 หลัก"
-                            className="flex-1 px-2 py-1 text-xs border rounded-lg bg-white font-mono"
+                            className="flex-1 px-2 py-1 text-xs border border-[#E5E0D8] rounded-lg bg-white font-mono"
                           />
                           <button
                             type="button"
                             onClick={() => setIsEditingPromptPay(false)}
-                            className="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold"
+                            className="px-2 py-1 bg-[#1F4D3A] text-white rounded-lg text-xs font-medium"
                           >
                             ตกลง
                           </button>
                         </div>
                       )}
 
-                      <div className="bg-white p-3 rounded-2xl inline-block shadow-sm border border-blue-200 mx-auto">
+                      <div className="bg-white p-3 rounded-xl inline-block border border-[#E5E0D8] mx-auto">
                         {promptPayPayload ? (
                           <QRCodeSVG
                             value={promptPayPayload}
@@ -1036,16 +1036,16 @@ export default function PosPage() {
                             includeMargin={true}
                           />
                         ) : (
-                          <div className="w-[165px] h-[165px] flex items-center justify-center text-slate-400">
+                          <div className="w-[165px] h-[165px] flex items-center justify-center text-[#6B6560]">
                             ระบุเลข PromptPay
                           </div>
                         )}
                       </div>
 
-                      <p className="text-[11px] text-slate-600 font-medium">
-                        เปิดแอปธนาคาร สแกนจ่ายยอด <strong>฿{totalAmount.toFixed(2)} บาท</strong> ได้ทันที
+                      <p className="text-[11px] text-[#6B6560]">
+                        เปิดแอปธนาคาร สแกนจ่ายยอด <strong className="text-[#1A1A1A]">฿{totalAmount.toFixed(2)} บาท</strong> ได้ทันที
                       </p>
-                      <p className="text-[10px] text-slate-400 font-mono">
+                      <p className="text-[10px] text-[#6B6560] font-mono">
                         (PromptPay ID: {promptPayId})
                       </p>
                     </div>
@@ -1060,9 +1060,9 @@ export default function PosPage() {
                   type="button"
                   onClick={handleConfirmSale}
                   disabled={isSubmitting || isCreatingInvoice}
-                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-98 transition"
+                  className="w-full py-2.5 rounded-lg bg-[#C45C26] hover:bg-[#A84A1C] disabled:opacity-40 text-white font-semibold text-xs flex items-center justify-center gap-2 transition"
                 >
-                  <CheckCircle2 className="w-5 h-5" />
+                  <CheckCircle2 className="w-4 h-4" />
                   <span>
                     {isSubmitting ? 'กำลังบันทึกและหักสต็อก...' : 'ยืนยันการรับเงิน & พิมพ์ใบเสร็จ'}
                   </span>
@@ -1073,9 +1073,9 @@ export default function PosPage() {
                   type="button"
                   onClick={handleCreateInvoiceFromCart}
                   disabled={isSubmitting || isCreatingInvoice}
-                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 border border-slate-300 transition"
+                  className="w-full py-2 rounded-lg bg-white hover:bg-[#F7F4EF] disabled:opacity-40 text-[#1A1A1A] font-medium text-xs flex items-center justify-center gap-1.5 border border-[#E5E0D8] transition"
                 >
-                  <FileText className="w-4 h-4 text-blue-600" />
+                  <FileText className="w-3.5 h-3.5 text-[#6B6560]" />
                   <span>
                     {isCreatingInvoice ? 'กำลังออกใบแจ้งชำระ...' : 'ออกเป็นใบแจ้งชำระเงินครึ่ง A4 (ส่งผู้ปกครองชำระทีหลัง)'}
                   </span>

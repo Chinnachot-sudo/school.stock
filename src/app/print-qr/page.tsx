@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Item, Category } from '@/types/inventory';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, CheckSquare, Square, QrCode, MapPin, School, Sparkles, Link2, Hash, ShieldAlert } from 'lucide-react';
+import { Printer, CheckSquare, Square, QrCode, MapPin, School, Info, Link2, Hash, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 
@@ -89,14 +89,14 @@ export default function PrintQrPage() {
     <div className="space-y-4">
       
       {/* Control Header (Hidden when printing) */}
-      <div className="no-print bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+      <div className="no-print bg-white p-4 rounded-xl border border-[#E5E0D8] space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-              <QrCode className="w-5 h-5 text-blue-600" />
+            <h1 className="text-base sm:text-lg font-bold text-[#1A1A1A] flex items-center gap-2">
+              <QrCode className="w-5 h-5 text-[#1F4D3A]" />
               พิมพ์สติกเกอร์ QR Code ติดชั้นวาง / กล่องพัสดุ
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-[#6B6560] mt-0.5">
               เลือกสินค้าที่ต้องการ แล้วสั่งพิมพ์เป็นแผ่นสติกเกอร์ A4 เพื่อนำไปแปะหน้าตู้จัดเก็บ
             </p>
           </div>
@@ -105,7 +105,7 @@ export default function PrintQrPage() {
             <button
               onClick={handlePrint}
               disabled={selectedItems.length === 0}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1F4D3A] hover:bg-[#183D2E] disabled:opacity-40 text-white text-xs font-medium transition"
             >
               <Printer className="w-4 h-4" />
               <span>สั่งพิมพ์ ({selectedItems.length} ป้าย)</span>
@@ -114,53 +114,53 @@ export default function PrintQrPage() {
         </div>
 
         {/* Informative Tip Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 flex items-start gap-2.5">
-          <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+        <div className="bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-3 text-xs text-[#1A1A1A] flex items-start gap-2.5">
+          <Info className="w-4 h-4 text-[#1F4D3A] shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>💡 ข้อแนะนำสำคัญสำหรับการสแกนผ่านกล้อง iPhone:</strong>
-            <p className="text-blue-700 mt-0.5">
-              เมื่อเลือกโหมด <u>&quot;ลิงก์เว็บเบิกทันที&quot;</u> คุณครูสามารถใช้ <strong>แอปกล้องถ่ายรูปปกติของ iPhone (หรือแอป LINE)</strong> ส่องป้าย QR ที่ตู้ได้ทันที จะมีแถบสีเหลืองให้กดเพื่อเปิดหน้าตัดสต็อกของสินค้านั้นได้โดยอัตโนมัติ!
+            <strong>คำแนะนำสำหรับการสแกนผ่านกล้องโทรศัพท์:</strong>
+            <p className="text-[#6B6560] mt-0.5">
+              เมื่อเลือกโหมด <u>&quot;ลิงก์เว็บเบิกทันที&quot;</u> คุณครูสามารถใช้ <strong>แอปกล้องถ่ายรูปปกติของโทรศัพท์ (หรือ LINE)</strong> ส่องป้าย QR ที่ตู้ได้ทันที จะมีแถบข้อความให้กดเพื่อเปิดหน้าตัดสต็อกของสินค้านั้นได้โดยอัตโนมัติ
             </p>
           </div>
         </div>
 
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="pt-2 border-t border-[#E5E0D8] flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Select All Toggle */}
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSelectAll}
-              className="flex items-center gap-1.5 font-bold text-slate-700 hover:text-blue-600 transition"
+              className="flex items-center gap-1.5 font-medium text-[#1A1A1A] hover:text-[#1F4D3A] transition"
             >
               {selectedIds.length === items.length ? (
-                <CheckSquare className="w-4 h-4 text-blue-600" />
+                <CheckSquare className="w-4 h-4 text-[#1F4D3A]" />
               ) : (
-                <Square className="w-4 h-4 text-slate-400" />
+                <Square className="w-4 h-4 text-[#6B6560]" />
               )}
               <span>เลือกทั้งหมด ({selectedIds.length}/{items.length})</span>
             </button>
           </div>
 
           {/* QR Content Mode Toggle */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
-            <span className="text-slate-500 font-medium px-1.5">รูปแบบ QR:</span>
+          <div className="flex items-center gap-1 bg-[#F7F4EF] p-1 rounded-lg border border-[#E5E0D8]">
+            <span className="text-[#6B6560] font-medium px-1.5 text-xs">รูปแบบ QR:</span>
             <button
               onClick={() => setQrMode('url')}
-              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition ${
+              className={`px-2.5 py-1 rounded-md font-medium text-xs flex items-center gap-1 transition ${
                 qrMode === 'url'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#1F4D3A] text-white'
+                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
               }`}
-              title="กล้อง iPhone ส่องแล้วเด้งเปิดหน้าตัดสต็อกเลย"
+              title="กล้องโทรศัพท์ส่องแล้วเด้งเปิดหน้าตัดสต็อกเลย"
             >
               <Link2 className="w-3.5 h-3.5" />
               <span>ลิงก์เว็บเบิกทันที (แนะนำ)</span>
             </button>
             <button
               onClick={() => setQrMode('code')}
-              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition ${
+              className={`px-2.5 py-1 rounded-md font-medium text-xs flex items-center gap-1 transition ${
                 qrMode === 'code'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#1F4D3A] text-white'
+                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
               }`}
               title="เฉพาะรหัสข้อความเดิม"
             >
@@ -171,23 +171,23 @@ export default function PrintQrPage() {
 
           {/* Label Size Toggle */}
           <div className="flex items-center gap-2">
-            <span className="text-slate-500 font-medium">ขนาดป้าย:</span>
+            <span className="text-[#6B6560] font-medium text-xs">ขนาดป้าย:</span>
             <button
               onClick={() => setCardSize('medium')}
-              className={`px-3 py-1 rounded-lg font-bold border transition ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
                 cardSize === 'medium'
-                  ? 'bg-blue-50 text-blue-700 border-blue-300'
-                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                  ? 'bg-[#E8F0EB] text-[#1F4D3A] border-[#1F4D3A]/20'
+                  : 'bg-[#F7F4EF] text-[#6B6560] border-[#E5E0D8]'
               }`}
             >
               ขนาดมาตรฐาน (ติดชั้นวาง)
             </button>
             <button
               onClick={() => setCardSize('small')}
-              className={`px-3 py-1 rounded-lg font-bold border transition ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
                 cardSize === 'small'
-                  ? 'bg-blue-50 text-blue-700 border-blue-300'
-                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                  ? 'bg-[#E8F0EB] text-[#1F4D3A] border-[#1F4D3A]/20'
+                  : 'bg-[#F7F4EF] text-[#6B6560] border-[#E5E0D8]'
               }`}
             >
               ขนาดกะทัดรัด (ติดกล่อง)
@@ -197,10 +197,10 @@ export default function PrintQrPage() {
       </div>
 
       {/* Printable Sheet Area */}
-      <div className="bg-white p-4 sm:p-8 rounded-2xl border border-slate-200 shadow-sm min-h-[500px]">
+      <div className="bg-white p-4 sm:p-8 rounded-xl border border-[#E5E0D8] min-h-[500px]">
         {selectedItems.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 no-print">
-            <p className="text-sm font-semibold">กรุณาเลือกรายการสินค้าด้านบนเพื่อแสดงตัวอย่างป้าย QR</p>
+          <div className="p-12 text-center text-[#6B6560] no-print">
+            <p className="text-xs font-medium">กรุณาเลือกรายการสินค้าด้านบนเพื่อแสดงตัวอย่างป้าย QR</p>
           </div>
         ) : (
           <div
@@ -216,21 +216,21 @@ export default function PrintQrPage() {
               return (
                 <div
                   key={item.id}
-                  className="relative bg-white border-2 border-dashed border-slate-300 rounded-xl p-3 flex flex-col justify-between hover:border-blue-400 transition break-inside-avoid"
+                  className="relative bg-white border-2 border-dashed border-[#E5E0D8] rounded-xl p-3 flex flex-col justify-between hover:border-[#1F4D3A] transition break-inside-avoid"
                 >
                   {/* Deselect checkbox on screen only */}
                   <button
                     onClick={() => toggleSelect(item.id)}
-                    className="no-print absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500"
+                    className="no-print absolute top-2 right-2 p-1 text-[#6B6560] hover:text-[#B42318]"
                     title="ตัดรายการนี้ออกจากการพิมพ์"
                   >
-                    <CheckSquare className="w-4 h-4 text-blue-600" />
+                    <CheckSquare className="w-4 h-4 text-[#1F4D3A]" />
                   </button>
 
                   {/* Card Header */}
-                  <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1.5 mb-2">
-                    <School className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight">
+                  <div className="flex items-center gap-1.5 border-b border-[#E5E0D8] pb-1.5 mb-2">
+                    <School className="w-3.5 h-3.5 text-[#1F4D3A]" />
+                    <span className="text-[10px] font-semibold text-[#1A1A1A] uppercase tracking-tight">
                       พัสดุโรงเรียน • สแกนเบิก
                     </span>
                   </div>

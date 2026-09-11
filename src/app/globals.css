@@ -2,32 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
+
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --bg: #F7F4EF;
+  --surface: #FFFFFF;
+  --border: #E5E0D8;
+  --text: #1A1A1A;
+  --text-muted: #6B6560;
+  --primary: #1F4D3A;
+  --primary-hover: #183D2E;
+  --primary-soft: #E8F0EB;
+  --accent: #C45C26;
+  --accent-hover: #A84B1E;
+  --accent-soft: #FDF1EB;
+  --warning: #B54708;
+  --warning-soft: #FEF0C7;
+  --danger: #B42318;
+  --danger-soft: #FEE4E2;
+  --success: #027A48;
+  --success-soft: #D1FADF;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Sarabun', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background-color: var(--bg);
+  font-family: 'Sarabun', 'IBM Plex Sans Thai', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Custom scrollbars for mobile & desktop */
+/* Custom subtle scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #E5E0D8;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #C5BFB5;
 }
 
 /* QR Scanner styling overrides */

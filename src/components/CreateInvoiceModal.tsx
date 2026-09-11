@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Customer, Item, ALL_IB_GRADES, IBProgramme, CustomerType, Invoice } from '@/types/inventory';
-import { X, Plus, Trash2, Search, User, Sparkles, Calendar, DollarSign, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, Plus, Trash2, Search, User, FileText, AlertTriangle, Calendar, DollarSign, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 interface CreateInvoiceModalProps {
@@ -197,20 +197,20 @@ export default function CreateInvoiceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white w-full max-w-2xl rounded-xl border border-[#E5E0D8] overflow-hidden my-auto max-h-[92vh] flex flex-col">
         
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between shrink-0">
+        <div className="p-4 border-b border-[#E5E0D8] bg-[#1F4D3A] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 font-bold">
-              📄
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
+              <FileText className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-black text-slate-900 leading-tight">
+              <h2 className="text-sm font-semibold leading-tight">
                 ออกใบแจ้งชำระเงินใหม่ (Half-A4 Invoice)
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] text-white/70">
                 สำหรับส่งผู้ปกครองหรือนักเรียน พร้อมฝัง QR Code ทางการของโรงเรียน
               </p>
             </div>
@@ -218,18 +218,19 @@ export default function CreateInvoiceModal({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+            className="p-1 rounded-lg text-white/80 hover:text-white transition"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 text-xs">
           
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
-              <span>⚠️ {error}</span>
+            <div className="p-2.5 bg-[#FEF0C7] border border-[#B54708]/20 text-[#B54708] rounded-lg text-xs flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
@@ -508,11 +509,11 @@ export default function CreateInvoiceModal({
           </div>
 
           {/* Submit Actions */}
-          <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200">
+          <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#E5E0D8]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 transition"
+              className="px-3.5 py-2 rounded-lg border border-[#E5E0D8] text-[#6B6560] font-medium hover:bg-[#F7F4EF] transition text-xs"
             >
               ยกเลิก
             </button>
@@ -520,12 +521,12 @@ export default function CreateInvoiceModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition active:scale-95"
+              className="px-4 py-2 rounded-lg bg-[#1F4D3A] hover:bg-[#183D2E] disabled:opacity-40 text-white font-medium flex items-center gap-1.5 transition text-xs"
             >
               {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-3.5 h-3.5" />
               )}
               <span>ออกใบแจ้งชำระเงิน</span>
             </button>

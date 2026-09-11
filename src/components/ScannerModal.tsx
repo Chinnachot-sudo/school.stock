@@ -3,21 +3,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import jsQR from 'jsqr';
-import { X, Camera, Flashlight, AlertCircle, Search, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, Camera, Flashlight, AlertCircle, Search, MapPin, Boxes, ArrowRight, RefreshCw } from 'lucide-react';
+import { Item } from '@/types/inventory';
 
 interface ScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onScanSuccess: (decodedText: string) => void;
+  items?: Item[];
+  onDeduct?: (item: Item) => void;
+  onRestock?: (item: Item) => void;
+  onScanSuccess?: (decodedText: string) => void;
 }
 
 export default function ScannerModal({
   isOpen,
   onClose,
+  items = [],
+  onDeduct,
+  onRestock,
   onScanSuccess
 }: ScannerModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [detectedItem, setDetectedItem] = useState<Item | null>(null);
+  const [unrecognizedCode, setUnrecognizedCode] = useState<string | null>(null);
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -25,27 +35,83 @@ export default function ScannerModal({
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const extractCodeFromText = (raw: string): string => {
+    const trimmed = raw.trim();
+    if (trimmed.includes('code=')) {
+      try {
+        const url = new URL(trimmed, window.location.origin);
+        return url.searchParams.get('code') || trimmed;
+      } catch (e) {
+        const match = trimmed.match(/[?&]code=([^&]+)/);
+        if (match) return decodeURIComponent(match[1]);
+      }
+    }
+    return trimmed;
+  };
+
+  const handleProcessCode = (rawCode: string) => {
+    const code = extractCodeFromText(rawCode).toLowerCase();
+    
+    // Check if items array is passed
+    if (items && items.length > 0) {
+      const found = items.find(
+        i => i.code.toLowerCase() === code || i.id.toLowerCase() === code
+      );
+      if (found) {
+        setDetectedItem(found);
+        setUnrecognizedCode(null);
+        if (scannerRef.current && scannerRef.current.isScanning) {
+          try {
+            scannerRef.current.pause(true);
+          } catch (e) {}
+        }
+        return;
+      } else {
+        setUnrecognizedCode(rawCode);
+        setDetectedItem(null);
+        return;
+      }
+    }
+
+    // Fallback if standalone onScanSuccess is provided
+    if (onScanSuccess) {
+      stopAndClose(() => onScanSuccess(rawCode));
+    }
+  };
+
+  const handleResumeScanning = () => {
+    setDetectedItem(null);
+    setUnrecognizedCode(null);
+    if (scannerRef.current) {
+      try {
+        scannerRef.current.resume();
+      } catch (e) {}
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
     let isMounted = true;
     setErrorMessage(null);
     setIsTorchOn(false);
+    setDetectedItem(null);
+    setUnrecognizedCode(null);
+    setShowManualInput(false);
 
     const isSecure = typeof window !== 'undefined' && window.isSecureContext;
     const hasGetUserMedia = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
-    // Insecure HTTP on IP address (e.g. http://10.3.0.38:3000)
     if (!isSecure && typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       setErrorMessage(
-        'เบราว์เซอร์มือถือจำกัดการเปิดวิดีโอสดเนื่องจากเปิดผ่าน HTTP\nกรุณาแตะปุ่ม "📷 ถ่ายรูปสแกนด้วยกล้องมือถือ" ด้านล่างเพื่อเปิดกล้องถ่ายภาพ'
+        'เบราว์เซอร์จำกัดการเปิดกล้องผ่าน HTTP\nกรุณาใช้ปุ่ม "ถ่ายรูปสแกน" ด้านล่าง'
       );
       return;
     }
 
     if (!hasGetUserMedia) {
       setErrorMessage(
-        'เบราว์เซอร์นี้ไม่รองรับการเปิดวิดีโอกล้องสด กรุณาใช้ปุ่ม "📷 ถ่ายรูปสแกนด้วยกล้องมือถือ" ด้านล่าง'
+        'เบราว์เซอร์นี้ไม่รองรับการเปิดวิดีโอกล้องสด กรุณาใช้ปุ่ม "ถ่ายรูปสแกน" หรือพิมพ์รหัสแทน'
       );
       return;
     }
@@ -61,17 +127,15 @@ export default function ScannerModal({
           { facingMode: 'environment' },
           {
             fps: 15,
-            qrbox: { width: 250, height: 250 },
+            qrbox: { width: 240, height: 240 },
             aspectRatio: 1.0
           },
           (decodedText) => {
             if (isMounted) {
-              stopAndClose(() => onScanSuccess(decodedText));
+              handleProcessCode(decodedText);
             }
           },
-          () => {
-            // Frame noise - ignore
-          }
+          () => {}
         );
 
         if (isMounted) {
@@ -88,7 +152,7 @@ export default function ScannerModal({
         if (isMounted) {
           setIsStarting(false);
           setErrorMessage(
-            'ไม่สามารถเปิดกล้องวิดีโอสดได้ กรุณาแตะปุ่ม "📷 ถ่ายรูปสแกนด้วยกล้องมือถือ" ด้านล่าง'
+            'ไม่สามารถเปิดกล้องสดได้ กรุณาแตะปุ่ม "ถ่ายรูปสแกน" หรือพิมพ์รหัสแทน'
           );
         }
       }
@@ -135,7 +199,6 @@ export default function ScannerModal({
     }
   };
 
-  // Ultra-resilient multi-tier Image QR & Barcode Decoder
   const handleFileCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -144,7 +207,6 @@ export default function ScannerModal({
     setErrorMessage(null);
 
     try {
-      // 1. Read file into an Image element
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
@@ -157,7 +219,6 @@ export default function ScannerModal({
         reader.readAsDataURL(file);
       });
 
-      // 2. Downscale onto an in-memory Canvas (max 1200px) so iPhone 12-48MP photos won't crash memory
       const maxDim = 1200;
       let width = img.width;
       let height = img.height;
@@ -180,7 +241,7 @@ export default function ScannerModal({
 
       let decodedResult: string | null = null;
 
-      // Tier 1: Native Apple WebKit BarcodeDetector (Supported in modern iOS Safari & Chrome)
+      // Tier 1: WebKit BarcodeDetector
       if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
         try {
           const detector = new (window as any).BarcodeDetector({
@@ -191,11 +252,11 @@ export default function ScannerModal({
             decodedResult = barcodes[0].rawValue;
           }
         } catch (e) {
-          console.warn('BarcodeDetector pass failed:', e);
+          console.warn('BarcodeDetector failed:', e);
         }
       }
 
-      // Tier 2: jsQR pixel analysis (Instant pure JS for QR codes)
+      // Tier 2: jsQR
       if (!decodedResult) {
         try {
           const imgData = ctx.getImageData(0, 0, width, height);
@@ -206,11 +267,11 @@ export default function ScannerModal({
             decodedResult = qr.data;
           }
         } catch (e) {
-          console.warn('jsQR pass failed:', e);
+          console.warn('jsQR failed:', e);
         }
       }
 
-      // Tier 3: Html5Qrcode fallback
+      // Tier 3: Html5Qrcode
       if (!decodedResult) {
         try {
           const tempContainer = document.getElementById('qr-reader-offscreen');
@@ -226,146 +287,265 @@ export default function ScannerModal({
       setIsProcessingFile(false);
 
       if (decodedResult) {
-        stopAndClose(() => onScanSuccess(decodedResult!));
+        handleProcessCode(decodedResult);
       } else {
         setErrorMessage(
-          'ตรวจไม่พบบาร์โค้ดในภาพถ่าย กรุณาถ่ายภาพให้ใกล้และชัดเจนขึ้น หรือพิมพ์รหัสสินค้าด้านล่าง'
+          'ตรวจไม่พบบาร์โค้ดในรูปภาพ กรุณาถ่ายให้ใกล้และชัดเจนขึ้น หรือพิมพ์รหัสแทน'
         );
       }
     } catch (err: any) {
       setIsProcessingFile(false);
       console.error('File scan error:', err);
-      setErrorMessage('เกิดข้อผิดพลาดในการประมวลผลภาพ กรุณาลองใหม่อีกครั้ง');
+      setErrorMessage('เกิดข้อผิดพลาดในการอ่านรูปภาพ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCode.trim()) return;
-    stopAndClose(() => onScanSuccess(manualCode.trim()));
+    handleProcessCode(manualCode.trim());
+    setManualCode('');
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col border border-slate-100 max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-xs">
+      <div className="bg-white w-full max-w-md rounded-xl overflow-hidden border border-[#E5E0D8] flex flex-col max-h-[92vh]">
         
         {/* Header */}
-        <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+        <div className="bg-[#1F4D3A] text-white px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Camera className="w-5 h-5 text-blue-400" />
-            <span className="font-bold text-sm">สแกน QR Code / บาร์โค้ด</span>
+            <Camera className="w-4 h-4 text-white/80" />
+            <span className="font-semibold text-xs sm:text-sm">สแกนรหัสพัสดุ</span>
           </div>
           <div className="flex items-center gap-2">
             {hasTorch && (
               <button
                 onClick={toggleTorch}
-                className={`p-1.5 rounded-lg border transition ${
+                className={`p-1.5 rounded text-xs transition ${
                   isTorchOn
-                    ? 'bg-amber-400 text-slate-950 border-amber-300'
-                    : 'bg-slate-800 text-slate-300 border-slate-700'
+                    ? 'bg-[#C45C26] text-white'
+                    : 'bg-[#183D2E] text-white/80'
                 }`}
                 title="เปิด/ปิดไฟฉาย"
               >
-                <Flashlight className="w-4 h-4" />
+                <Flashlight className="w-3.5 h-3.5" />
               </button>
             )}
             <button
               onClick={() => stopAndClose()}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+              className="p-1.5 rounded hover:bg-[#183D2E] text-white/80 hover:text-white transition"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Offscreen element for Tier-3 fallback (has dimensions, hidden offscreen) */}
+        {/* Offscreen element for Tier-3 fallback */}
         <div
           id="qr-reader-offscreen"
           style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '300px', height: '300px' }}
         ></div>
 
         {/* Camera Viewport Area */}
-        <div className="relative bg-slate-950 min-h-[260px] flex items-center justify-center overflow-hidden">
+        <div className="relative bg-[#1A1A1A] min-h-[250px] flex items-center justify-center overflow-hidden">
           <div id="qr-reader" className="w-full h-full"></div>
 
+          {/* Viewfinder frame overlay with static guidance */}
+          {!detectedItem && !errorMessage && !isStarting && !isProcessingFile && (
+            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+              <div className="w-52 h-52 border-2 border-white/70 rounded-xl relative">
+                <span className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-white"></span>
+                <span className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-white"></span>
+                <span className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-white"></span>
+                <span className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-white"></span>
+              </div>
+              <p className="text-white/80 text-[11px] font-medium mt-3 bg-black/40 px-2.5 py-1 rounded">
+                จัดโค้ดให้อยู่ในกรอบ
+              </p>
+            </div>
+          )}
+
           {isStarting && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-white p-4">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-              <p className="text-xs font-medium text-slate-300">กำลังเชื่อมต่อกล้องมือถือ...</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1A1A1A] text-white p-4">
+              <div className="w-7 h-7 border-2 border-[#1F4D3A] border-t-transparent rounded-full animate-spin mb-2"></div>
+              <p className="text-xs text-[#E5E0D8]">กำลังเชื่อมต่อกล้อง...</p>
             </div>
           )}
 
           {isProcessingFile && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-white p-4 z-20">
-              <div className="w-10 h-10 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin mb-3"></div>
-              <p className="text-sm font-bold text-emerald-300">กำลังอ่านรหัส QR / บาร์โค้ด...</p>
-              <p className="text-xs text-slate-400 mt-1">กรุณารอสักครู่</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1A1A1A]/95 text-white p-4 z-20">
+              <div className="w-8 h-8 border-2 border-[#1F4D3A] border-t-transparent rounded-full animate-spin mb-2"></div>
+              <p className="text-xs text-white">กำลังอ่านรหัส...</p>
             </div>
           )}
 
           {errorMessage && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-white p-5 text-center z-10">
-              <AlertCircle className="w-10 h-10 text-amber-400 mb-2" />
-              <p className="text-xs text-amber-200 whitespace-pre-line leading-relaxed max-w-xs font-medium">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1A1A1A] text-white p-5 text-center z-10">
+              <AlertCircle className="w-8 h-8 text-[#B54708] mb-2" />
+              <p className="text-xs text-[#FEF0C7] whitespace-pre-line leading-relaxed max-w-xs">
                 {errorMessage}
               </p>
             </div>
           )}
         </div>
 
-        {/* Action Toolbar */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
-          
-          {/* Native Camera Capture Button */}
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileCapture}
-              className="hidden"
-              id="camera-file-input"
-            />
-            <label
-              htmlFor="camera-file-input"
-              className="w-full bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-black py-3.5 px-4 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2.5 cursor-pointer transition text-sm text-center"
-            >
-              <Camera className="w-5 h-5" />
-              <span>📷 ถ่ายรูปสแกนด้วยกล้องมือถือ</span>
-            </label>
-            <p className="text-[11px] text-center text-slate-500 mt-1 font-medium">
-              * แตะเพื่อเปิดกล้องมือถือ ถ่ายภาพ QR Code แล้วระบบจะตัดสต็อกให้ทันที
-            </p>
-          </div>
+        {/* Scanned Result Card: Triggered when item is detected */}
+        {detectedItem ? (
+          <div className="p-4 bg-white border-t border-[#E5E0D8] space-y-3">
+            <div className="p-3 bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <span className="font-mono text-[10px] text-[#6B6560] block uppercase tracking-wider">
+                    {detectedItem.code}
+                  </span>
+                  <h3 className="font-semibold text-sm text-[#1A1A1A] mt-0.5 leading-snug">
+                    {detectedItem.name}
+                  </h3>
+                  <div className="flex items-center gap-1 text-[11px] text-[#6B6560] mt-1">
+                    <MapPin className="w-3 h-3 text-[#6B6560] shrink-0" />
+                    <span className="truncate">{detectedItem.location || 'ไม่ระบุจุดจัดเก็บ'}</span>
+                  </div>
+                </div>
 
-          {/* Manual Code Input Fallback */}
-          <div className="pt-2 border-t border-slate-200">
-            <p className="text-[11px] text-slate-600 font-semibold mb-1.5">
-              หรือพิมพ์รหัสสินค้าด้วยตนเอง:
-            </p>
-            <form onSubmit={handleManualSubmit} className="flex gap-2">
-              <input
-                type="text"
-                placeholder="เช่น A4-DOUBLE-A หรือ PEN-WB-BLUE"
-                value={manualCode}
-                onChange={(e) => setManualCode(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-              />
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] text-[#6B6560] block">คงเหลือ</span>
+                  <div className="text-xl font-bold font-mono text-[#1A1A1A] leading-tight">
+                    {detectedItem.currentStock}
+                  </div>
+                  <span className="text-[10px] text-[#6B6560]">{detectedItem.unit}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3 Explicit Action Buttons as specified in Brief */}
+            <div className="space-y-2 pt-1">
+              {/* 1. Primary Action: ตัดสต็อก (Terracotta #C45C26) */}
               <button
-                type="submit"
-                disabled={!manualCode.trim()}
-                className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                type="button"
+                onClick={() => {
+                  const target = detectedItem;
+                  stopAndClose(() => {
+                    if (onDeduct) onDeduct(target);
+                    else if (onScanSuccess) onScanSuccess(target.code);
+                  });
+                }}
+                className="w-full min-h-[48px] bg-[#C45C26] hover:bg-[#A84B1E] active:scale-98 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-2 transition"
               >
-                <Search className="w-3.5 h-3.5" />
-                ตกลง
+                <span>ตัดสต็อก</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
-            </form>
-          </div>
 
-        </div>
+              <div className="grid grid-cols-2 gap-2">
+                {/* 2. Secondary Action: รับเข้า (Outline) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = detectedItem;
+                    stopAndClose(() => {
+                      if (onRestock) onRestock(target);
+                      else if (onScanSuccess) onScanSuccess(target.code);
+                    });
+                  }}
+                  className="min-h-[44px] bg-white hover:bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                >
+                  <span>+ รับเข้า</span>
+                </button>
+
+                {/* 3. Scan Next (Neutral) */}
+                <button
+                  type="button"
+                  onClick={handleResumeScanning}
+                  className="min-h-[44px] bg-white hover:bg-[#F7F4EF] text-[#6B6560] border border-[#E5E0D8] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>สแกนถัดไป</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : unrecognizedCode ? (
+          /* Unrecognized code card */
+          <div className="p-4 bg-white border-t border-[#E5E0D8] space-y-3">
+            <div className="p-3 bg-[#FEF0C7] border border-[#B54708]/30 rounded-lg text-[#B54708] text-xs">
+              <p className="font-semibold">ไม่พบพัสดุในระบบ</p>
+              <p className="text-[11px] mt-0.5">
+                รหัส <span className="font-mono font-bold">{unrecognizedCode}</span> ยังไม่มีในฐานข้อมูล
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleResumeScanning}
+                className="min-h-[44px] bg-[#1F4D3A] text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1"
+              >
+                <span>ลองสแกนใหม่</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowManualInput(true)}
+                className="min-h-[44px] bg-white border border-[#E5E0D8] text-[#6B6560] rounded-lg text-xs font-medium"
+              >
+                <span>พิมพ์รหัสแทน</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Normal Action Toolbar */
+          <div className="p-4 bg-white border-t border-[#E5E0D8] space-y-3">
+            
+            {/* Native Camera Capture Button */}
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileCapture}
+                className="hidden"
+                id="camera-file-input"
+              />
+              <label
+                htmlFor="camera-file-input"
+                className="w-full min-h-[44px] bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] border border-[#E5E0D8] font-medium rounded-lg flex items-center justify-center gap-2 cursor-pointer transition text-xs text-center"
+              >
+                <Camera className="w-4 h-4 text-[#6B6560]" />
+                <span>ถ่ายรูปสแกนด้วยกล้องมือถือ</span>
+              </label>
+            </div>
+
+            {/* Toggle Manual Input Button */}
+            {!showManualInput ? (
+              <button
+                type="button"
+                onClick={() => setShowManualInput(true)}
+                className="w-full py-2 text-center text-xs text-[#6B6560] hover:text-[#1A1A1A] transition underline underline-offset-2"
+              >
+                พิมพ์รหัสแทน
+              </button>
+            ) : (
+              <form onSubmit={handleManualSubmit} className="pt-2 border-t border-[#E5E0D8] flex gap-2">
+                <input
+                  type="text"
+                  placeholder="พิมพ์รหัส SKU หรือบาร์โค้ด"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg focus:outline-none focus:border-[#1F4D3A] font-mono text-[#1A1A1A]"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={!manualCode.trim()}
+                  className="bg-[#1F4D3A] hover:bg-[#183D2E] disabled:opacity-40 text-white px-3 py-2 rounded-lg text-xs font-medium transition"
+                >
+                  ค้นหา
+                </button>
+              </form>
+            )}
+
+          </div>
+        )}
 
       </div>
     </div>

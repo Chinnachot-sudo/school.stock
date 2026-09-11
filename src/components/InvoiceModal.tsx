@@ -2,7 +2,7 @@
 
 import { Invoice, INVOICE_STATUS_LABELS, CUSTOMER_TYPE_LABELS, SCHOOL_BANK_INFO } from '@/types/inventory';
 import { thaiBahtText } from '@/lib/thai-baht';
-import { X, Printer, Copy, School, AlertCircle, Calendar, CreditCard, Scissors, CheckCircle2 } from 'lucide-react';
+import { X, Printer, Copy, School, AlertCircle, Calendar, CreditCard, Scissors, CheckCircle2, FileText } from 'lucide-react';
 import { useState } from 'react';
 
 interface InvoiceModalProps {
@@ -109,19 +109,19 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[95vh] flex flex-col">
         
         {/* Top Control Bar (Screen Only) */}
-        <div className="no-print p-3 sm:p-4 bg-slate-900 text-white flex items-center justify-between gap-3 shrink-0">
+        <div className="no-print p-3 sm:p-4 bg-[#1F4D3A] text-white flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold">
-              📄
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
+              <FileText className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <h2 className="font-semibold text-xs sm:text-sm flex items-center gap-1.5">
                 <span>ใบแจ้งการชำระเงิน (Half-A4 Invoice)</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusInfo.bg} ${statusInfo.color}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusInfo.bg} ${statusInfo.color}`}>
                   {statusInfo.label}
                 </span>
               </h2>
-              <p className="text-[10px] text-slate-400 font-mono">
+              <p className="text-[10px] text-white/70 font-mono">
                 #{invoice.invoiceNumber}
               </p>
             </div>

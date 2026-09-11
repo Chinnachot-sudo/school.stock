@@ -18,7 +18,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#2563eb'
+  themeColor: '#1F4D3A'
 };
 
 export default function RootLayout({
@@ -28,10 +28,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th">
-      <body className="min-h-screen bg-slate-50 text-slate-900 pb-20 md:pb-6">
+      <body className="min-h-screen bg-[#F7F4EF] text-[#1A1A1A] pb-24 md:pb-8 antialiased selection:bg-[#E8F0EB] selection:text-[#1F4D3A]">
         <AuthProvider>
           <Navbar />
-          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5">
+          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
             <AuthGuard>
               {children}
             </AuthGuard>

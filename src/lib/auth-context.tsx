@@ -31,7 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isConfigured: false,
   role: 'TEACHER',
-  roleLabel: '👨‍🏫 ครู / บุคลากร',
+  roleLabel: 'ครู / บุคลากร',
   isSuperAdmin: false,
   isInventoryManager: false,
   canManageItems: false,

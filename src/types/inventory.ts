@@ -9,9 +9,9 @@ export interface UserRoleRecord {
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  SUPER_ADMIN: '👑 Super Admin',
-  INVENTORY_MANAGER: '📦 เจ้าหน้าที่พัสดุ/การเงิน',
-  TEACHER: '👨‍🏫 ครู / บุคลากร'
+  SUPER_ADMIN: 'Super Admin',
+  INVENTORY_MANAGER: 'เจ้าหน้าที่พัสดุ / การเงิน',
+  TEACHER: 'ครู / บุคลากร'
 };
 
 // Whitelist mapping for school accounts
@@ -65,7 +65,7 @@ export type IBProgramme = 'PYP' | 'MYP' | 'DP' | 'CP' | 'STAFF' | 'GENERAL';
 export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; grades: string[] }> = {
   PYP: {
     name: 'Primary Years Programme',
-    label: '🌱 PYP (อนุบาล - ประถม)',
+    label: 'PYP (อนุบาล - ประถม)',
     grades: [
       'EY1 (Early Years 1)',
       'EY2 (Early Years 2)',
@@ -79,7 +79,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   MYP: {
     name: 'Middle Years Programme',
-    label: '📘 MYP (มัธยมต้น)',
+    label: 'MYP (มัธยมต้น)',
     grades: [
       'Grade 6 (MYP 1)',
       'Grade 7 (MYP 2)',
@@ -90,7 +90,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   DP: {
     name: 'Diploma Programme',
-    label: '🎓 DP (มัธยมปลาย Diploma)',
+    label: 'DP (มัธยมปลาย Diploma)',
     grades: [
       'Grade 11 (DP 1)',
       'Grade 12 (DP 2)'
@@ -98,7 +98,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   CP: {
     name: 'Career-related Programme',
-    label: '💼 CP (มัธยมปลาย อาชีพ/ทักษะ)',
+    label: 'CP (มัธยมปลาย อาชีพ/ทักษะ)',
     grades: [
       'Grade 11 (CP 1)',
       'Grade 12 (CP 2)'
@@ -106,7 +106,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   STAFF: {
     name: 'Faculty & Staff',
-    label: '👨‍🏫 บุคลากร / ครูอาจารย์',
+    label: 'บุคลากร / ครูอาจารย์',
     grades: [
       'PYP Faculty',
       'MYP Faculty',
@@ -116,7 +116,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   GENERAL: {
     name: 'General / Visitor',
-    label: '👤 บุคคลภายนอก / ทั่วไป',
+    label: 'บุคคลภายนอก / ทั่วไป',
     grades: ['General Visitor']
   }
 };
@@ -167,16 +167,16 @@ export type CustomerType = 'STUDENT' | 'PARENT' | 'TEACHER' | 'GENERAL';
 export type PaymentMethod = 'CASH' | 'PROMPTPAY' | 'TRANSFER';
 
 export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
-  STUDENT: '🎒 นักเรียน IB',
-  PARENT: '👨‍👩‍👧 ผู้ปกครอง',
-  TEACHER: '👨‍🏫 ครู / บุคลากร',
-  GENERAL: '👤 ทั่วไป'
+  STUDENT: 'นักเรียน IB',
+  PARENT: 'ผู้ปกครอง',
+  TEACHER: 'ครู / บุคลากร',
+  GENERAL: 'บุคคลภายนอก / ทั่วไป'
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  CASH: '💵 เงินสด',
-  PROMPTPAY: '📱 PromptPay QR',
-  TRANSFER: '🏦 เงินโอนธนาคาร'
+  CASH: 'เงินสด',
+  PROMPTPAY: 'PromptPay QR',
+  TRANSFER: 'เงินโอนธนาคาร'
 };
 
 // Customer Database Record
@@ -232,9 +232,9 @@ export interface Receipt {
 export type InvoiceStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, { label: string; color: string; bg: string }> = {
-  PENDING: { label: '⏳ รอชำระเงิน', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
-  PAID: { label: '✅ ชำระแล้ว', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
-  CANCELLED: { label: '🚫 ยกเลิก', color: 'text-red-700', bg: 'bg-red-50 border-red-200' }
+  PENDING: { label: 'รอชำระเงิน', color: 'text-[#B54708]', bg: 'bg-[#FEF0C7] border-[#E5E0D8]' },
+  PAID: { label: 'ชำระแล้ว', color: 'text-[#027A48]', bg: 'bg-[#D1FADF] border-[#E5E0D8]' },
+  CANCELLED: { label: 'ยกเลิก', color: 'text-[#B42318]', bg: 'bg-[#FEE4E2] border-[#E5E0D8]' }
 };
 
 export interface InvoiceItem {

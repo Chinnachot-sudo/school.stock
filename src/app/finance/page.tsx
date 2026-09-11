@@ -202,7 +202,7 @@ export default function FinancePage() {
       setReceipts(prev =>
         prev.map(r => (r.id === receipt.id ? { ...r, status: 'VOIDED', voidReason: reason.trim() } : r))
       );
-      showToast(`🚫 ยกเลิกใบเสร็จ #${receipt.receiptNumber} และคืนสต็อกเรียบร้อย`);
+      showToast(`ยกเลิกใบเสร็จ #${receipt.receiptNumber} และคืนสต็อกเรียบร้อย`);
     } catch (err: any) {
       alert(err.message);
     }
@@ -226,7 +226,7 @@ export default function FinancePage() {
       setInvoices(prev =>
         prev.map(i => (i.id === invoice.id ? { ...i, status: 'CANCELLED', note: reason.trim() } : i))
       );
-      showToast(`🚫 ยกเลิกใบแจ้งชำระ #${invoice.invoiceNumber} เรียบร้อย`);
+      showToast(`ยกเลิกใบแจ้งชำระ #${invoice.invoiceNumber} เรียบร้อย`);
     } catch (err: any) {
       alert(err.message);
     }
@@ -254,7 +254,7 @@ export default function FinancePage() {
       setInvoices(prev =>
         prev.map(i => (i.id === invoice.id ? { ...i, status: 'PAID', paidAt: new Date().toISOString() } : i))
       );
-      showToast(`✅ บันทึกชำระเงินสำหรับ #${invoice.invoiceNumber} เรียบร้อย`);
+      showToast(`บันทึกชำระเงินสำหรับ #${invoice.invoiceNumber} เรียบร้อย`);
     } catch (err: any) {
       alert(err.message);
     }
@@ -474,17 +474,17 @@ export default function FinancePage() {
               <select
                 value={paymentFilter}
                 onChange={e => setPaymentFilter(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none"
+                className="px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
               >
                 <option value="ALL">ช่องทาง: ทั้งหมด</option>
-                <option value="CASH">💵 เงินสด</option>
-                <option value="PROMPTPAY">📱 PromptPay</option>
+                <option value="CASH">เงินสด</option>
+                <option value="PROMPTPAY">PromptPay</option>
               </select>
 
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none"
+                className="px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
               >
                 <option value="ALL">สถานะ: ทั้งหมด</option>
                 <option value="COMPLETED">สำเร็จ</option>
@@ -493,7 +493,7 @@ export default function FinancePage() {
 
               <button
                 onClick={fetchReceipts}
-                className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800"
+                className="p-2 rounded-lg bg-white border border-[#E5E0D8] text-[#6B6560] hover:text-[#1A1A1A]"
                 title="รีเฟรชข้อมูล"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingReceipts ? 'animate-spin' : ''}`} />
@@ -503,27 +503,27 @@ export default function FinancePage() {
 
           {/* Table */}
           {filteredReceipts.length === 0 ? (
-            <div className="py-16 text-center text-slate-400">
-              <ReceiptIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p className="text-sm font-semibold">ไม่พบรายการใบเสร็จ</p>
-              <p className="text-xs text-slate-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเปิดบิลขายที่หน้า POS</p>
+            <div className="py-16 text-center text-[#6B6560]">
+              <ReceiptIcon className="w-10 h-10 mx-auto mb-2 opacity-30 text-[#E5E0D8]" />
+              <p className="text-sm font-semibold text-[#1A1A1A]">ไม่พบรายการใบเสร็จ</p>
+              <p className="text-xs text-[#6B6560] mt-1">ลองเปลี่ยนคำค้นหา หรือเปิดบิลขายที่หน้า POS</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200">
+                <thead className="bg-[#F7F4EF] text-[#6B6560] font-semibold border-b border-[#E5E0D8]">
                   <tr>
-                    <th className="py-3 px-3.5">เลขที่ใบเสร็จ</th>
-                    <th className="py-3 px-3">วันที่-เวลา</th>
-                    <th className="py-3 px-3">ผู้ซื้อ / นักเรียน</th>
-                    <th className="py-3 px-3">รายการสินค้า</th>
-                    <th className="py-3 px-3">ยอดเงินสุทธิ</th>
-                    <th className="py-3 px-3">ช่องทาง</th>
-                    <th className="py-3 px-3">สถานะ</th>
-                    <th className="py-3 px-3.5 text-right">การจัดการ</th>
+                    <th className="py-2.5 px-3.5">เลขที่ใบเสร็จ</th>
+                    <th className="py-2.5 px-3">วันที่-เวลา</th>
+                    <th className="py-2.5 px-3">ผู้ซื้อ / นักเรียน</th>
+                    <th className="py-2.5 px-3">รายการสินค้า</th>
+                    <th className="py-2.5 px-3">ยอดเงินสุทธิ</th>
+                    <th className="py-2.5 px-3">ช่องทาง</th>
+                    <th className="py-2.5 px-3">สถานะ</th>
+                    <th className="py-2.5 px-3.5 text-right">การจัดการ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#E5E0D8]">
                   {filteredReceipts.map(receipt => {
                     const isVoid = receipt.status === 'VOIDED';
                     const dateStr = new Date(receipt.createdAt).toLocaleDateString('th-TH', {
@@ -537,43 +537,43 @@ export default function FinancePage() {
                     return (
                       <tr
                         key={receipt.id}
-                        className={`hover:bg-slate-50/70 transition ${
+                        className={`hover:bg-[#F7F4EF]/50 transition ${
                           isVoid ? 'bg-red-50/30 opacity-70' : ''
                         }`}
                       >
-                        <td className="py-3 px-3.5">
-                          <span className="font-mono font-bold text-blue-700">
+                        <td className="py-2.5 px-3.5">
+                          <span className="font-mono font-medium text-[#1A1A1A]">
                             {receipt.receiptNumber}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-slate-500 text-[11px] whitespace-nowrap">
+                        <td className="py-2.5 px-3 text-[#6B6560] text-[11px] whitespace-nowrap">
                           {dateStr}
                         </td>
-                        <td className="py-3 px-3">
-                          <div className="font-bold text-slate-900">{receipt.customerName}</div>
+                        <td className="py-2.5 px-3">
+                          <div className="font-semibold text-[#1A1A1A]">{receipt.customerName}</div>
                           {receipt.studentClass && (
-                            <span className="text-[10px] text-slate-500 font-medium">
+                            <span className="text-[10px] text-[#6B6560]">
                               ชั้น {receipt.studentClass}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 max-w-xs truncate text-slate-600">
+                        <td className="py-2.5 px-3 max-w-xs truncate text-[#6B6560]">
                           {receipt.items.map(i => `${i.itemName} (${i.quantity})`).join(', ')}
                         </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <span className={`font-black ${isVoid ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <span className={`font-mono font-bold ${isVoid ? 'line-through text-[#6B6560]' : 'text-[#1A1A1A]'}`}>
                             ฿{receipt.totalAmount.toFixed(2)}
                           </span>
                         </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 font-bold text-[11px]">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium">
                             {receipt.paymentMethod === 'CASH' ? (
-                              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                💵 เงินสด
+                              <span className="text-[#1F4D3A] bg-[#E8F0EB] px-2 py-0.5 rounded border border-[#1F4D3A]/20">
+                                เงินสด
                               </span>
                             ) : (
-                              <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                                📱 PromptPay
+                              <span className="text-[#1A1A1A] bg-[#F7F4EF] px-2 py-0.5 rounded border border-[#E5E0D8]">
+                                PromptPay
                               </span>
                             )}
                           </span>
@@ -642,12 +642,12 @@ export default function FinancePage() {
               <select
                 value={invoiceStatusFilter}
                 onChange={e => setInvoiceStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none"
+                className="px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
               >
                 <option value="ALL">สถานะ: ทั้งหมด</option>
-                <option value="PENDING">⏳ รอชำระเงิน</option>
-                <option value="PAID">✅ ชำระแล้ว</option>
-                <option value="CANCELLED">🚫 ยกเลิก</option>
+                <option value="PENDING">รอชำระเงิน</option>
+                <option value="PAID">ชำระแล้ว</option>
+                <option value="CANCELLED">ยกเลิก</option>
               </select>
 
               <button
@@ -805,7 +805,7 @@ export default function FinancePage() {
           setInvoices(prev => [newInv, ...prev]);
           setActiveTab('INVOICES');
           setSelectedInvoice(newInv);
-          showToast(`📄 สร้างใบแจ้งชำระ #${newInv.invoiceNumber} เรียบร้อย`);
+          showToast(`สร้างใบแจ้งชำระ #${newInv.invoiceNumber} เรียบร้อย`);
         }}
       />
 

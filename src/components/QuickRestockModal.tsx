@@ -69,60 +69,60 @@ export default function QuickRestockModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
+      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-xl border border-[#E5E0D8] overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="bg-emerald-800 text-white px-5 py-3.5 flex items-center justify-between">
+        <div className="bg-white border-b border-[#E5E0D8] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <PackagePlus className="w-5 h-5 text-emerald-300" />
-            <div>
-              <h2 className="font-bold text-sm">รับของเข้าสต็อก (Stock In)</h2>
-              <p className="text-[10px] text-emerald-200">เพิ่มจำนวนเมื่อได้รับของใหม่</p>
-            </div>
+            <PackagePlus className="w-4 h-4 text-[#1F4D3A]" />
+            <h2 className="font-semibold text-sm text-[#1A1A1A]">รับของเข้าสต็อก (Stock In)</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200"
+            className="p-1 rounded text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Item Summary */}
-        <div className="p-4 bg-emerald-50/60 border-b border-emerald-100 flex items-start justify-between">
-          <div className="flex-1 pr-3">
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900">
-              รหัส: {item.code}
-            </span>
-            <h3 className="font-bold text-slate-900 text-base mt-1 leading-snug">
-              {item.name}
-            </h3>
-            <div className="flex items-center gap-1 text-slate-500 text-xs mt-1">
-              <MapPin className="w-3.5 h-3.5 text-slate-400" />
-              <span>{item.location}</span>
+        <div className="p-4 bg-[#F7F4EF] border-b border-[#E5E0D8]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <span className="font-mono text-[10px] text-[#6B6560] block uppercase tracking-wider">
+                {item.code}
+              </span>
+              <h3 className="font-semibold text-sm text-[#1A1A1A] mt-0.5 leading-snug">
+                {item.name}
+              </h3>
+              <div className="flex items-center gap-1 text-[11px] text-[#6B6560] mt-1">
+                <MapPin className="w-3 h-3 text-[#6B6560] shrink-0" />
+                <span>{item.location || 'ไม่ระบุจุดจัดเก็บ'}</span>
+              </div>
             </div>
-          </div>
-          <div className="text-right shrink-0 bg-white px-3 py-2 rounded-xl border border-emerald-100 shadow-sm">
-            <span className="text-[10px] text-slate-500 block">คงเหลือปัจจุบัน</span>
-            <div className="text-xl font-extrabold text-emerald-700 leading-tight">
-              {item.currentStock}
+
+            <div className="text-right shrink-0 bg-white px-3 py-1.5 rounded-lg border border-[#E5E0D8]">
+              <span className="text-[10px] text-[#6B6560] block">คงเหลือ</span>
+              <div className="text-lg font-bold font-mono text-[#1A1A1A] leading-tight">
+                {item.currentStock}
+              </div>
+              <span className="text-[10px] text-[#6B6560]">{item.unit}</span>
             </div>
-            <span className="text-xs font-semibold text-slate-600">{item.unit}</span>
           </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3.5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs flex items-center gap-2">
+            <div className="bg-[#FEE4E2] border border-[#B42318]/30 text-[#B42318] p-3 rounded-lg text-xs flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-medium text-[#1A1A1A] mb-1.5">
               จำนวนที่รับเข้าเพิ่ม ({item.unit})
             </label>
             <div className="grid grid-cols-4 gap-2 mb-2">
@@ -131,10 +131,10 @@ export default function QuickRestockModal({
                   key={q}
                   type="button"
                   onClick={() => setQuantity(q)}
-                  className={`py-2 rounded-xl text-sm font-bold border transition ${
+                  className={`py-2 rounded-lg text-xs font-medium border transition ${
                     quantity === q
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
+                      ? 'bg-[#1F4D3A] text-white border-[#1F4D3A]'
+                      : 'bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] border-[#E5E0D8]'
                   }`}
                 >
                   +{q}
@@ -148,19 +148,19 @@ export default function QuickRestockModal({
                 min="1"
                 value={quantity}
                 onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full text-center text-xl font-black py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full text-center text-lg font-bold font-mono py-2 bg-white border border-[#E5E0D8] rounded-lg focus:outline-none focus:border-[#1F4D3A] text-[#1A1A1A]"
               />
-              <span className="absolute right-4 top-3 text-xs text-slate-400 font-semibold pointer-events-none">
+              <span className="absolute right-3 top-2.5 text-xs text-[#6B6560] pointer-events-none">
                 {item.unit}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">
-              ยอดคงเหลือใหม่หลังรับเข้า: <strong className="text-emerald-600">{item.currentStock + quantity} {item.unit}</strong>
+            <p className="text-[11px] text-[#6B6560] mt-1">
+              ยอดคงเหลือใหม่หลังรับเข้า: <strong className="font-mono text-[#027A48]">{item.currentStock + quantity} {item.unit}</strong>
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-medium text-[#1A1A1A] mb-1">
               หมายเหตุ / เลขที่ใบส่งของ (ไม่บังคับ)
             </label>
             <input
@@ -168,7 +168,7 @@ export default function QuickRestockModal({
               placeholder="เช่น ใบส่งของ บจก.สยามพัสดุ #INV-9821"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full text-xs bg-white border border-[#E5E0D8] rounded-lg px-3 py-2 text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
             />
           </div>
 
@@ -176,9 +176,9 @@ export default function QuickRestockModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-black py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 text-base transition"
+              className="w-full min-h-[48px] bg-[#1F4D3A] hover:bg-[#183D2E] disabled:opacity-50 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-2 transition"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               <span>ยืนยันการรับเข้า (+{quantity} {item.unit})</span>
             </button>
           </div>
