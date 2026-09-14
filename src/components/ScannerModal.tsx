@@ -104,14 +104,14 @@ export default function ScannerModal({
 
     if (!isSecure && typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       setErrorMessage(
-        'เบราว์เซอร์จำกัดการเปิดกล้องผ่าน HTTP\nกรุณาใช้ปุ่ม "ถ่ายรูปสแกน" ด้านล่าง'
+        'Camera restricted over HTTP by browser.\nPlease use "Take Photo" button below.'
       );
       return;
     }
 
     if (!hasGetUserMedia) {
       setErrorMessage(
-        'เบราว์เซอร์นี้ไม่รองรับการเปิดวิดีโอกล้องสด กรุณาใช้ปุ่ม "ถ่ายรูปสแกน" หรือพิมพ์รหัสแทน'
+        'Live video camera is not supported by this browser. Please use "Take Photo" or enter code manually.'
       );
       return;
     }
@@ -152,7 +152,7 @@ export default function ScannerModal({
         if (isMounted) {
           setIsStarting(false);
           setErrorMessage(
-            'ไม่สามารถเปิดกล้องสดได้ กรุณาแตะปุ่ม "ถ่ายรูปสแกน" หรือพิมพ์รหัสแทน'
+            'Unable to start live camera. Please use "Take Photo" or enter code manually.'
           );
         }
       }
@@ -290,13 +290,13 @@ export default function ScannerModal({
         handleProcessCode(decodedResult);
       } else {
         setErrorMessage(
-          'ตรวจไม่พบบาร์โค้ดในรูปภาพ กรุณาถ่ายให้ใกล้และชัดเจนขึ้น หรือพิมพ์รหัสแทน'
+          'No barcode detected in image. Please take a closer and clearer photo, or enter code manually.'
         );
       }
     } catch (err: any) {
       setIsProcessingFile(false);
       console.error('File scan error:', err);
-      setErrorMessage('เกิดข้อผิดพลาดในการอ่านรูปภาพ กรุณาลองใหม่อีกครั้ง');
+      setErrorMessage('An error occurred while reading the image. Please try again.');
     }
   };
 
@@ -317,7 +317,7 @@ export default function ScannerModal({
         <div className="bg-[#1F4D3A] text-white px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Camera className="w-4 h-4 text-white/80" />
-            <span className="font-semibold text-xs sm:text-sm">สแกนรหัสพัสดุ</span>
+            <span className="font-semibold text-xs sm:text-sm">Scan Item Code</span>
           </div>
           <div className="flex items-center gap-2">
             {hasTorch && (
@@ -328,7 +328,7 @@ export default function ScannerModal({
                     ? 'bg-[#C45C26] text-white'
                     : 'bg-[#183D2E] text-white/80'
                 }`}
-                title="เปิด/ปิดไฟฉาย"
+                title="Toggle Flashlight"
               >
                 <Flashlight className="w-3.5 h-3.5" />
               </button>
@@ -362,7 +362,7 @@ export default function ScannerModal({
                 <span className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-white"></span>
               </div>
               <p className="text-white/80 text-[11px] font-medium mt-3 bg-black/40 px-2.5 py-1 rounded">
-                จัดโค้ดให้อยู่ในกรอบ
+                Align code within frame
               </p>
             </div>
           )}
@@ -370,14 +370,14 @@ export default function ScannerModal({
           {isStarting && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1A1A1A] text-white p-4">
               <div className="w-7 h-7 border-2 border-[#1F4D3A] border-t-transparent rounded-full animate-spin mb-2"></div>
-              <p className="text-xs text-[#E5E0D8]">กำลังเชื่อมต่อกล้อง...</p>
+              <p className="text-xs text-[#E5E0D8]">Connecting camera...</p>
             </div>
           )}
 
           {isProcessingFile && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1A1A1A]/95 text-white p-4 z-20">
               <div className="w-8 h-8 border-2 border-[#1F4D3A] border-t-transparent rounded-full animate-spin mb-2"></div>
-              <p className="text-xs text-white">กำลังอ่านรหัส...</p>
+              <p className="text-xs text-white">Scanning code...</p>
             </div>
           )}
 
@@ -405,12 +405,12 @@ export default function ScannerModal({
                   </h3>
                   <div className="flex items-center gap-1 text-[11px] text-[#6B6560] mt-1">
                     <MapPin className="w-3 h-3 text-[#6B6560] shrink-0" />
-                    <span className="truncate">{detectedItem.location || 'ไม่ระบุจุดจัดเก็บ'}</span>
+                    <span className="truncate">{detectedItem.location || 'Unassigned Location'}</span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="text-[10px] text-[#6B6560] block">คงเหลือ</span>
+                  <span className="text-[10px] text-[#6B6560] block">In Stock</span>
                   <div className="text-xl font-bold font-mono text-[#1A1A1A] leading-tight">
                     {detectedItem.currentStock}
                   </div>
@@ -419,9 +419,8 @@ export default function ScannerModal({
               </div>
             </div>
 
-            {/* 3 Explicit Action Buttons as specified in Brief */}
+            {/* 3 Explicit Action Buttons */}
             <div className="space-y-2 pt-1">
-              {/* 1. Primary Action: ตัดสต็อก (Terracotta #C45C26) */}
               <button
                 type="button"
                 onClick={() => {
@@ -433,12 +432,11 @@ export default function ScannerModal({
                 }}
                 className="w-full min-h-[48px] bg-[#C45C26] hover:bg-[#A84B1E] active:scale-98 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-2 transition"
               >
-                <span>ตัดสต็อก</span>
+                <span>Issue / Deduct</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
 
               <div className="grid grid-cols-2 gap-2">
-                {/* 2. Secondary Action: รับเข้า (Outline) */}
                 <button
                   type="button"
                   onClick={() => {
@@ -450,17 +448,16 @@ export default function ScannerModal({
                   }}
                   className="min-h-[44px] bg-white hover:bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
                 >
-                  <span>+ รับเข้า</span>
+                  <span>+ Restock</span>
                 </button>
 
-                {/* 3. Scan Next (Neutral) */}
                 <button
                   type="button"
                   onClick={handleResumeScanning}
                   className="min-h-[44px] bg-white hover:bg-[#F7F4EF] text-[#6B6560] border border-[#E5E0D8] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
                 >
                   <RefreshCw className="w-3 h-3" />
-                  <span>สแกนถัดไป</span>
+                  <span>Scan Next</span>
                 </button>
               </div>
             </div>
@@ -469,9 +466,9 @@ export default function ScannerModal({
           /* Unrecognized code card */
           <div className="p-4 bg-white border-t border-[#E5E0D8] space-y-3">
             <div className="p-3 bg-[#FEF0C7] border border-[#B54708]/30 rounded-lg text-[#B54708] text-xs">
-              <p className="font-semibold">ไม่พบพัสดุในระบบ</p>
+              <p className="font-semibold">Item Not Found in System</p>
               <p className="text-[11px] mt-0.5">
-                รหัส <span className="font-mono font-bold">{unrecognizedCode}</span> ยังไม่มีในฐานข้อมูล
+                Code <span className="font-mono font-bold">{unrecognizedCode}</span> does not exist in inventory.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -480,14 +477,14 @@ export default function ScannerModal({
                 onClick={handleResumeScanning}
                 className="min-h-[44px] bg-[#1F4D3A] text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1"
               >
-                <span>ลองสแกนใหม่</span>
+                <span>Scan Again</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowManualInput(true)}
                 className="min-h-[44px] bg-white border border-[#E5E0D8] text-[#6B6560] rounded-lg text-xs font-medium"
               >
-                <span>พิมพ์รหัสแทน</span>
+                <span>Enter Code Manually</span>
               </button>
             </div>
           </div>
@@ -511,7 +508,7 @@ export default function ScannerModal({
                 className="w-full min-h-[44px] bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] border border-[#E5E0D8] font-medium rounded-lg flex items-center justify-center gap-2 cursor-pointer transition text-xs text-center"
               >
                 <Camera className="w-4 h-4 text-[#6B6560]" />
-                <span>ถ่ายรูปสแกนด้วยกล้องมือถือ</span>
+                <span>Take Photo / Upload with Camera</span>
               </label>
             </div>
 
@@ -522,13 +519,13 @@ export default function ScannerModal({
                 onClick={() => setShowManualInput(true)}
                 className="w-full py-2 text-center text-xs text-[#6B6560] hover:text-[#1A1A1A] transition underline underline-offset-2"
               >
-                พิมพ์รหัสแทน
+                Enter code manually
               </button>
             ) : (
               <form onSubmit={handleManualSubmit} className="pt-2 border-t border-[#E5E0D8] flex gap-2">
                 <input
                   type="text"
-                  placeholder="พิมพ์รหัส SKU หรือบาร์โค้ด"
+                  placeholder="Enter SKU or barcode"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   className="flex-1 px-3 py-2 text-xs bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg focus:outline-none focus:border-[#1F4D3A] font-mono text-[#1A1A1A]"
@@ -539,7 +536,7 @@ export default function ScannerModal({
                   disabled={!manualCode.trim()}
                   className="bg-[#1F4D3A] hover:bg-[#183D2E] disabled:opacity-40 text-white px-3 py-2 rounded-lg text-xs font-medium transition"
                 >
-                  ค้นหา
+                  Search
                 </button>
               </form>
             )}

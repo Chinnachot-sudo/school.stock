@@ -31,7 +31,7 @@ export default function CategoryManageModal({
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) {
-      setError('กรุณากรอกชื่อหมวดหมู่');
+      setError('Please enter a category name');
       return;
     }
 
@@ -50,14 +50,14 @@ export default function CategoryManageModal({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถเพิ่มหมวดหมู่ได้');
+      if (!res.ok) throw new Error(data.error || 'Failed to add category');
 
       setNewCatName('');
       setNewCatIcon('🏷️');
       setNewCatDesc('');
       onUpdated();
     } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการบันทึกหมวดหมู่');
+      setError(err.message || 'An error occurred while creating category');
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +82,7 @@ export default function CategoryManageModal({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถแก้ไขหมวดหมู่ได้');
+      if (!res.ok) throw new Error(data.error || 'Failed to update category');
 
       setEditingCat(null);
       onUpdated();
@@ -94,12 +94,12 @@ export default function CategoryManageModal({
   };
 
   const handleDeleteCategory = async (id: string, name: string) => {
-    if (!confirm(`คุณต้องการลบหมวดหมู่ "${name}" ใช่หรือไม่?`)) return;
+    if (!confirm(`Are you sure you want to delete category "${name}"?`)) return;
 
     try {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถลบหมวดหมู่ได้');
+      if (!res.ok) throw new Error(data.error || 'Failed to delete category');
 
       onUpdated();
     } catch (err: any) {
@@ -118,8 +118,8 @@ export default function CategoryManageModal({
               <Tag className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-extrabold text-base">จัดการหมวดหมู่สินค้าและพัสดุ</h2>
-              <p className="text-xs text-slate-400">เพิ่ม แก้ไข หรือลบหมวดหมู่สำหรับจัดระเบียบคลังและหน้าร้าน</p>
+              <h2 className="font-extrabold text-base">Manage Product & Inventory Categories</h2>
+              <p className="text-xs text-slate-400">Add, edit, or remove categories for warehouse and store organization</p>
             </div>
           </div>
           <button
@@ -144,12 +144,12 @@ export default function CategoryManageModal({
           <form onSubmit={handleAddCategory} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <Plus className="w-4 h-4 text-blue-600" />
-              <span>เพิ่มหมวดหมู่ใหม่</span>
+              <span>Add New Category</span>
             </h3>
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">
-                เลือกไอคอน
+                Select Icon
               </label>
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                 {QUICK_EMOJIS.map(emoji => (
@@ -172,12 +172,12 @@ export default function CategoryManageModal({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  ชื่อหมวดหมู่ *
+                  Category Name *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="เช่น ชุดนักเรียนและเครื่องแบบ"
+                  placeholder="e.g. Uniforms & Apparel"
                   value={newCatName}
                   onChange={e => setNewCatName(e.target.value)}
                   className="w-full text-xs bg-white border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
@@ -186,11 +186,11 @@ export default function CategoryManageModal({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  คำอธิบาย (ไม่บังคับ)
+                  Description (Optional)
                 </label>
                 <input
                   type="text"
-                  placeholder="รายละเอียดสั้นๆ"
+                  placeholder="Brief details"
                   value={newCatDesc}
                   onChange={e => setNewCatDesc(e.target.value)}
                   className="w-full text-xs bg-white border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
@@ -204,7 +204,7 @@ export default function CategoryManageModal({
                 disabled={isSubmitting}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 active:scale-95 transition"
               >
-                {isSubmitting ? 'กำลังบันทึก...' : '+ บันทึกหมวดหมู่ใหม่'}
+                {isSubmitting ? 'Saving...' : '+ Save New Category'}
               </button>
             </div>
           </form>
@@ -212,7 +212,7 @@ export default function CategoryManageModal({
           {/* Existing Categories List */}
           <div>
             <h3 className="text-xs font-bold text-slate-700 mb-2">
-              หมวดหมู่ทั้งหมด ({categories.length} หมวด)
+              All Categories ({categories.length} total)
             </h3>
 
             <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl bg-white overflow-hidden">
@@ -244,14 +244,14 @@ export default function CategoryManageModal({
                           disabled={isSubmitting}
                           className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg"
                         >
-                          บันทึก
+                          Save
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingCat(null)}
                           className="px-2 py-1.5 text-slate-500 text-xs"
                         >
-                          ยกเลิก
+                          Cancel
                         </button>
                       </div>
                     </form>
@@ -281,7 +281,7 @@ export default function CategoryManageModal({
                       <button
                         onClick={() => setEditingCat(cat)}
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                        title="แก้ไขหมวดหมู่"
+                        title="Edit Category"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -289,7 +289,7 @@ export default function CategoryManageModal({
                       <button
                         onClick={() => handleDeleteCategory(cat.id, cat.name)}
                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                        title="ลบหมวดหมู่"
+                        title="Delete Category"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

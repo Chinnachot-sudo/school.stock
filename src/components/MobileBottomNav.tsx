@@ -16,10 +16,10 @@ export default function MobileBottomNav() {
   }
 
   const items = [
-    { label: 'สแกน', href: '/?action=scan', icon: ScanLine, isHome: true },
-    { label: 'เบิก / POS', href: '/pos', icon: Store },
-    { label: 'สต็อก', href: '/inventory', icon: Boxes },
-    { label: 'ประวัติ', href: '/history', icon: History },
+    { label: 'Scan', href: '/?action=scan', icon: ScanLine, isHome: true },
+    { label: 'POS', href: '/pos', icon: Store },
+    { label: 'Inventory', href: '/inventory', icon: Boxes },
+    { label: 'History', href: '/history', icon: History },
   ];
 
   return (

@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
     const qty = Number(quantity);
     if (!itemId || !type || isNaN(qty) || qty <= 0) {
-      return NextResponse.json({ error: 'ข้อมูลไม่ครบถ้วน หรือจำนวนไม่ถูกต้อง' }, { status: 400 });
+      return NextResponse.json({ error: 'Incomplete information or invalid quantity' }, { status: 400 });
     }
 
     // 1. Supabase Cloud DB
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         .single();
 
       if (fetchErr || !item) {
-        return NextResponse.json({ error: 'ไม่พบสินค้าในระบบ' }, { status: 404 });
+        return NextResponse.json({ error: 'Item not found in system' }, { status: 404 });
       }
 
       let newStock = item.current_stock;
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         if (item.current_stock < qty) {
           return NextResponse.json(
             {
-              error: `ยอดสต็อกไม่พอตัด! คงเหลือเพียง ${item.current_stock} ${item.unit} แต่ต้องการเบิก ${qty} ${item.unit}`
+              error: `Insufficient stock! Available: ${item.current_stock} ${item.unit}, Requested: ${qty} ${item.unit}`
             },
             { status: 400 }
           );
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       } else if (type === 'ADJUST') {
         newStock = qty;
       } else {
-        return NextResponse.json({ error: 'ประเภทการทำรายการไม่ถูกต้อง' }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid transaction type' }, { status: 400 });
       }
 
       // Update item stock
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         type,
         quantity: qty,
         balance_after: newStock,
-        department: (department || 'กลุ่มสาระฯ ทั่วไป').trim(),
+        department: (department || 'General Academic Dept').trim(),
         requester_name: (requesterName || '').trim(),
         note: (note || '').trim(),
         created_at: new Date().toISOString()
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
     );
 
     if (itemIndex === -1) {
-      return NextResponse.json({ error: 'ไม่พบสินค้าในระบบ' }, { status: 404 });
+      return NextResponse.json({ error: 'Item not found in system' }, { status: 404 });
     }
 
     const item = db.items[itemIndex];
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
       if (item.currentStock < qty) {
         return NextResponse.json(
           {
-            error: `ยอดสต็อกไม่พอตัด! คงเหลือเพียง ${item.currentStock} ${item.unit} แต่ต้องการเบิก ${qty} ${item.unit}`
+            error: `Insufficient stock! Available: ${item.currentStock} ${item.unit}, Requested: ${qty} ${item.unit}`
           },
           { status: 400 }
         );
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
     } else if (type === 'ADJUST') {
       newStock = qty;
     } else {
-      return NextResponse.json({ error: 'ประเภทการทำรายการไม่ถูกต้อง' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid transaction type' }, { status: 400 });
     }
 
     item.currentStock = newStock;
@@ -188,7 +188,7 @@ export async function POST(request: Request) {
       type: type as TransactionType,
       quantity: qty,
       balanceAfter: newStock,
-      department: (department || 'กลุ่มสาระฯ ทั่วไป').trim(),
+      department: (department || 'General Academic Dept').trim(),
       requesterName: (requesterName || '').trim(),
       note: (note || '').trim(),
       createdAt: new Date().toISOString()
@@ -205,6 +205,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error processing transaction:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการทำรายการ' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process transaction' }, { status: 500 });
   }
 }

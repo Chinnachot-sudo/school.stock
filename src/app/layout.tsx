@@ -5,8 +5,8 @@ import { AuthProvider } from '@/lib/auth-context';
 import AuthGuard from '@/components/AuthGuard';
 
 export const metadata: Metadata = {
-  title: 'Romaneeya | โรงเรียนนานาชาติรุ่งอรุณ - ERP & Inventory',
-  description: 'Romaneeya - ระบบ ERP คลังพัสดุ และจุดขายสวัสดิการ โรงเรียนนานาชาติรุ่งอรุณ (Roong Aroon International School)',
+  title: 'Romaneeya | Roong Aroon International School - ERP & Inventory',
+  description: 'Romaneeya - ERP Inventory & School Store POS, Roong Aroon International School',
   manifest: '/manifest.json',
   icons: {
     icon: '/images/romaneeya_leaf_logo.svg',

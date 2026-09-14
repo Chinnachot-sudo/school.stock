@@ -52,7 +52,7 @@ export default function InventoryPage() {
     categoryId: '',
     currentStock: 10,
     minStock: 5,
-    unit: 'ชิ้น',
+    unit: 'Pcs',
     location: '',
     price: 0,
     cost: 0,
@@ -101,7 +101,7 @@ export default function InventoryPage() {
     setFormError(null);
 
     if (!formData.code.trim() || !formData.name.trim() || !formData.unit.trim()) {
-      setFormError('กรุณากรอกข้อมูลที่จำเป็น (รหัส, ชื่อสินค้า, หน่วยนับ)');
+      setFormError('Please fill in required fields (Code, Item Name, Unit)');
       return;
     }
 
@@ -114,7 +114,7 @@ export default function InventoryPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'ไม่สามารถเพิ่มสินค้าได้');
+        throw new Error(data.error || 'Failed to add item');
       }
 
       setItems(prev => [data.item, ...prev]);
@@ -125,7 +125,7 @@ export default function InventoryPage() {
         categoryId: categories.length > 0 ? categories[0].id : '',
         currentStock: 10,
         minStock: 5,
-        unit: 'ชิ้น',
+        unit: 'Pcs',
         location: '',
         price: 0,
         cost: 0,
@@ -133,7 +133,7 @@ export default function InventoryPage() {
         note: '',
         isBorrowable: false
       });
-      showToast(`เพิ่มพัสดุ "${data.item.name}" เรียบร้อยแล้ว`);
+      showToast(`Added item "${data.item.name}" successfully`);
     } catch (err: any) {
       setFormError(err.message);
     }
@@ -152,19 +152,19 @@ export default function InventoryPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'ไม่สามารถแก้ไขสินค้าได้');
+        throw new Error(data.error || 'Failed to update item');
       }
 
       setItems(prev => prev.map(i => (i.id === data.item.id ? data.item : i)));
       setEditingItem(null);
-      showToast(`อัปเดตข้อมูล "${data.item.name}" สำเร็จ`);
+      showToast(`Updated "${data.item.name}" successfully`);
     } catch (err: any) {
       alert(err.message);
     }
   };
 
   const handleDeleteItem = async (id: string, name: string) => {
-    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบพัสดุ "${name}" ออกจากระบบ?`)) {
+    if (!confirm(`Are you sure you want to delete item "${name}" from the system?`)) {
       return;
     }
 
@@ -174,11 +174,11 @@ export default function InventoryPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'ไม่สามารถลบสินค้าได้');
+        throw new Error(data.error || 'Failed to delete item');
       }
 
       setItems(prev => prev.filter(i => i.id !== id));
-      showToast(`ลบพัสดุ "${name}" เรียบร้อยแล้ว`);
+      showToast(`Item "${name}" deleted successfully`);
     } catch (err: any) {
       alert(err.message);
     }
@@ -219,10 +219,10 @@ export default function InventoryPage() {
         <div>
           <h1 className="text-base sm:text-lg font-bold text-[#1A1A1A] tracking-tight flex items-center gap-2">
             <Boxes className="w-5 h-5 text-[#1F4D3A]" />
-            <span>คลังพัสดุและอุปกรณ์</span>
+            <span>Inventory & Stock</span>
           </h1>
           <p className="text-xs text-[#6B6560] mt-0.5">
-            ตรวจเช็คสต็อก จัดการรายการพัสดุ และกำหนดจุดเตือนของใกล้หมด
+            Track inventory balances, manage items, storage locations, and low stock thresholds.
           </p>
         </div>
 
@@ -233,7 +233,7 @@ export default function InventoryPage() {
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] text-xs font-medium transition"
             >
               <QrCode className="w-3.5 h-3.5 text-[#6B6560]" />
-              <span>พิมพ์ป้าย QR</span>
+              <span>Print QR Labels</span>
             </Link>
           )}
 
@@ -243,7 +243,7 @@ export default function InventoryPage() {
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] text-xs font-medium transition"
             >
               <Tag className="w-3.5 h-3.5 text-[#6B6560]" />
-              <span>จัดการหมวดหมู่</span>
+              <span>Manage Categories</span>
             </button>
           )}
 
@@ -258,13 +258,13 @@ export default function InventoryPage() {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#1F4D3A] hover:bg-[#183D2E] text-white text-xs font-medium transition active:scale-98"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>เพิ่มพัสดุใหม่</span>
+              <span>+ Add Item</span>
             </button>
           )}
 
           <button
             onClick={fetchItems}
-            title="รีเฟรชข้อมูล"
+            title="Refresh Data"
             className="p-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] text-[#6B6560] transition"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -279,7 +279,7 @@ export default function InventoryPage() {
           <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#6B6560]" />
           <input
             type="text"
-            placeholder="ค้นหาชื่อพัสดุ, รหัส SKU, จุดจัดเก็บ..."
+            placeholder="Search items, SKU, storage location..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg text-[#1A1A1A] placeholder:text-[#6B6560] focus:outline-none focus:border-[#1F4D3A]"
@@ -293,7 +293,7 @@ export default function InventoryPage() {
             onChange={e => setSelectedCategory(e.target.value)}
             className="px-2.5 py-1.5 bg-white border border-[#E5E0D8] rounded-lg text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
           >
-            <option value="ALL">ทุกหมวดหมู่ ({items.length})</option>
+            <option value="ALL">All Categories ({items.length})</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
@@ -310,7 +310,7 @@ export default function InventoryPage() {
             }`}
           >
             <AlertTriangle className="w-3.5 h-3.5 text-[#B54708]" />
-            <span>ใกล้หมด ({lowStockCount})</span>
+            <span>Low Stock ({lowStockCount})</span>
           </button>
         </div>
       </div>
@@ -321,14 +321,14 @@ export default function InventoryPage() {
           <table className="w-full text-xs text-left">
             <thead className="bg-[#F7F4EF] border-b border-[#E5E0D8] text-[#6B6560] font-medium text-[11px]">
               <tr>
-                <th className="py-2 px-3 w-28">รหัส SKU</th>
-                <th className="py-2 px-3 min-w-[200px]">รายการพัสดุ</th>
-                <th className="py-2 px-3 hidden sm:table-cell w-36">หมวดหมู่</th>
-                <th className="py-2 px-3 hidden md:table-cell w-36">จุดจัดเก็บ</th>
-                <th className="py-2 px-3 hidden lg:table-cell w-24 text-right">ราคา</th>
-                <th className="py-2 px-3 w-32">สถานะ</th>
-                <th className="py-2 px-3 w-28 text-right">คงเหลือ</th>
-                <th className="py-2 px-3 w-40 text-right">ดำเนินการ</th>
+                <th className="py-2 px-3 w-28">SKU / Code</th>
+                <th className="py-2 px-3 min-w-[200px]">Item Description</th>
+                <th className="py-2 px-3 hidden sm:table-cell w-36">Category</th>
+                <th className="py-2 px-3 hidden md:table-cell w-36">Location</th>
+                <th className="py-2 px-3 hidden lg:table-cell w-24 text-right">Price</th>
+                <th className="py-2 px-3 w-32">Status</th>
+                <th className="py-2 px-3 w-28 text-right">In Stock</th>
+                <th className="py-2 px-3 w-40 text-right">Actions</th>
               </tr>
             </thead>
 
@@ -353,8 +353,8 @@ export default function InventoryPage() {
                 <tr>
                   <td colSpan={8} className="py-14 text-center text-[#6B6560]">
                     <Boxes className="w-8 h-8 mx-auto text-[#6B6560]/40 mb-2" />
-                    <p className="font-medium text-[#1A1A1A] text-xs">ไม่พบรายการพัสดุ</p>
-                    <p className="text-[11px] text-[#6B6560] mt-0.5">ลองปรับคำค้นหา หรือรีเซ็ตหมวดหมู่</p>
+                    <p className="font-medium text-[#1A1A1A] text-xs">No inventory items found</p>
+                    <p className="text-[11px] text-[#6B6560] mt-0.5">Try adjusting your search query or reset category filter</p>
                   </td>
                 </tr>
               </tbody>
@@ -383,7 +383,7 @@ export default function InventoryPage() {
                             <span className="text-[#1F4D3A] font-mono">[POS Sale]</span>
                           )}
                           {item.isBorrowable && (
-                            <span className="text-[#1F4D3A] font-medium">ยืม-คืน</span>
+                            <span className="text-[#1F4D3A] font-medium">Borrowable</span>
                           )}
                           {item.note && (
                             <span className="truncate max-w-xs">• {item.note}</span>
@@ -393,14 +393,14 @@ export default function InventoryPage() {
 
                       {/* Category */}
                       <td className="py-2 px-3 hidden sm:table-cell text-[#6B6560] whitespace-nowrap text-[11px]">
-                        {cat?.name || 'ทั่วไป'}
+                        {cat?.name || 'General'}
                       </td>
 
                       {/* Location */}
                       <td className="py-2 px-3 hidden md:table-cell text-[#6B6560] whitespace-nowrap text-[11px]">
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-[#6B6560] shrink-0" />
-                          <span className="truncate">{item.location || 'คลังกลาง'}</span>
+                          <span className="truncate">{item.location || 'Main Storage'}</span>
                         </span>
                       </td>
 
@@ -414,17 +414,17 @@ export default function InventoryPage() {
                         {isOut ? (
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEE4E2] text-[#B42318] border border-[#B42318]/20">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#B42318]"></span>
-                            <span>หมด</span>
+                            <span>Out of Stock</span>
                           </span>
                         ) : isLow ? (
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEF0C7] text-[#B54708] border border-[#B54708]/30">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#B54708]"></span>
-                            <span>ใกล้หมด</span>
+                            <span>Low Stock</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A]/20">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#027A48]"></span>
-                            <span>ปกติ</span>
+                            <span>In Stock</span>
                           </span>
                         )}
                       </td>
@@ -446,9 +446,9 @@ export default function InventoryPage() {
                             <button
                               onClick={() => setSelectedItemForRestock(item)}
                               className="px-2 py-1 bg-white hover:bg-[#F7F4EF] text-[#1F4D3A] rounded text-[10px] font-medium border border-[#E5E0D8] transition"
-                              title="รับเข้าสต็อก"
+                              title="Receive Stock"
                             >
-                              +รับ
+                              +In
                             </button>
                           )}
 
@@ -456,16 +456,16 @@ export default function InventoryPage() {
                             onClick={() => setSelectedItemForDeduct(item)}
                             disabled={isOut}
                             className="px-2 py-1 bg-[#C45C26] hover:bg-[#A84B1E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
-                            title="ตัดสต็อกเบิก"
+                            title="Issue Stock"
                           >
-                            ตัด
+                            Issue
                           </button>
 
                           {canManageItems && (
                             <button
                               onClick={() => setEditingItem(item)}
                               className="p-1 rounded text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] transition"
-                              title="แก้ไข"
+                              title="Edit"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
@@ -475,7 +475,7 @@ export default function InventoryPage() {
                             <button
                               onClick={() => handleDeleteItem(item.id, item.name)}
                               className="p-1 rounded text-[#6B6560] hover:text-[#B42318] hover:bg-[#FEE4E2] transition"
-                              title="ลบ"
+                              title="Delete"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -493,8 +493,8 @@ export default function InventoryPage() {
 
         {/* Footer info */}
         <div className="p-2.5 bg-[#F7F4EF] border-t border-[#E5E0D8] text-[11px] text-[#6B6560] flex items-center justify-between">
-          <span>แสดง {filtered.length} จากทั้งหมด {items.length} รายการ</span>
-          <span className="font-mono text-[#6B6560]">ระบบคลังพัสดุโรงเรียน</span>
+          <span>Showing {filtered.length} of {items.length} items</span>
+          <span className="font-mono text-[#6B6560]">School Inventory ERP</span>
         </div>
       </div>
 
@@ -505,7 +505,7 @@ export default function InventoryPage() {
             <div className="bg-[#1F4D3A] text-white px-5 py-3.5 flex items-center justify-between">
               <h2 className="font-semibold text-sm flex items-center gap-2">
                 <Plus className="w-4 h-4 text-white/80" />
-                <span>เพิ่มพัสดุ / อุปกรณ์ใหม่</span>
+                <span>Add New Item / Equipment</span>
               </h2>
               <button onClick={() => setIsAddModalOpen(false)} className="text-zinc-400 hover:text-white">
                 <X className="w-4 h-4" />
@@ -522,32 +522,32 @@ export default function InventoryPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-zinc-700 mb-1">
-                    รหัสสินค้า / SKU *
+                    Item Code / SKU *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="เช่น A4-DOUBLE หรือ 8850029..."
+                    placeholder="e.g. A4-DOUBLE or 8850029..."
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                     className="w-full font-mono bg-zinc-50 border border-zinc-200 rounded-lg p-2 focus:ring-1 focus:ring-zinc-400"
                   />
                   <p className="text-[10px] text-zinc-400 mt-0.5">
-                    * ใช้สร้างเป็น Barcode / QR Code
+                    * Used for Barcode / QR Code generation
                   </p>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block font-medium text-zinc-700">
-                      หมวดหมู่ *
+                      Category *
                     </label>
                     <button
                       type="button"
                       onClick={() => setIsCategoryModalOpen(true)}
                       className="text-[11px] text-zinc-600 hover:text-zinc-900 font-medium underline"
                     >
-                      + จัดการหมวดหมู่
+                      + Manage Categories
                     </button>
                   </div>
                   <select
@@ -556,7 +556,7 @@ export default function InventoryPage() {
                     className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 font-medium focus:ring-1 focus:ring-zinc-400"
                   >
                     {categories.length === 0 ? (
-                      <option value="">-- ยังไม่มีหมวดหมู่ --</option>
+                      <option value="">-- No categories available --</option>
                     ) : (
                       categories.map(c => (
                         <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
@@ -568,12 +568,12 @@ export default function InventoryPage() {
 
               <div>
                 <label className="block font-medium text-zinc-700 mb-1">
-                  ชื่อสินค้า / รายการพัสดุ *
+                  Item Name / Description *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="เช่น กระดาษ A4 Double A 80 แกรม"
+                  placeholder="e.g. Double A A4 Paper 80gsm"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 focus:ring-1 focus:ring-zinc-400"
@@ -583,7 +583,7 @@ export default function InventoryPage() {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block font-medium text-zinc-700 mb-1">
-                    สต็อกแรกเริ่ม
+                    Initial Stock
                   </label>
                   <input
                     type="number"
@@ -597,7 +597,7 @@ export default function InventoryPage() {
 
                 <div>
                   <label className="block font-medium text-zinc-700 mb-1">
-                    เกณฑ์เตือนใกล้หมด
+                    Min Stock Threshold
                   </label>
                   <input
                     type="number"
@@ -611,12 +611,12 @@ export default function InventoryPage() {
 
                 <div>
                   <label className="block font-medium text-zinc-700 mb-1">
-                    หน่วยนับ *
+                    Unit *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="เช่น รีม, กล่อง"
+                    placeholder="e.g. Ream, Box, Pcs"
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                     className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center"
@@ -626,11 +626,11 @@ export default function InventoryPage() {
 
               <div>
                 <label className="block font-medium text-zinc-700 mb-1">
-                  จุดจัดเก็บ / ชั้นวาง
+                  Storage Location / Shelf
                 </label>
                 <input
                   type="text"
-                  placeholder="เช่น ตู้พัสดุ A ชั้น 2, ห้องพักครูวิทย์"
+                  placeholder="e.g. Cabinet A Floor 2, Science Lab"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2"
@@ -647,14 +647,14 @@ export default function InventoryPage() {
                     className="rounded text-zinc-900 focus:ring-zinc-500"
                   />
                   <label htmlFor="isForSale" className="font-medium text-zinc-800">
-                    เปิดจำหน่ายที่ร้านสหกรณ์โรงเรียน (POS)
+                    Available for School Store (POS)
                   </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
                     <label className="block text-[11px] font-medium text-zinc-600 mb-0.5">
-                      ราคาจำหน่าย (บาท)
+                      Selling Price (THB)
                     </label>
                     <input
                       type="number"
@@ -668,7 +668,7 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-zinc-600 mb-0.5">
-                      ราคาทุน (บาท)
+                      Cost Price (THB)
                     </label>
                     <input
                       type="number"
@@ -692,7 +692,7 @@ export default function InventoryPage() {
                   className="rounded text-zinc-900 focus:ring-zinc-500"
                 />
                 <label htmlFor="isBorrowable" className="text-zinc-700 font-medium">
-                  เป็นอุปกรณ์ยืม-คืน (เช่น โปรเจคเตอร์, สายสัญญาณ, กุญแจ)
+                  Borrowable Equipment (e.g. Projector, HDMI Cable, Key)
                 </label>
               </div>
 
@@ -702,13 +702,13 @@ export default function InventoryPage() {
                   onClick={() => setIsAddModalOpen(false)}
                   className="flex-1 py-2 rounded-lg border border-[#E5E0D8] text-xs font-medium text-[#6B6560] hover:bg-[#F7F4EF]"
                 >
-                  ยกเลิก
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2 rounded-lg bg-[#1F4D3A] hover:bg-[#183D2E] text-xs font-medium text-white"
                 >
-                  บันทึกสินค้าใหม่
+                  Save New Item
                 </button>
               </div>
             </form>
@@ -723,7 +723,7 @@ export default function InventoryPage() {
             <div className="bg-[#1F4D3A] text-white px-5 py-3.5 flex items-center justify-between">
               <h2 className="font-semibold text-sm flex items-center gap-2">
                 <Pencil className="w-4 h-4 text-white/80" />
-                <span>แก้ไขข้อมูล: {editingItem.name}</span>
+                <span>Edit Item: {editingItem.name}</span>
               </h2>
               <button onClick={() => setEditingItem(null)} className="text-white/80 hover:text-white">
                 <X className="w-4 h-4" />
@@ -733,7 +733,7 @@ export default function InventoryPage() {
             <form onSubmit={handleSaveEditItem} className="p-5 overflow-y-auto space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-[#1A1A1A] mb-1">รหัสสินค้า / SKU</label>
+                  <label className="block font-medium text-[#1A1A1A] mb-1">Item Code / SKU</label>
                   <input
                     type="text"
                     value={editingItem.code}
@@ -742,7 +742,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-medium text-[#1A1A1A] mb-1">หมวดหมู่</label>
+                  <label className="block font-medium text-[#1A1A1A] mb-1">Category</label>
                   <select
                     value={editingItem.categoryId}
                     onChange={(e) => setEditingItem({ ...editingItem, categoryId: e.target.value })}
@@ -756,7 +756,7 @@ export default function InventoryPage() {
               </div>
 
               <div>
-                <label className="block font-medium text-[#1A1A1A] mb-1">ชื่อสินค้า / รายการ</label>
+                <label className="block font-medium text-[#1A1A1A] mb-1">Item Name / Description</label>
                 <input
                   type="text"
                   value={editingItem.name}
@@ -767,7 +767,7 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block font-medium text-[#1A1A1A] mb-1">สต็อกคงเหลือ</label>
+                  <label className="block font-medium text-[#1A1A1A] mb-1">Current Stock</label>
                   <input
                     type="number"
                     value={editingItem.currentStock}
@@ -776,7 +776,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-medium text-[#1A1A1A] mb-1">เกณฑ์เตือนใกล้หมด</label>
+                  <label className="block font-medium text-[#1A1A1A] mb-1">Min Stock Threshold</label>
                   <input
                     type="number"
                     value={editingItem.minStock}
@@ -785,7 +785,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-medium text-[#1A1A1A] mb-1">หน่วยนับ</label>
+                  <label className="block font-medium text-[#1A1A1A] mb-1">Unit</label>
                   <input
                     type="text"
                     value={editingItem.unit}
@@ -796,7 +796,7 @@ export default function InventoryPage() {
               </div>
 
               <div>
-                <label className="block font-medium text-[#1A1A1A] mb-1">จุดจัดเก็บ / ชั้นวาง</label>
+                <label className="block font-medium text-[#1A1A1A] mb-1">Storage Location / Shelf</label>
                 <input
                   type="text"
                   value={editingItem.location || ''}
@@ -815,14 +815,14 @@ export default function InventoryPage() {
                     className="rounded text-[#1F4D3A] focus:ring-[#1F4D3A]"
                   />
                   <label htmlFor="editIsForSale" className="font-medium text-[#1A1A1A]">
-                    เปิดจำหน่ายที่ร้านค้าสวัสดิการ (POS)
+                    Available for School Store (POS)
                   </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
                     <label className="block text-[11px] font-medium text-[#6B6560] mb-0.5">
-                      ราคาจำหน่าย (บาท)
+                      Selling Price (THB)
                     </label>
                     <input
                       type="number"
@@ -836,7 +836,7 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-[#6B6560] mb-0.5">
-                      ราคาทุน (บาท)
+                      Cost Price (THB)
                     </label>
                     <input
                       type="number"
@@ -857,13 +857,13 @@ export default function InventoryPage() {
                   onClick={() => setEditingItem(null)}
                   className="flex-1 py-2 rounded-lg border border-[#E5E0D8] text-xs font-medium text-[#6B6560] hover:bg-[#F7F4EF]"
                 >
-                  ยกเลิก
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2 rounded-lg bg-[#1F4D3A] hover:bg-[#183D2E] text-xs font-medium text-white"
                 >
-                  บันทึกการแก้ไข
+                  Save Changes
                 </button>
               </div>
             </form>
@@ -879,7 +879,7 @@ export default function InventoryPage() {
         onClose={() => setSelectedItemForDeduct(null)}
         onSuccess={(updated) => {
           setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)));
-          showToast(`ตัดสต็อก "${updated.name}" เรียบร้อย`);
+          showToast(`Issued "${updated.name}" successfully`);
         }}
       />
 
@@ -890,7 +890,7 @@ export default function InventoryPage() {
         onClose={() => setSelectedItemForRestock(null)}
         onSuccess={(updated, qty) => {
           setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)));
-          showToast(`รับเข้า "${updated.name}" (+${qty}) เรียบร้อย`);
+          showToast(`Received "${updated.name}" (+${qty}) successfully`);
         }}
       />
 

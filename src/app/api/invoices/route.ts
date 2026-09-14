@@ -126,17 +126,17 @@ export async function POST(request: Request) {
       dueDate,
       items,
       discount = 0,
-      creatorName = 'เจ้าหน้าที่พัสดุ / การเงิน',
+      creatorName = 'Finance / Store Staff',
       creatorEmail = '',
       note
     } = body;
 
     if (!customerName || !customerName.trim()) {
-      return NextResponse.json({ error: 'กรุณาระบุชื่อผู้รับใบแจ้งชำระ / นักเรียน' }, { status: 400 });
+      return NextResponse.json({ error: 'Customer / Student name is required' }, { status: 400 });
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'กรุณาใส่รายการอย่างน้อย 1 รายการ' }, { status: 400 });
+      return NextResponse.json({ error: 'Please specify at least 1 line item' }, { status: 400 });
     }
 
     const db = readDb();
@@ -172,10 +172,10 @@ export async function POST(request: Request) {
       validatedItems.push({
         itemId: item.itemId || undefined,
         itemCode: item.itemCode || undefined,
-        itemName: (item.itemName || 'รายการค่าใช้จ่าย').trim(),
+        itemName: (item.itemName || 'Expense Item').trim(),
         quantity: qty,
         unitPrice,
-        unit: item.unit || 'ชิ้น',
+        unit: item.unit || 'pcs',
         totalPrice: lineTotal
       });
     }

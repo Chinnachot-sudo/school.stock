@@ -21,7 +21,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-3">
         <Loader2 className="w-8 h-8 animate-spin text-[#1F4D3A]" />
-        <p className="text-xs text-[#6B6560]">กำลังตรวจสอบสิทธิ์การใช้งาน...</p>
+        <p className="text-xs text-[#6B6560]">Verifying user authorization...</p>
       </div>
     );
   }
@@ -35,7 +35,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         await signInWithGoogle();
       } catch (err: any) {
         setIsSigningIn(false);
-        setError(err.message || 'ไม่สามารถเชื่อมต่อกับ Google ได้ กรุณาลองใหม่อีกครั้ง');
+        setError(err.message || 'Unable to connect to Google. Please try again.');
       }
     };
 
@@ -60,10 +60,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           </p>
 
           <h1 className="text-lg font-bold text-[#111827] mt-3">
-            เข้าสู่ระบบ
+            Sign In
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">
-            ระบบ ERP & คลังพัสดุ (ใช้บัญชีโรงเรียนเท่านั้น)
+            School ERP & Inventory System (School account required)
           </p>
 
           {error && (
@@ -90,7 +90,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
               )}
-              <span>เข้าสู่ระบบด้วย Google</span>
+              <span>Sign in with Google</span>
             </button>
 
             <p className="text-[11px] text-[#6B6560] text-center font-mono">

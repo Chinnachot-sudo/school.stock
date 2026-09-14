@@ -37,7 +37,7 @@ export async function PUT(
       if (error) {
         let msg = error.message;
         if (msg.includes('row-level security') || msg.includes('policy')) {
-          msg = 'ติดสิทธิ์ Row Level Security (RLS) ของ Supabase table "customers" — กรุณารัน SQL ปิด RLS หรือใส่ SUPABASE_SERVICE_ROLE_KEY ใน Vercel';
+          msg = 'Supabase Row Level Security (RLS) restriction on "customers" table. Please ensure SUPABASE_SERVICE_ROLE_KEY is configured.';
         }
         return NextResponse.json({ error: msg }, { status: 500 });
       }
@@ -49,7 +49,7 @@ export async function PUT(
     const db = readDb();
     const index = db.customers?.findIndex(c => c.id === id);
     if (index === -1 || !db.customers) {
-      return NextResponse.json({ error: 'ไม่พบข้อมูลลูกค้ารายนี้' }, { status: 404 });
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
     const current = db.customers[index];
@@ -92,7 +92,7 @@ export async function DELETE(
       if (error) {
         let msg = error.message;
         if (msg.includes('row-level security') || msg.includes('policy')) {
-          msg = 'ติดสิทธิ์ Row Level Security (RLS) ของ Supabase table "customers" — กรุณารัน SQL ปิด RLS หรือใส่ SUPABASE_SERVICE_ROLE_KEY ใน Vercel';
+          msg = 'Supabase Row Level Security (RLS) restriction on "customers" table. Please ensure SUPABASE_SERVICE_ROLE_KEY is configured.';
         }
         return NextResponse.json({ error: msg }, { status: 500 });
       }

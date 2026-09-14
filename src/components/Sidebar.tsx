@@ -59,7 +59,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   useEffect(() => {
     if (pathname.startsWith('/inventory') || pathname.startsWith('/print-qr')) {
       setExpandedGroups(prev => ({ ...prev, stock: true }));
-    } else if (pathname.startsWith('/pos')) {
+    } else if (pathname.startsWith('/pos') || pathname.startsWith('/operations')) {
       setExpandedGroups(prev => ({ ...prev, operations: true }));
     } else if (pathname.startsWith('/history') || pathname.startsWith('/finance')) {
       setExpandedGroups(prev => ({ ...prev, reports: true }));
@@ -75,51 +75,50 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const menuGroups: MenuGroup[] = [
     {
       id: 'dashboard',
-      label: 'แดชบอร์ด',
+      label: 'Dashboard',
       icon: LayoutDashboard,
       href: '/',
     },
     {
       id: 'operations',
-      label: 'การทำงาน',
+      label: 'Operations',
       icon: Layers,
       subItems: [
-        { label: 'สแกนพัสดุ', href: '/?action=scan', icon: ScanLine },
-        { label: 'เบิก / POS สวัสดิการ', href: '/pos', icon: Store },
-        { label: 'ตัดสต็อกด่วน', href: '/?action=deduct', icon: Scissors },
-        { label: 'รับเข้าสต็อก', href: '/?action=restock', icon: Plus },
+        { label: 'POS / Welfare Store', href: '/pos', icon: Store },
+        { label: 'Issue / Deduct Stock', href: '/operations/deduct', icon: Scissors },
+        { label: 'Receive Stock (In)', href: '/operations/restock', icon: Plus },
       ],
     },
     {
       id: 'stock',
-      label: 'สต็อก',
+      label: 'Inventory',
       icon: Boxes,
       subItems: [
-        { label: 'รายการสินค้าทั้งหมด', href: '/inventory', icon: Boxes },
-        { label: 'พัสดุใกล้หมดเกณฑ์', href: '/inventory?filter=low', icon: Boxes },
-        ...(canPrintQr ? [{ label: 'ป้าย QR / บาร์โค้ด', href: '/print-qr', icon: QrCode }] : []),
+        { label: 'All Items', href: '/inventory', icon: Boxes },
+        { label: 'Low Stock Alert', href: '/inventory?filter=low', icon: Boxes },
+        ...(canPrintQr ? [{ label: 'QR / Barcode Labels', href: '/print-qr', icon: QrCode }] : []),
       ],
     },
     {
       id: 'reports',
-      label: 'รายงาน',
+      label: 'Reports & History',
       icon: BarChart3,
       subItems: [
-        { label: 'ประวัติธุรกรรม', href: '/history', icon: History },
-        ...(isInventoryManager ? [{ label: 'การเงิน / ออกใบเสร็จ', href: '/finance', icon: DollarSign }] : []),
-        { label: 'ส่งออกข้อมูล (Export)', href: '/history?tab=export', icon: FileText },
+        { label: 'Transaction Logs', href: '/history', icon: History },
+        ...(isInventoryManager ? [{ label: 'Financials & Receipts', href: '/finance', icon: DollarSign }] : []),
+        { label: 'Export Data (Excel)', href: '/history?tab=export', icon: FileText },
       ],
     },
     {
       id: 'settings',
-      label: 'ตั้งค่า (Backend)',
+      label: 'Settings (Backend)',
       icon: Settings,
       subItems: [
-        ...(isInventoryManager ? [{ label: 'ผู้ใช้และสิทธิ์', href: '/settings?tab=users', icon: ShieldCheck }] : []),
-        ...(isInventoryManager ? [{ label: 'ฐานข้อมูลนักเรียน/ลูกค้า', href: '/customers', icon: Users }] : []),
-        ...(isInventoryManager ? [{ label: 'เหตุผล / หน่วย / ที่เก็บ', href: '/settings?tab=master', icon: Database }] : []),
-        { label: 'เชื่อมต่อระบบ / API', href: '/settings?tab=system', icon: Sliders },
-        { label: 'ข้อมูลโรงเรียน & ทั่วไป', href: '/settings?tab=general', icon: School },
+        ...(isInventoryManager ? [{ label: 'Users & Permissions', href: '/settings?tab=users', icon: ShieldCheck }] : []),
+        ...(isInventoryManager ? [{ label: 'Student & Customer DB', href: '/customers', icon: Users }] : []),
+        ...(isInventoryManager ? [{ label: 'Categories & Storage', href: '/settings?tab=master', icon: Database }] : []),
+        { label: 'System & Integrations', href: '/settings?tab=system', icon: Sliders },
+        { label: 'School & General Info', href: '/settings?tab=general', icon: School },
       ],
     },
   ];
@@ -160,7 +159,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             Romaneeya
           </span>
           <span className="text-[10px] text-[#6B7280] block font-mono truncate">
-            โรงเรียนนานาชาติรุ่งอรุณ
+            Roong Aroon Int. School
           </span>
         </div>
       </div>
@@ -262,10 +261,10 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       {/* Sidebar Footer */}
       <div className="p-3.5 border-t border-[#E5E7EB] bg-[#F9FAFB] shrink-0">
         <div className="flex items-center justify-between text-[11px] text-[#6B7280]">
-          <span className="font-medium text-[#111827]">ERP คลังพัสดุ v2.0</span>
+          <span className="font-medium text-[#111827]">ERP Inventory v2.0</span>
           <span className="inline-flex items-center gap-1 text-[10px] text-[#027A48] font-medium bg-[#E6F5EF] px-2 py-0.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-[#027A48] animate-pulse"></span>
-            คลาวด์ออนไลน์
+            Cloud Online
           </span>
         </div>
       </div>

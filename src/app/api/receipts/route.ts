@@ -128,13 +128,13 @@ export async function POST(request: Request) {
       discount = 0,
       cashReceived,
       change,
-      cashierName = 'จนท. สหกรณ์',
+      cashierName = 'Store Cashier',
       cashierEmail = '',
       note
     } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'กรุณาเลือกสินค้าอย่างน้อย 1 รายการ' }, { status: 400 });
+      return NextResponse.json({ error: 'Please select at least 1 item' }, { status: 400 });
     }
 
     // 1. Fetch items from Supabase if configured, or fall back to local DB
@@ -157,7 +157,7 @@ export async function POST(request: Request) {
             categoryId: row.category_id,
             currentStock: Number(row.current_stock) || 0,
             minStock: Number(row.min_stock) || 5,
-            unit: row.unit || 'ชิ้น',
+            unit: row.unit || 'pcs',
             price: Number(row.price) || 0,
             cost: Number(row.cost) || 0,
             location: row.location || '',
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
                 categoryId: row.category_id,
                 currentStock: Number(row.current_stock) || 0,
                 minStock: Number(row.min_stock) || 5,
-                unit: row.unit || 'ชิ้น',
+                unit: row.unit || 'pcs',
                 price: Number(row.price) || 0,
                 cost: Number(row.cost) || 0,
                 location: row.location || '',
@@ -232,14 +232,14 @@ export async function POST(request: Request) {
         || db.items.find(i => i.id === cartItem.itemId || i.code === cartItem.itemCode);
 
       if (!targetItem) {
-        return NextResponse.json({ error: `ไม่พบสินค้า: ${cartItem.itemName || cartItem.itemId}` }, { status: 404 });
+        return NextResponse.json({ error: `Item not found: ${cartItem.itemName || cartItem.itemId}` }, { status: 404 });
       }
 
       const qty = Number(cartItem.quantity) || 1;
       if (targetItem.currentStock < qty) {
         return NextResponse.json(
           {
-            error: `สินค้า "${targetItem.name}" ยอดสต็อกไม่พอ (คงเหลือ ${targetItem.currentStock} ${targetItem.unit} แต่ต้องการซื้อ ${qty} ${targetItem.unit})`
+            error: `Insufficient stock for "${targetItem.name}" (Available: ${targetItem.currentStock} ${targetItem.unit}, Requested: ${qty} ${targetItem.unit})`
           },
           { status: 400 }
         );
@@ -268,7 +268,7 @@ export async function POST(request: Request) {
     const newReceipt: Receipt = {
       id: receiptId,
       receiptNumber,
-      customerName: (customerName || 'ผู้ปกครอง / นักเรียน').trim(),
+      customerName: (customerName || 'Parent / Student').trim(),
       customerType,
       studentClass: studentClass?.trim() || undefined,
       studentId: studentId?.trim() || undefined,
@@ -334,7 +334,7 @@ export async function POST(request: Request) {
             balance_after: newStock,
             department: 'School Store & Co-op',
             requester_name: newReceipt.customerName + (newReceipt.studentClass ? ` (${newReceipt.studentClass})` : ''),
-            note: `ขายตามใบเสร็จ #${receiptNumber}`,
+            note: `Sale as per Receipt #${receiptNumber}`,
             receipt_id: newReceipt.id,
             created_at: new Date().toISOString()
           });

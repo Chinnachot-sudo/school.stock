@@ -67,10 +67,10 @@ export default function PrintQrPage() {
         </div>
         <div>
           <h2 className="text-base font-bold text-slate-800">
-            เฉพาะเจ้าหน้าที่พัสดุและผู้ดูแลระบบ
+            Inventory Staff & Super Admin Only
           </h2>
           <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-            หน้านี้สำหรับพิมพ์ป้าย QR Code ติดตู้พัสดุ สงวนสิทธิ์สำหรับเจ้าหน้าที่พัสดุและ Super Admin เท่านั้น
+            This page is for printing inventory QR Code labels. Access is restricted to Inventory Staff and Super Admins.
           </p>
         </div>
         <div>
@@ -78,7 +78,7 @@ export default function PrintQrPage() {
             href="/"
             className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition shadow-sm"
           >
-            กลับสู่หน้าหลัก
+            Return to Dashboard
           </Link>
         </div>
       </div>
@@ -94,10 +94,10 @@ export default function PrintQrPage() {
           <div>
             <h1 className="text-base sm:text-lg font-bold text-[#1A1A1A] flex items-center gap-2">
               <QrCode className="w-5 h-5 text-[#1F4D3A]" />
-              พิมพ์สติกเกอร์ QR Code ติดชั้นวาง / กล่องพัสดุ
+              Print QR Code Labels for Shelves & Storage
             </h1>
             <p className="text-xs text-[#6B6560] mt-0.5">
-              เลือกสินค้าที่ต้องการ แล้วสั่งพิมพ์เป็นแผ่นสติกเกอร์ A4 เพื่อนำไปแปะหน้าตู้จัดเก็บ
+              Select items to generate and print A4 adhesive QR label sheets for storage shelves and bins.
             </p>
           </div>
 
@@ -108,7 +108,7 @@ export default function PrintQrPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1F4D3A] hover:bg-[#183D2E] disabled:opacity-40 text-white text-xs font-medium transition"
             >
               <Printer className="w-4 h-4" />
-              <span>สั่งพิมพ์ ({selectedItems.length} ป้าย)</span>
+              <span>Print Labels ({selectedItems.length})</span>
             </button>
           </div>
         </div>
@@ -117,9 +117,9 @@ export default function PrintQrPage() {
         <div className="bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-3 text-xs text-[#1A1A1A] flex items-start gap-2.5">
           <Info className="w-4 h-4 text-[#1F4D3A] shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>คำแนะนำสำหรับการสแกนผ่านกล้องโทรศัพท์:</strong>
+            <strong>Mobile Camera Scan Instructions:</strong>
             <p className="text-[#6B6560] mt-0.5">
-              เมื่อเลือกโหมด <u>&quot;ลิงก์เว็บเบิกทันที&quot;</u> คุณครูสามารถใช้ <strong>แอปกล้องถ่ายรูปปกติของโทรศัพท์ (หรือ LINE)</strong> ส่องป้าย QR ที่ตู้ได้ทันที จะมีแถบข้อความให้กดเพื่อเปิดหน้าตัดสต็อกของสินค้านั้นได้โดยอัตโนมัติ
+              When using <u>&quot;Direct Web Link&quot;</u>, teachers and staff can scan the QR label using their smartphone camera (or LINE app) to instantly open the deduction page for that item.
             </p>
           </div>
         </div>
@@ -136,13 +136,13 @@ export default function PrintQrPage() {
               ) : (
                 <Square className="w-4 h-4 text-[#6B6560]" />
               )}
-              <span>เลือกทั้งหมด ({selectedIds.length}/{items.length})</span>
+              <span>Select All ({selectedIds.length}/{items.length})</span>
             </button>
           </div>
 
           {/* QR Content Mode Toggle */}
           <div className="flex items-center gap-1 bg-[#F7F4EF] p-1 rounded-lg border border-[#E5E0D8]">
-            <span className="text-[#6B6560] font-medium px-1.5 text-xs">รูปแบบ QR:</span>
+            <span className="text-[#6B6560] font-medium px-1.5 text-xs">QR Format:</span>
             <button
               onClick={() => setQrMode('url')}
               className={`px-2.5 py-1 rounded-md font-medium text-xs flex items-center gap-1 transition ${
@@ -150,10 +150,10 @@ export default function PrintQrPage() {
                   ? 'bg-[#1F4D3A] text-white'
                   : 'text-[#6B6560] hover:text-[#1A1A1A]'
               }`}
-              title="กล้องโทรศัพท์ส่องแล้วเด้งเปิดหน้าตัดสต็อกเลย"
+              title="Mobile camera opens deduction page directly"
             >
               <Link2 className="w-3.5 h-3.5" />
-              <span>ลิงก์เว็บเบิกทันที (แนะนำ)</span>
+              <span>Direct Web Link (Recommended)</span>
             </button>
             <button
               onClick={() => setQrMode('code')}
@@ -162,16 +162,16 @@ export default function PrintQrPage() {
                   ? 'bg-[#1F4D3A] text-white'
                   : 'text-[#6B6560] hover:text-[#1A1A1A]'
               }`}
-              title="เฉพาะรหัสข้อความเดิม"
+              title="Raw SKU code only"
             >
               <Hash className="w-3.5 h-3.5" />
-              <span>รหัสพัสดุเดิม</span>
+              <span>Raw SKU Code</span>
             </button>
           </div>
 
           {/* Label Size Toggle */}
           <div className="flex items-center gap-2">
-            <span className="text-[#6B6560] font-medium text-xs">ขนาดป้าย:</span>
+            <span className="text-[#6B6560] font-medium text-xs">Label Size:</span>
             <button
               onClick={() => setCardSize('medium')}
               className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
@@ -180,7 +180,7 @@ export default function PrintQrPage() {
                   : 'bg-[#F7F4EF] text-[#6B6560] border-[#E5E0D8]'
               }`}
             >
-              ขนาดมาตรฐาน (ติดชั้นวาง)
+              Standard (Shelf)
             </button>
             <button
               onClick={() => setCardSize('small')}
@@ -190,7 +190,7 @@ export default function PrintQrPage() {
                   : 'bg-[#F7F4EF] text-[#6B6560] border-[#E5E0D8]'
               }`}
             >
-              ขนาดกะทัดรัด (ติดกล่อง)
+              Compact (Bin / Box)
             </button>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function PrintQrPage() {
       <div className="bg-white p-4 sm:p-8 rounded-xl border border-[#E5E0D8] min-h-[500px]">
         {selectedItems.length === 0 ? (
           <div className="p-12 text-center text-[#6B6560] no-print">
-            <p className="text-xs font-medium">กรุณาเลือกรายการสินค้าด้านบนเพื่อแสดงตัวอย่างป้าย QR</p>
+            <p className="text-xs font-medium">Please select items above to preview printable QR labels</p>
           </div>
         ) : (
           <div
@@ -222,7 +222,7 @@ export default function PrintQrPage() {
                   <button
                     onClick={() => toggleSelect(item.id)}
                     className="no-print absolute top-2 right-2 p-1 text-[#6B6560] hover:text-[#B42318]"
-                    title="ตัดรายการนี้ออกจากการพิมพ์"
+                    title="Remove from print list"
                   >
                     <CheckSquare className="w-4 h-4 text-[#1F4D3A]" />
                   </button>
@@ -231,7 +231,7 @@ export default function PrintQrPage() {
                   <div className="flex items-center gap-1.5 border-b border-[#E5E0D8] pb-1.5 mb-2">
                     <School className="w-3.5 h-3.5 text-[#1F4D3A]" />
                     <span className="text-[10px] font-semibold text-[#1A1A1A] uppercase tracking-tight">
-                      พัสดุโรงเรียน • สแกนเบิก
+                      School Stock • Scan to Issue
                     </span>
                   </div>
 
@@ -254,7 +254,7 @@ export default function PrintQrPage() {
                         {item.name}
                       </h2>
                       <span className="text-[10px] text-slate-500 block mt-0.5">
-                        หน่วยนับ: {item.unit}
+                        Unit: {item.unit}
                       </span>
                     </div>
                   </div>
@@ -263,10 +263,10 @@ export default function PrintQrPage() {
                   <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-600">
                     <span className="flex items-center gap-1 truncate">
                       <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                      <strong className="truncate">{item.location || 'คลังพัสดุกลาง'}</strong>
+                      <strong className="truncate">{item.location || 'Central Storage'}</strong>
                     </span>
                     <span className="text-[9px] text-blue-600 font-semibold shrink-0">
-                      แตะเพื่อตัดสต็อก
+                      Scan to Issue
                     </span>
                   </div>
                 </div>

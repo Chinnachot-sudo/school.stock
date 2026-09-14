@@ -16,21 +16,21 @@ export default function Navbar() {
 
   // Desktop navigation items
   const desktopNavItems = [
-    { label: 'สแกน', href: '/', icon: ScanLine },
-    { label: 'เบิก / POS', href: '/pos', icon: Store },
-    { label: 'คลังพัสดุ', href: '/inventory', icon: Boxes },
-    ...(isInventoryManager ? [{ label: 'ลูกค้า/นักเรียน', href: '/customers', icon: Users }] : []),
-    ...(isInventoryManager ? [{ label: 'การเงิน/ใบเสร็จ', href: '/finance', icon: DollarSign }] : []),
-    { label: 'ประวัติ', href: '/history', icon: History },
-    ...(canPrintQr ? [{ label: 'ป้าย QR', href: '/print-qr', icon: QrCode }] : [])
+    { label: 'Scan', href: '/', icon: ScanLine },
+    { label: 'POS Terminal', href: '/pos', icon: Store },
+    { label: 'Inventory', href: '/inventory', icon: Boxes },
+    ...(isInventoryManager ? [{ label: 'Customers', href: '/customers', icon: Users }] : []),
+    ...(isInventoryManager ? [{ label: 'Finance', href: '/finance', icon: DollarSign }] : []),
+    { label: 'History', href: '/history', icon: History },
+    ...(canPrintQr ? [{ label: 'Print QR', href: '/print-qr', icon: QrCode }] : [])
   ];
 
   // Mobile Bottom Navigation: Exactly 4 focused primary items
   const mobileNavItems = [
-    { label: 'สแกน', href: '/', icon: ScanLine },
-    { label: 'เบิก / POS', href: '/pos', icon: Store },
-    { label: 'สต็อก', href: '/inventory', icon: Boxes },
-    { label: 'ประวัติ', href: '/history', icon: History }
+    { label: 'Scan', href: '/', icon: ScanLine },
+    { label: 'POS', href: '/pos', icon: Store },
+    { label: 'Inventory', href: '/inventory', icon: Boxes },
+    { label: 'History', href: '/history', icon: History }
   ];
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
@@ -38,10 +38,10 @@ export default function Navbar() {
 
   // Clean role text without emojis
   const roleDisplay = isSuperAdmin
-    ? 'ผู้ดูแลระบบ'
+    ? 'Super Admin'
     : isInventoryManager
-    ? 'เจ้าหน้าที่'
-    : 'ครู / บุคลากร';
+    ? 'Inventory Manager'
+    : 'Teacher / Staff';
 
   return (
     <>
@@ -56,7 +56,7 @@ export default function Navbar() {
             </div>
             <div>
               <span className="text-sm font-semibold text-[#1A1A1A] tracking-tight block leading-tight">
-                โรงเรียนนานาชาติรุ่งอรุณ • พัสดุ
+                Roong Aroon International School • Inventory
               </span>
               <span className="text-[10px] text-[#6B6560] block font-mono">
                 Roong Aroon International School
@@ -113,7 +113,7 @@ export default function Navbar() {
 
             <button
               onClick={() => signOut()}
-              title="ออกจากระบบ"
+              title="Sign Out"
               className="p-1.5 rounded-md text-[#6B6560] hover:text-[#B42318] hover:bg-[#FEE4E2] transition"
             >
               <LogOut className="w-4 h-4" />

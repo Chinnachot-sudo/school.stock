@@ -59,7 +59,7 @@ export default function CreateInvoiceModal({
       itemName: '',
       quantity: 1,
       unitPrice: 0,
-      unit: 'ชิ้น'
+      unit: 'Pcs'
     }
   ]);
 
@@ -99,7 +99,7 @@ export default function CreateInvoiceModal({
         itemName: '',
         quantity: 1,
         unitPrice: 0,
-        unit: 'ชิ้น'
+        unit: 'Pcs'
       }
     ]);
   };
@@ -122,7 +122,7 @@ export default function CreateInvoiceModal({
               itemCode: foundItem.code,
               itemName: foundItem.name,
               unitPrice: foundItem.price || 0,
-              unit: foundItem.unit || 'ชิ้น'
+              unit: foundItem.unit || 'Pcs'
             }
           : li
       )
@@ -141,13 +141,13 @@ export default function CreateInvoiceModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim()) {
-      setError('กรุณาระบุชื่อผู้รับใบแจ้ง / นักเรียน');
+      setError('Please enter student / customer name');
       return;
     }
 
     const validItems = lineItems.filter(i => i.itemName.trim() && i.quantity > 0);
     if (validItems.length === 0) {
-      setError('กรุณาระบุรายการอย่างน้อย 1 รายการ');
+      setError('Please add at least 1 line item');
       return;
     }
 
@@ -155,7 +155,7 @@ export default function CreateInvoiceModal({
       setIsSubmitting(true);
       setError(null);
 
-      const creatorName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'จนท. การเงิน';
+      const creatorName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Finance Officer';
       const creatorEmail = user?.email || '';
 
       const res = await fetch('/api/invoices', {
@@ -175,7 +175,7 @@ export default function CreateInvoiceModal({
             itemName: i.itemName.trim(),
             quantity: Number(i.quantity) || 1,
             unitPrice: Number(i.unitPrice) || 0,
-            unit: i.unit || 'ชิ้น'
+            unit: i.unit || 'Pcs'
           })),
           discount: Number(discount) || 0,
           creatorName,
@@ -208,10 +208,10 @@ export default function CreateInvoiceModal({
             </div>
             <div>
               <h2 className="text-sm font-semibold leading-tight">
-                ออกใบแจ้งชำระเงินใหม่ (Half-A4 Invoice)
+                Create New Payment Notice (Half-A4 Invoice)
               </h2>
               <p className="text-[11px] text-white/70">
-                สำหรับส่งผู้ปกครองหรือนักเรียน พร้อมฝัง QR Code ทางการของโรงเรียน
+                For issuing to parents or students, with embedded official school QR payment code
               </p>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function CreateInvoiceModal({
             <div className="flex items-center justify-between">
               <span className="font-extrabold text-blue-950 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-blue-600" />
-                <span>ข้อมูลผู้รับใบแจ้ง / นักเรียน (Bill To)</span>
+                <span>Student / Customer Information (Bill To)</span>
               </span>
               {selectedCustomer && (
                 <button
@@ -253,7 +253,7 @@ export default function CreateInvoiceModal({
                   }}
                   className="text-[10px] text-blue-600 hover:underline font-bold"
                 >
-                  ล้าง / กรอกเอง
+                  Clear / Manual Entry
                 </button>
               )}
             </div>
@@ -263,7 +263,7 @@ export default function CreateInvoiceModal({
               <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="ค้นหาจากฐานข้อมูลนักเรียน (ชื่อ, ชื่อเล่น, รหัส)..."
+                placeholder="Search student directory (Name, Nickname, ID)..."
                 value={customerSearch}
                 onChange={e => {
                   setCustomerSearch(e.target.value);
@@ -287,11 +287,11 @@ export default function CreateInvoiceModal({
                           {c.name} {c.nickname ? `(${c.nickname})` : ''}
                         </p>
                         <p className="text-[10px] text-slate-400">
-                          {c.grade} {c.studentId ? `• รหัส: ${c.studentId}` : ''}
+                          {c.grade} {c.studentId ? `• ID: ${c.studentId}` : ''}
                         </p>
                       </div>
                       <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                        เลือก
+                        Select
                       </span>
                     </button>
                   ))}
@@ -303,12 +303,12 @@ export default function CreateInvoiceModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                  ชื่อ-สกุล นักเรียน / ผู้รับใบแจ้ง *
+                  Student / Customer Full Name *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="เช่น ด.ช. ปัญญาวุฒิ สุขใจ"
+                  placeholder="e.g. Sarah Jenkins or Panyawut Sukjai"
                   value={customerName}
                   onChange={e => setCustomerName(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
@@ -317,7 +317,7 @@ export default function CreateInvoiceModal({
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                  ระดับชั้น (IB Curriculum)
+                  Grade / Programme (IB Curriculum)
                 </label>
                 <select
                   value={studentClass}
@@ -332,11 +332,11 @@ export default function CreateInvoiceModal({
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                  รหัสนักเรียน (Student ID)
+                  Student ID
                 </label>
                 <input
                   type="text"
-                  placeholder="เช่น RAIS-2024-042"
+                  placeholder="e.g. RAIS-2024-042"
                   value={studentId}
                   onChange={e => setStudentId(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono"
@@ -345,7 +345,7 @@ export default function CreateInvoiceModal({
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                  เบอร์โทรศัพท์ผู้ปกครอง
+                  Parent / Guardian Phone
                 </label>
                 <input
                   type="text"
@@ -362,7 +362,7 @@ export default function CreateInvoiceModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                กำหนดชำระเงินภายใน (Due Date) *
+                Payment Due Date *
               </label>
               <input
                 type="date"
@@ -375,11 +375,11 @@ export default function CreateInvoiceModal({
 
             <div>
               <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                หมายเหตุใบแจ้งชำระ (Note)
+                Invoice Notes / Reference
               </label>
               <input
                 type="text"
-                placeholder="เช่น ค่าชุดยูนิฟอร์มประจำภาคเรียนที่ 1"
+                placeholder="e.g. School uniform set for Term 1"
                 value={note}
                 onChange={e => setNote(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
@@ -391,9 +391,9 @@ export default function CreateInvoiceModal({
           <div className="border border-slate-200 rounded-2xl p-3.5 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-extrabold text-slate-800 flex items-center gap-1.5">
-                <span>รายการพัสดุ / ค่าบริการที่ต้องชำระ</span>
+                <span>Billing Items & Services</span>
                 <span className="text-[10px] text-slate-400 font-normal">
-                  (เลือกจากคลัง หรือพิมพ์รายการใหม่ได้)
+                  (Select from catalog or type custom item)
                 </span>
               </h3>
               <button
@@ -402,7 +402,7 @@ export default function CreateInvoiceModal({
                 className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg transition"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มรายการ</span>
+                <span>Add Item</span>
               </button>
             </div>
 
@@ -419,10 +419,10 @@ export default function CreateInvoiceModal({
                     defaultValue=""
                     className="w-full sm:w-44 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px]"
                   >
-                    <option value="" disabled>-- เลือกจากคลัง --</option>
+                    <option value="" disabled>-- Select from catalog --</option>
                     {items.map(item => (
                       <option key={item.id} value={item.id}>
-                        {item.name} ({item.price ? `฿${item.price}` : 'ไม่มีราคา'})
+                        {item.name} ({item.price ? `฿${item.price}` : 'No price'})
                       </option>
                     ))}
                   </select>
@@ -431,7 +431,7 @@ export default function CreateInvoiceModal({
                   <input
                     type="text"
                     required
-                    placeholder="รายละเอียดรายการ..."
+                    placeholder="Item description..."
                     value={li.itemName}
                     onChange={e => updateLineItem(li.id, 'itemName', e.target.value)}
                     className="flex-1 w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
@@ -448,7 +448,7 @@ export default function CreateInvoiceModal({
                     />
                     <input
                       type="text"
-                      placeholder="หน่วย"
+                      placeholder="Unit"
                       value={li.unit}
                       onChange={e => updateLineItem(li.id, 'unit', e.target.value)}
                       className="w-10 text-center px-1 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px]"
@@ -489,7 +489,7 @@ export default function CreateInvoiceModal({
             {/* Calculations Row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100">
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 font-bold">ส่วนลด (บาท):</span>
+                <span className="text-slate-500 font-bold">Discount (THB):</span>
                 <input
                   type="number"
                   min="0"
@@ -500,9 +500,9 @@ export default function CreateInvoiceModal({
               </div>
 
               <div className="text-right">
-                <span className="text-slate-400 mr-2 text-[11px]">ยอดสุทธิทั้งสิ้น:</span>
+                <span className="text-slate-400 mr-2 text-[11px]">Total Net Amount:</span>
                 <span className="text-lg font-black text-blue-700">
-                  ฿{totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ฿{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -515,7 +515,7 @@ export default function CreateInvoiceModal({
               onClick={onClose}
               className="px-3.5 py-2 rounded-lg border border-[#E5E0D8] text-[#6B6560] font-medium hover:bg-[#F7F4EF] transition text-xs"
             >
-              ยกเลิก
+              Cancel
             </button>
 
             <button
@@ -528,7 +528,7 @@ export default function CreateInvoiceModal({
               ) : (
                 <CheckCircle2 className="w-3.5 h-3.5" />
               )}
-              <span>ออกใบแจ้งชำระเงิน</span>
+              <span>Generate Invoice</span>
             </button>
           </div>
 

@@ -29,13 +29,13 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
     }
   };
 
-  const thaiDate = new Date(receipt.createdAt).toLocaleDateString('th-TH', {
+  const formattedDate = new Date(receipt.createdAt).toLocaleDateString('en-GB', {
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  }) + ' น.';
+  });
 
   const isVoided = receipt.status === 'VOIDED';
 
@@ -48,7 +48,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
         {isVoided && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
             <div className="text-red-500/20 text-6xl font-black border-8 border-red-500/20 px-8 py-4 rounded-3xl -rotate-12 select-none">
-              ยกเลิก / VOID
+              VOID
             </div>
           </div>
         )}
@@ -65,7 +65,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
                   Roong Aroon International School
                 </h3>
                 <p className="text-[10px] font-medium text-slate-600">
-                  โรงเรียนนานาชาติรุ่งอรุณ • ร้านค้าสวัสดิการและสหกรณ์
+                  Roong Aroon International School • School Store & Co-op
                 </p>
               </div>
             </div>
@@ -74,16 +74,16 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
               <div className="inline-block px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide mb-1 border">
                 {isOriginal ? (
                   <span className="text-blue-800 bg-blue-50 border-blue-200">
-                    ต้นฉบับ (สำหรับผู้ปกครอง / นักเรียน)
+                    Original (Parent / Student)
                   </span>
                 ) : (
                   <span className="text-amber-800 bg-amber-50 border-amber-200">
-                    สำเนา (สำหรับโรงเรียน / ฝ่ายการเงิน)
+                    Copy (School / Accounts)
                   </span>
                 )}
               </div>
               <h4 className="font-bold text-xs text-slate-800">
-                ใบเสร็จรับเงิน (Receipt)
+                Official Receipt
               </h4>
             </div>
           </div>
@@ -92,33 +92,33 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
           <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-lg mb-2.5 border border-slate-200/80 text-[10px]">
             <div>
               <p>
-                <span className="text-slate-500 font-medium">ชื่อผู้ซื้อ: </span>
+                <span className="text-slate-500 font-medium">Customer: </span>
                 <strong className="text-slate-900 font-bold">{receipt.customerName}</strong>
               </p>
               {receipt.studentClass && (
                 <p className="mt-0.5">
-                  <span className="text-slate-500 font-medium">ระดับชั้น/ห้อง: </span>
+                  <span className="text-slate-500 font-medium">Grade / Class: </span>
                   <strong className="text-slate-800">{receipt.studentClass}</strong>
-                  {receipt.studentId && <span> (รหัส: {receipt.studentId})</span>}
+                  {receipt.studentId && <span> (ID: {receipt.studentId})</span>}
                 </p>
               )}
               <p className="mt-0.5">
-                <span className="text-slate-500 font-medium">ประเภท: </span>
+                <span className="text-slate-500 font-medium">Type: </span>
                 <span>{CUSTOMER_TYPE_LABELS[receipt.customerType] || receipt.customerType}</span>
               </p>
             </div>
 
             <div className="text-right">
               <p>
-                <span className="text-slate-500 font-medium">เลขที่ใบเสร็จ: </span>
+                <span className="text-slate-500 font-medium">Receipt No.: </span>
                 <strong className="font-mono font-bold text-blue-700">{receipt.receiptNumber}</strong>
               </p>
               <p className="mt-0.5">
-                <span className="text-slate-500 font-medium">วันที่-เวลา: </span>
-                <span>{thaiDate}</span>
+                <span className="text-slate-500 font-medium">Date & Time: </span>
+                <span>{formattedDate}</span>
               </p>
               <p className="mt-0.5">
-                <span className="text-slate-500 font-medium">วิธีชำระ: </span>
+                <span className="text-slate-500 font-medium">Payment: </span>
                 <strong className="text-emerald-700">{PAYMENT_METHOD_LABELS[receipt.paymentMethod] || receipt.paymentMethod}</strong>
               </p>
             </div>
@@ -128,11 +128,11 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
           <table className="w-full border-collapse mb-2 text-[10px]">
             <thead>
               <tr className="border-y border-slate-300 bg-slate-100 text-slate-600">
-                <th className="py-1 px-1.5 text-center w-8">ลำดับ</th>
-                <th className="py-1 px-1.5 text-left">รายการ</th>
-                <th className="py-1 px-1.5 text-center w-14">จำนวน</th>
-                <th className="py-1 px-1.5 text-right w-16">ราคา/หน่วย</th>
-                <th className="py-1 px-1.5 text-right w-18">จำนวนเงิน</th>
+                <th className="py-1 px-1.5 text-center w-8">No.</th>
+                <th className="py-1 px-1.5 text-left">Description</th>
+                <th className="py-1 px-1.5 text-center w-14">Qty</th>
+                <th className="py-1 px-1.5 text-right w-16">Unit Price</th>
+                <th className="py-1 px-1.5 text-right w-18">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -146,8 +146,8 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
                   <td className="py-1 px-1.5 text-center">
                     {item.quantity} {item.unit}
                   </td>
-                  <td className="py-1 px-1.5 text-right">{item.unitPrice.toFixed(2)}</td>
-                  <td className="py-1 px-1.5 text-right font-bold">{item.totalPrice.toFixed(2)}</td>
+                  <td className="py-1 px-1.5 text-right">฿{item.unitPrice.toFixed(2)}</td>
+                  <td className="py-1 px-1.5 text-right font-bold">฿{item.totalPrice.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -158,13 +158,13 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
           {/* Total & Summary Box */}
           <div className="border-t border-slate-200 pt-1.5 mt-1 flex items-start justify-between text-[10px]">
             <div className="flex-1 pr-2">
-              <span className="text-slate-500 block">จำนวนเงินตัวอักษร:</span>
+              <span className="text-slate-500 block">Amount in words:</span>
               <span className="font-bold text-blue-900">
                 ({thaiBahtText(receipt.totalAmount)})
               </span>
               {receipt.paymentMethod === 'CASH' && receipt.cashReceived !== undefined && (
                 <p className="text-[9px] text-slate-500 mt-1">
-                  รับเงินสด: <strong>{receipt.cashReceived.toFixed(2)}</strong> บ. | เงินทอน: <strong>{(receipt.change || 0).toFixed(2)}</strong> บ.
+                  Cash Received: <strong>฿{receipt.cashReceived.toFixed(2)}</strong> | Change: <strong>฿{(receipt.change || 0).toFixed(2)}</strong>
                 </p>
               )}
             </div>
@@ -172,13 +172,13 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
             <div className="w-44 text-right space-y-0.5">
               {receipt.discount > 0 && (
                 <div className="flex justify-between text-slate-500">
-                  <span>ส่วนลด:</span>
-                  <span>-{receipt.discount.toFixed(2)} บ.</span>
+                  <span>Discount:</span>
+                  <span>-฿{receipt.discount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between font-extrabold text-xs text-slate-900 border-t border-slate-200 pt-0.5">
-                <span>ยอดเงินสุทธิ:</span>
-                <span className="text-blue-700">{receipt.totalAmount.toFixed(2)} บาท</span>
+                <span>Total Amount:</span>
+                <span className="text-blue-700">฿{receipt.totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -187,12 +187,12 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
           <div className="grid grid-cols-2 gap-4 mt-3 pt-2 border-t border-slate-100 text-[9px] text-slate-600">
             <div className="text-center">
               <p className="mt-4 border-b border-dotted border-slate-400 w-3/4 mx-auto"></p>
-              <p className="mt-1">ผู้ชำระเงิน / ผู้รับมอบ</p>
+              <p className="mt-1">Payer / Authorized Recipient</p>
             </div>
             <div className="text-center">
               <p className="mt-4 border-b border-dotted border-slate-400 w-3/4 mx-auto"></p>
               <p className="mt-1">
-                ผู้รับเงิน: <strong>{receipt.cashierName || 'จนท. การเงิน/สหกรณ์'}</strong>
+                Cashier: <strong>{receipt.cashierName || 'Finance / Store Staff'}</strong>
               </p>
             </div>
           </div>
@@ -213,10 +213,10 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
             </div>
             <div>
               <h2 className="font-bold text-sm">
-                ใบเสร็จรับเงิน #{receipt.receiptNumber}
+                Official Receipt #{receipt.receiptNumber}
               </h2>
               <p className="text-[10px] text-slate-400">
-                ขนาด A4 ตัดครึ่ง (ต้นฉบับ + สำเนา)
+                Half-A4 Format (Original + Copy)
               </p>
             </div>
           </div>
@@ -225,10 +225,10 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
             <button
               onClick={handleCopyLink}
               className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold flex items-center gap-1.5 transition text-slate-200"
-              title="คัดลอกลิงก์ใบเสร็จ"
+              title="Copy Receipt Link"
             >
               <Copy className="w-3.5 h-3.5" />
-              <span>{copied ? 'คัดลอกแล้ว!' : 'คัดลอกลิงก์'}</span>
+              <span>{copied ? 'Copied!' : 'Copy Link'}</span>
             </button>
 
             <button
@@ -236,7 +236,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
               className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 transition"
             >
               <Printer className="w-4 h-4" />
-              <span>สั่งพิมพ์ A4 ตัดครึ่ง</span>
+              <span>Print Half-A4</span>
             </button>
 
             <button
@@ -256,7 +256,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
             <div className="flex items-center gap-2">
               <Scissors className="w-4 h-4 text-blue-600 shrink-0" />
               <span>
-                เมื่อสั่งพิมพ์ลงกระดาษ A4 จะแบ่งครึ่งอัตโนมัติ (ท่อนบนให้ผู้ปกครอง / ท่อนล่างเก็บที่โรงเรียน)
+                Prints to standard A4 sheet with automatic perforation line (top half for parent, bottom half for school archives).
               </span>
             </div>
           </div>
@@ -270,7 +270,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
             <div className="flex items-center justify-center gap-2 text-slate-400 text-[10px] my-1 select-none">
               <Scissors className="w-3.5 h-3.5 rotate-90" />
               <span className="tracking-widest font-mono">
-                - - - - - - - - ตัดตามรอยประ (แบ่งครึ่ง A4) - - - - - - - -
+                - - - - - - - - Cut Along Perforation (Half-A4) - - - - - - - -
               </span>
               <Scissors className="w-3.5 h-3.5 -rotate-90" />
             </div>

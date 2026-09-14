@@ -25,7 +25,7 @@ export default function SingleReceiptPage() {
         if (data.error) setError(data.error);
         else setReceipt(data.receipt);
       })
-      .catch(err => setError('ไม่สามารถโหลดข้อมูลใบเสร็จได้'))
+      .catch(err => setError('Unable to load receipt information'))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -33,7 +33,7 @@ export default function SingleReceiptPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <p className="text-xs text-slate-500 font-medium">กำลังโหลดข้อมูลใบเสร็จ...</p>
+        <p className="text-xs text-slate-500 font-medium">Loading receipt details...</p>
       </div>
     );
   }
@@ -41,14 +41,14 @@ export default function SingleReceiptPage() {
   if (error || !receipt) {
     return (
       <div className="bg-white rounded-3xl p-8 max-w-md mx-auto my-12 text-center border border-slate-200 shadow-sm space-y-3">
-        <h2 className="text-base font-bold text-slate-800">ไม่พบใบเสร็จรับเงิน</h2>
-        <p className="text-xs text-slate-500">{error || 'ไม่พบข้อมูลใบเสร็จในระบบ'}</p>
+        <h2 className="text-base font-bold text-slate-800">Receipt Not Found</h2>
+        <p className="text-xs text-slate-500">{error || 'Receipt record does not exist in the database'}</p>
         <Link
           href="/finance"
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>กลับหน้ารายงานการเงิน</span>
+          <span>Back to Finance</span>
         </Link>
       </div>
     );

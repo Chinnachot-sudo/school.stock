@@ -65,15 +65,15 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
     return null;
   }
 
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'เจ้าหน้าที่';
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Staff';
   const userEmail = user?.email || '';
   const userAvatar = user?.user_metadata?.avatar_url || '';
 
   const roleDisplay = isSuperAdmin
-    ? 'ผู้ดูแลระบบ'
+    ? 'Super Admin'
     : isInventoryManager
-    ? 'เจ้าหน้าที่พัสดุ'
-    : 'ครู / บุคลากร';
+    ? 'Inventory Manager'
+    : 'Teacher / Staff';
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-[#E5E7EB] h-16 px-4 lg:px-6 flex items-center justify-between gap-4">
@@ -84,7 +84,7 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
           type="button"
           onClick={onOpenMobileDrawer}
           className="p-2 -ml-1.5 rounded-lg text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] lg:hidden transition"
-          title="เปิดเมนู"
+          title="Open Menu"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -97,7 +97,7 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="ค้นหาพัสดุ, SKU, หรือกดค้นหาด่วน..."
+            placeholder="Search items, SKU, or press ⌘K..."
             className="w-full bg-[#F3F4F6] border border-transparent hover:border-[#E5E7EB] focus:border-[#0B6B4F] focus:bg-white text-xs text-[#111827] placeholder:text-[#6B7280] pl-9 pr-14 py-2 rounded-xl transition duration-150 outline-none"
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5 pointer-events-none">
@@ -116,10 +116,10 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
             type="button"
             onClick={onOpenScanner}
             className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#0B6B4F] bg-[#E6F5EF] hover:bg-[#d6f0e4] transition"
-            title="เปิดกล้องสแกนบาร์โค้ด"
+            title="Open Barcode Scanner"
           >
             <ScanLine className="w-3.5 h-3.5" />
-            <span>สแกน</span>
+            <span>Scan</span>
           </button>
         )}
 
@@ -129,7 +129,7 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
             type="button"
             onClick={() => setShowNotifications(!showNotifications)}
             className="p-2 rounded-xl text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition relative"
-            title="การแจ้งเตือน"
+            title="Notifications"
           >
             <Bell className="w-4 h-4" />
             {lowStockCount > 0 && (
@@ -141,7 +141,7 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-[#E5E7EB] shadow-lg p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="flex items-center justify-between pb-2 border-b border-[#E5E7EB]">
-                <span className="text-xs font-bold text-[#111827]">การแจ้งเตือน</span>
+                <span className="text-xs font-bold text-[#111827]">Notifications</span>
                 <button
                   onClick={() => setShowNotifications(false)}
                   className="p-1 text-[#6B7280] hover:text-[#111827]"
@@ -162,16 +162,16 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
                     <AlertCircle className="w-4 h-4 text-[#B54708] shrink-0 mt-0.5" />
                     <div>
                       <span className="text-xs font-medium text-[#B54708] block">
-                        พัสดุใกล้หมดเกณฑ์ ({lowStockCount} รายการ)
+                        Low Stock Alert ({lowStockCount} items)
                       </span>
                       <span className="text-[11px] text-[#6B7280] block mt-0.5">
-                        คลิกเพื่อดูรายการพัสดุที่ต้องเติมสต็อก
+                        Click to review items requiring restock
                       </span>
                     </div>
                   </button>
                 ) : (
                   <p className="text-xs text-[#6B7280] text-center py-4">
-                    ไม่มีการแจ้งเตือนใหม่ในขณะนี้
+                    No new notifications
                   </p>
                 )}
               </div>
@@ -206,7 +206,7 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
             type="button"
             onClick={signOut}
             className="p-2 text-[#6B7280] hover:text-[#B42318] hover:bg-red-50 rounded-xl transition ml-0.5"
-            title="ออกจากระบบ"
+            title="Sign Out"
           >
             <LogOut className="w-4 h-4" />
           </button>

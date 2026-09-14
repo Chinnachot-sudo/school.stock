@@ -76,23 +76,23 @@ export default function HistoryPage() {
   // Export to Excel
   const handleExportExcel = () => {
     const exportData = filtered.map((tx, idx) => ({
-      ลำดับ: idx + 1,
-      วันเวลา: new Date(tx.createdAt).toLocaleString('th-TH'),
-      ประเภท: tx.type === 'OUT' ? 'เบิกตัดสต็อก' : tx.type === 'IN' ? 'รับของเข้า' : 'ปรับยอด',
-      รหัสสินค้า: tx.itemCode,
-      ชื่อรายการพัสดุ: tx.itemName,
-      จำนวน: tx.quantity,
-      ยอดคงเหลือหลังรายการ: tx.balanceAfter,
-      กลุ่มสาระ_แผนก: tx.department,
-      ผู้เบิก_ผู้ทำรายการ: tx.requesterName || '-',
-      หมายเหตุ_วัตถุประสงค์: tx.note || '-'
+      No: idx + 1,
+      DateTime: new Date(tx.createdAt).toLocaleString('en-US'),
+      Type: tx.type === 'OUT' ? 'Stock Issue (Out)' : tx.type === 'IN' ? 'Stock Receipt (In)' : 'Adjustment',
+      ItemCode: tx.itemCode,
+      ItemName: tx.itemName,
+      Quantity: tx.quantity,
+      BalanceAfter: tx.balanceAfter,
+      Department: tx.department,
+      Requester: tx.requesterName || '-',
+      Remarks: tx.note || '-'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'รายงานการเบิกพัสดุ');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Stock Movement Report');
 
-    const fileName = `รายงานการเบิกจ่ายพัสดุโรงเรียน_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const fileName = `School_Stock_Movement_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
 
@@ -103,10 +103,10 @@ export default function HistoryPage() {
         <div>
           <h1 className="text-base sm:text-lg font-bold text-[#1A1A1A] flex items-center gap-2">
             <History className="w-5 h-5 text-[#1F4D3A]" />
-            ประวัติการเบิกและรับพัสดุ
+            Stock Movement & History
           </h1>
           <p className="text-xs text-[#6B6560] mt-0.5">
-            บันทึกการทำรายการย้อนหลัง สามารถคัดกรองและส่งออกไฟล์ Excel ได้
+            View audit logs of stock issue and restock transactions, filter records, and export to Excel.
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export default function HistoryPage() {
             className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] disabled:opacity-40 text-[#1A1A1A] text-xs font-medium transition"
           >
             <FileSpreadsheet className="w-4 h-4 text-[#1F4D3A]" />
-            <span>ส่งออกรายงาน Excel (.xlsx)</span>
+            <span>Export Excel Report (.xlsx)</span>
           </button>
         )}
       </div>
@@ -125,27 +125,27 @@ export default function HistoryPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E0D8]">
-          <span className="text-xs font-medium text-[#6B6560] block">รายการทั้งหมด</span>
+          <span className="text-xs font-medium text-[#6B6560] block">Total Transactions</span>
           <span className="text-2xl font-bold font-mono text-[#1A1A1A] mt-1 block">{transactions.length}</span>
-          <span className="text-[10px] text-[#6B6560]">บันทึกในระบบ</span>
+          <span className="text-[10px] text-[#6B6560]">Logged in system</span>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E0D8]">
           <span className="text-xs font-medium text-[#C45C26] flex items-center gap-1">
             <ArrowDownRight className="w-4 h-4" />
-            ยอดเบิกตัดออก (ชิ้น)
+            Total Dispatched (Pcs)
           </span>
           <span className="text-2xl font-bold font-mono text-[#C45C26] mt-1 block">-{totalOut}</span>
-          <span className="text-[10px] text-[#6B6560]">จากทุกกลุ่มสาระฯ</span>
+          <span className="text-[10px] text-[#6B6560]">Across all departments</span>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E0D8] col-span-2 sm:col-span-1">
           <span className="text-xs font-medium text-[#1F4D3A] flex items-center gap-1">
             <ArrowUpRight className="w-4 h-4" />
-            ยอดรับเข้าสต็อก (ชิ้น)
+            Total Received (Pcs)
           </span>
           <span className="text-2xl font-bold font-mono text-[#1F4D3A] mt-1 block">+{totalIn}</span>
-          <span className="text-[10px] text-[#6B6560]">พัสดุสั่งซื้อใหม่</span>
+          <span className="text-[10px] text-[#6B6560]">New supplier orders</span>
         </div>
       </div>
 
@@ -157,7 +157,7 @@ export default function HistoryPage() {
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#6B6560]" />
             <input
               type="text"
-              placeholder="ค้นหาชื่อของ, ผู้เบิก..."
+              placeholder="Search items, requester..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
@@ -171,9 +171,9 @@ export default function HistoryPage() {
               onChange={(e) => setFilterType(e.target.value)}
               className="w-full text-xs bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-2 font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
             >
-              <option value="ALL">ทุกประเภทรายการ (เบิก / รับเข้า)</option>
-              <option value="OUT">เฉพาะตัดสต็อก (เบิก)</option>
-              <option value="IN">เฉพาะรับของเข้า</option>
+              <option value="ALL">All Movement Types (In & Out)</option>
+              <option value="OUT">Dispatched / Issued Only</option>
+              <option value="IN">Received / Inward Only</option>
             </select>
           </div>
 
@@ -184,7 +184,7 @@ export default function HistoryPage() {
               onChange={(e) => setFilterDept(e.target.value)}
               className="w-full text-xs bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-2 font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
             >
-              <option value="ALL">ทุกกลุ่มสาระ / แผนก</option>
+              <option value="ALL">All Departments / Faculties</option>
               {departments.map(d => (
                 <option key={d.id} value={d.name}>{d.name}</option>
               ))}
@@ -198,23 +198,23 @@ export default function HistoryPage() {
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-[#6B6560]">
             <History className="w-8 h-8 mx-auto text-[#E5E0D8] mb-2" />
-            <p className="font-semibold text-sm text-[#1A1A1A]">ไม่พบประวัติการทำรายการ</p>
-            <p className="text-xs text-[#6B6560] mt-1">ลองปรับตัวกรองหรือคำค้นหา</p>
+            <p className="font-semibold text-sm text-[#1A1A1A]">No transaction history found</p>
+            <p className="text-xs text-[#6B6560] mt-1">Try adjusting your filter or search query</p>
           </div>
         ) : (
           <div className="divide-y divide-[#E5E0D8]">
             {filtered.map(tx => {
               const isOut = tx.type === 'OUT';
               const dateObj = new Date(tx.createdAt);
-              const dateStr = dateObj.toLocaleDateString('th-TH', {
+              const dateStr = dateObj.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
               });
-              const timeStr = dateObj.toLocaleTimeString('th-TH', {
+              const timeStr = dateObj.toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit'
-              }) + ' น.';
+              });
 
               return (
                 <div
@@ -264,7 +264,7 @@ export default function HistoryPage() {
 
                       {tx.note && (
                         <p className="text-[11px] text-[#6B6560] mt-1 bg-[#F7F4EF] border border-[#E5E0D8] px-2 py-0.5 rounded inline-block">
-                          โน้ต: {tx.note}
+                          Note: {tx.note}
                         </p>
                       )}
                     </div>
@@ -280,7 +280,7 @@ export default function HistoryPage() {
                       {isOut ? `-${tx.quantity}` : `+${tx.quantity}`}
                     </span>
                     <span className="text-[10px] text-[#6B6560] font-mono">
-                      คงเหลือ {tx.balanceAfter}
+                      Balance: {tx.balanceAfter}
                     </span>
                   </div>
                 </div>

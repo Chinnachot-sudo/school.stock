@@ -109,7 +109,7 @@ export default function HomePage() {
         );
         if (found) {
           setSelectedItemForDeduct(found);
-          showToast(`พบพัสดุ: ${found.name}`);
+          showToast(`Found item: ${found.name}`);
           window.history.replaceState({}, '', window.location.pathname);
         }
       }
@@ -125,7 +125,7 @@ export default function HomePage() {
 
   const handleDeductSuccess = (updatedItem: Item, qty: number) => {
     setItems(prev => prev.map(i => (i.id === updatedItem.id ? updatedItem : i)));
-    showToast(`ตัดสต็อก "${updatedItem.name}" จำนวน -${qty} ${updatedItem.unit} เรียบร้อย`);
+    showToast(`Deducted "${updatedItem.name}" (-${qty} ${updatedItem.unit}) successfully`);
     fetch('/api/transactions?limit=30')
       .then(res => res.json())
       .then(data => setRecentTransactions(data.transactions || []))
@@ -134,7 +134,7 @@ export default function HomePage() {
 
   const handleRestockSuccess = (updatedItem: Item, qty: number) => {
     setItems(prev => prev.map(i => (i.id === updatedItem.id ? updatedItem : i)));
-    showToast(`รับเข้า "${updatedItem.name}" จำนวน +${qty} ${updatedItem.unit} เรียบร้อย`);
+    showToast(`Restocked "${updatedItem.name}" (+${qty} ${updatedItem.unit}) successfully`);
     fetch('/api/transactions?limit=30')
       .then(res => res.json())
       .then(data => setRecentTransactions(data.transactions || []))
@@ -173,7 +173,7 @@ export default function HomePage() {
       const d = new Date();
       d.setDate(now.getDate() - i);
       const dateStr = d.toISOString().slice(0, 10);
-      const dayLabel = d.toLocaleDateString('th-TH', { weekday: 'short' });
+      const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
 
       const inQty = recentTransactions
         .filter(tx => tx.type === 'IN' && tx.createdAt.slice(0, 10) === dateStr)
@@ -225,44 +225,44 @@ export default function HomePage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#111827] tracking-tight">
-            แดชบอร์ด
+            Dashboard
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">
-            ภาพรวมคลังพัสดุและการเคลื่อนไหวสต็อกประจำวัน โรงเรียนนานาชาติรุ่งอรุณ
+            Daily inventory movements and warehouse overview • Roong Aroon Int. School
           </p>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5 shrink-0">
           {canRestock && (
-            <button
-              onClick={() => {
-                if (lowStockItems.length > 0) {
-                  setSelectedItemForRestock(lowStockItems[0]);
-                } else if (items.length > 0) {
-                  setSelectedItemForRestock(items[0]);
-                } else {
-                  setIsScannerOpen(true);
-                }
-              }}
+            <Link
+              href="/operations/restock"
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#0B6B4F] hover:bg-[#0F3D2E] active:scale-98 shadow-xs transition"
             >
               <Plus className="w-4 h-4" />
-              <span>+ รับเข้าพัสดุ</span>
-            </button>
+              <span>+ Receive Stock</span>
+            </Link>
           )}
+
+          <Link
+            href="/operations/deduct"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#111827] bg-white hover:bg-[#F3F4F6] border border-[#E5E7EB] active:scale-98 transition shadow-2xs"
+          >
+            <Scissors className="w-3.5 h-3.5 text-[#0B6B4F]" />
+            <span>Issue Stock</span>
+          </Link>
 
           <button
             onClick={() => setIsScannerOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#111827] bg-white hover:bg-[#F3F4F6] border border-[#E5E7EB] active:scale-98 transition shadow-2xs"
           >
             <ScanLine className="w-3.5 h-3.5 text-[#0B6B4F]" />
-            <span>สแกน / ตัดสต็อก</span>
+            <span>Scan</span>
           </button>
 
           <button
             onClick={fetchData}
-            title="รีเฟรชข้อมูล"
+            title="Refresh Data"
             className="p-2.5 rounded-xl bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition shadow-2xs"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -275,7 +275,7 @@ export default function HomePage() {
         {/* KPI 1: Highlight Card (Solid Green #0B6B4F with White Text) */}
         <div className="bg-[#0B6B4F] text-white rounded-2xl p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/85">พัสดุใกล้เกณฑ์สำรอง</span>
+            <span className="text-xs font-medium text-white/85">Low Stock Alert</span>
             <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#34D399]">
               <AlertCircle className="w-4 h-4" />
             </div>
@@ -287,18 +287,18 @@ export default function HomePage() {
             </span>
             <span className="text-[11px] text-white/80 block mt-1">
               {lowStockItems.length > 0
-                ? 'ต้องสั่งซื้อหรือรับเข้าเติมคลังด่วน'
-                : 'สต็อกทุกรายการอยู่ในเกณฑ์ปกติ'}
+                ? 'Items need restock or reordering soon'
+                : 'All inventory within safety stock levels'}
             </span>
           </div>
 
           <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[11px]">
-            <span className="text-white/75">เกณฑ์สำรองขั้นต่ำ</span>
+            <span className="text-white/75">Safety Threshold</span>
             <button
               onClick={() => setLowStockOnly(!lowStockOnly)}
               className="text-[#34D399] font-semibold hover:underline"
             >
-              {lowStockOnly ? 'แสดงทั้งหมด' : 'กรองเฉพาะรายการนี้'}
+              {lowStockOnly ? 'Show All' : 'Filter Low Stock'}
             </button>
           </div>
         </div>
@@ -306,7 +306,7 @@ export default function HomePage() {
         {/* KPI 2: Requisitions Today (White Card) */}
         <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#6B7280]">เบิกจ่ายวันนี้</span>
+            <span className="text-xs font-medium text-[#6B7280]">Dispatched Today</span>
             <div className="w-7 h-7 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#B54708]">
               <ArrowDownRight className="w-4 h-4" />
             </div>
@@ -317,17 +317,17 @@ export default function HomePage() {
               <span className="text-3xl font-bold font-mono text-[#111827] tracking-tight">
                 {loading ? '-' : todayRequisitions.totalQty}
               </span>
-              <span className="text-xs text-[#6B7280]">ชิ้น</span>
+              <span className="text-xs text-[#6B7280]">units</span>
             </div>
             <span className="text-[11px] text-[#6B7280] block mt-1">
-              จาก {todayRequisitions.count} ธุรกรรม (ตัดสต็อกและ POS)
+              From {todayRequisitions.count} transactions (Deduct & POS)
             </span>
           </div>
 
           <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
-            <span>ตัดจ่ายออกคลัง</span>
-            <Link href="/history" className="text-[#0B6B4F] font-medium hover:underline">
-              ดูประวัติ
+            <span>Warehouse Outflow</span>
+            <Link href="/history?type=OUT" className="text-[#0B6B4F] font-medium hover:underline">
+              View History
             </Link>
           </div>
         </div>
@@ -335,7 +335,7 @@ export default function HomePage() {
         {/* KPI 3: Restocks Today (White Card) */}
         <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#6B7280]">รับเข้าสต็อกวันนี้</span>
+            <span className="text-xs font-medium text-[#6B7280]">Received Today</span>
             <div className="w-7 h-7 rounded-lg bg-[#E6F5EF] flex items-center justify-center text-[#027A48]">
               <ArrowUpRight className="w-4 h-4" />
             </div>
@@ -346,17 +346,17 @@ export default function HomePage() {
               <span className="text-3xl font-bold font-mono text-[#027A48] tracking-tight">
                 {loading ? '-' : todayRestocks.totalQty}
               </span>
-              <span className="text-xs text-[#6B7280]">ชิ้น</span>
+              <span className="text-xs text-[#6B7280]">units</span>
             </div>
             <span className="text-[11px] text-[#6B7280] block mt-1">
-              จาก {todayRestocks.count} ธุรกรรมการรับเข้า
+              From {todayRestocks.count} receiving batches
             </span>
           </div>
 
           <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
-            <span>เติมพัสดุเข้าคลัง</span>
+            <span>Inward Inflow</span>
             <span className="text-[#027A48] font-medium font-mono text-[10px]">
-              +{todayRestocks.totalQty} รายการ
+              +{todayRestocks.totalQty} units
             </span>
           </div>
         </div>
@@ -364,7 +364,7 @@ export default function HomePage() {
         {/* KPI 4: Total Items in System (White Card) */}
         <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#6B7280]">พัสดุทั้งหมดในระบบ</span>
+            <span className="text-xs font-medium text-[#6B7280]">Total Registered Items</span>
             <div className="w-7 h-7 rounded-lg bg-[#E6F5EF] flex items-center justify-center text-[#0B6B4F]">
               <Boxes className="w-4 h-4" />
             </div>
@@ -375,17 +375,17 @@ export default function HomePage() {
               <span className="text-3xl font-bold font-mono text-[#111827] tracking-tight">
                 {loading ? '-' : items.length}
               </span>
-              <span className="text-xs text-[#6B7280]">รายการ</span>
+              <span className="text-xs text-[#6B7280]">items</span>
             </div>
             <span className="text-[11px] text-[#6B7280] block mt-1">
-              ครอบคลุม {categories.length} หมวดหมู่งานโรงเรียน
+              Across {categories.length} school categories
             </span>
           </div>
 
           <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
-            <span>คลังกลางรุ่งอรุณ</span>
+            <span>Roong Aroon Inventory</span>
             <Link href="/inventory" className="text-[#0B6B4F] font-medium hover:underline">
-              จัดการคลัง
+              Manage Stock
             </Link>
           </div>
         </div>
@@ -400,10 +400,10 @@ export default function HomePage() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-[#111827]">
-                การเคลื่อนไหวสต็อก 7 วันล่าสุด (Stock Movement Trends)
+                Stock Movement Trends (Last 7 Days)
               </h2>
               <p className="text-[11px] text-[#6B7280]">
-                เปรียบเทียบยอดการรับเข้า (+IN) และการเบิกจ่าย (-OUT) ประจำวัน
+                Daily comparison of inward receipts (+IN) and outward dispatches (-OUT)
               </p>
             </div>
           </div>
@@ -412,11 +412,11 @@ export default function HomePage() {
           <div className="flex items-center gap-4 text-xs font-medium">
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-md bg-[#0B6B4F]"></span>
-              <span className="text-[#6B7280]">รับเข้า (+IN)</span>
+              <span className="text-[#6B7280]">Received (+IN)</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-md bg-[#34D399]"></span>
-              <span className="text-[#6B7280]">เบิกจ่าย (-OUT)</span>
+              <span className="text-[#6B7280]">Dispatched (-OUT)</span>
             </div>
           </div>
         </div>
@@ -435,13 +435,13 @@ export default function HomePage() {
                     <div
                       style={{ height: `${inHeight}%` }}
                       className="w-3 sm:w-5 bg-[#0B6B4F] rounded-t-md transition-all duration-300 hover:opacity-90 relative"
-                      title={`รับเข้า: ${d.inQty} ชิ้น`}
+                      title={`Received: ${d.inQty} units`}
                     ></div>
                     {/* OUT Bar */}
                     <div
                       style={{ height: `${outHeight}%` }}
                       className="w-3 sm:w-5 bg-[#34D399] rounded-t-md transition-all duration-300 hover:opacity-90 relative"
-                      title={`เบิกจ่าย: ${d.outQty} ชิ้น`}
+                      title={`Dispatched: ${d.outQty} units`}
                     ></div>
                   </div>
                   <span className="text-[11px] font-medium text-[#6B7280] group-hover:text-[#111827] mt-1">
@@ -461,14 +461,14 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-[#B54708]" />
               <h2 className="text-sm font-bold text-[#111827]">
-                พัสดุใกล้หมดเกณฑ์สำรอง ({lowStockItems.length})
+                Low Stock Warning ({lowStockItems.length} items)
               </h2>
             </div>
             <button
               onClick={() => setLowStockOnly(!lowStockOnly)}
               className="text-xs text-[#6B7280] hover:text-[#111827] underline underline-offset-2"
             >
-              {lowStockOnly ? 'แสดงรายการทั้งหมดในตาราง' : 'กรองในตารางด้านล่าง'}
+              {lowStockOnly ? 'Show all in table below' : 'Filter in table below'}
             </button>
           </div>
 
@@ -485,7 +485,7 @@ export default function HomePage() {
                   </div>
                   <div className="text-[10px] text-[#6B7280] mt-0.5 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{item.location || 'คลังกลาง'}</span>
+                    <span className="truncate">{item.location || 'Main Storage'}</span>
                   </div>
                 </div>
 
@@ -494,14 +494,14 @@ export default function HomePage() {
                     {item.currentStock}
                   </span>
                   <span className="text-[10px] text-[#6B7280] ml-1">{item.unit}</span>
-                  <span className="text-[10px] text-[#6B7280] block">(เกณฑ์ {item.minStock})</span>
+                  <span className="text-[10px] text-[#6B7280] block">(Threshold: {item.minStock})</span>
 
                   {canRestock && (
                     <button
                       onClick={() => setSelectedItemForRestock(item)}
                       className="mt-1 px-2 py-0.5 bg-[#E6F5EF] hover:bg-[#d4efe3] text-[#0B6B4F] text-[10px] font-semibold rounded transition"
                     >
-                      +เติมสต็อก
+                      + Restock
                     </button>
                   )}
                 </div>
@@ -520,7 +520,7 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <Boxes className="w-4 h-4 text-[#0B6B4F]" />
               <h3 className="text-sm font-bold text-[#111827]">
-                รายการพัสดุในคลัง ({filteredItems.length})
+                Warehouse Inventory ({filteredItems.length})
               </h3>
             </div>
 
@@ -530,7 +530,7 @@ export default function HomePage() {
                 onChange={e => setSelectedCategory(e.target.value)}
                 className="px-3 py-1.5 bg-white border border-[#E5E7EB] rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#0B6B4F]"
               >
-                <option value="ALL">ทุกหมวดหมู่ ({items.length})</option>
+                <option value="ALL">All Categories ({items.length})</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -540,7 +540,7 @@ export default function HomePage() {
                 href="/inventory"
                 className="px-3 py-1.5 bg-white hover:bg-[#F3F4F6] border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#6B7280] hover:text-[#111827] flex items-center gap-1 transition"
               >
-                <span>จัดการคลัง</span>
+                <span>Manage</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -551,12 +551,12 @@ export default function HomePage() {
             <table className="w-full text-xs text-left">
               <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB] text-[#6B7280] font-medium text-[11px]">
                 <tr>
-                  <th className="py-2.5 px-3.5 w-28">รหัส SKU</th>
-                  <th className="py-2.5 px-3 min-w-[160px]">รายการพัสดุ</th>
-                  <th className="py-2.5 px-3 hidden sm:table-cell w-28">หมวดหมู่</th>
-                  <th className="py-2.5 px-3 w-24">สถานะ</th>
-                  <th className="py-2.5 px-3.5 w-24 text-right">คงเหลือ</th>
-                  <th className="py-2.5 px-3.5 w-24 text-right">จัดการ</th>
+                  <th className="py-2.5 px-3.5 w-28">SKU Code</th>
+                  <th className="py-2.5 px-3 min-w-[160px]">Item Description</th>
+                  <th className="py-2.5 px-3 hidden sm:table-cell w-28">Category</th>
+                  <th className="py-2.5 px-3 w-24">Status</th>
+                  <th className="py-2.5 px-3.5 w-24 text-right">Stock</th>
+                  <th className="py-2.5 px-3.5 w-24 text-right">Actions</th>
                 </tr>
               </thead>
 
@@ -577,8 +577,8 @@ export default function HomePage() {
                 <tbody>
                   <tr>
                     <td colSpan={6} className="py-10 text-center text-[#6B7280]">
-                      <p className="text-xs font-medium">ไม่พบรายการพัสดุ</p>
-                      <p className="text-[11px] mt-0.5">ลองปรับตัวกรองหรือคำค้นหา</p>
+                      <p className="text-xs font-medium">No items found</p>
+                      <p className="text-[11px] mt-0.5">Try adjusting your filters or search keywords</p>
                     </td>
                   </tr>
                 </tbody>
@@ -608,7 +608,7 @@ export default function HomePage() {
 
                         {/* Category */}
                         <td className="py-2.5 px-3 hidden sm:table-cell text-[#6B7280] text-[11px] whitespace-nowrap">
-                          {cat?.name || 'ทั่วไป'}
+                          {cat?.name || 'General'}
                         </td>
 
                         {/* Muted Status Badge with Thin Border */}
@@ -616,17 +616,17 @@ export default function HomePage() {
                           {isOut ? (
                             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#FEE4E2] text-[#B42318] border border-[#B42318]/20">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#B42318]"></span>
-                              <span>หมด</span>
+                              <span>Out</span>
                             </span>
                           ) : isLow ? (
                             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#FEF0C7] text-[#B54708] border border-[#B54708]/30">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#B54708]"></span>
-                              <span>ใกล้หมด</span>
+                              <span>Low</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E6F5EF] text-[#0B6B4F] border border-[#0B6B4F]/20">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#027A48]"></span>
-                              <span>ปกติ</span>
+                              <span>In Stock</span>
                             </span>
                           )}
                         </td>
@@ -648,9 +648,9 @@ export default function HomePage() {
                               <button
                                 onClick={() => setSelectedItemForRestock(item)}
                                 className="px-2 py-0.5 bg-[#E6F5EF] hover:bg-[#d6f0e4] text-[#0B6B4F] rounded text-[10px] font-medium transition"
-                                title="รับเข้า"
+                                title="Receive Stock"
                               >
-                                +รับ
+                                +In
                               </button>
                             )}
 
@@ -658,9 +658,9 @@ export default function HomePage() {
                               onClick={() => setSelectedItemForDeduct(item)}
                               disabled={isOut}
                               className="px-2 py-0.5 bg-[#0B6B4F] hover:bg-[#0F3D2E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
-                              title="ตัดสต็อก"
+                              title="Deduct Stock"
                             >
-                              ตัด
+                              Deduct
                             </button>
                           </div>
                         </td>
@@ -674,9 +674,9 @@ export default function HomePage() {
 
           {/* Table Footer */}
           <div className="p-3 bg-[#F9FAFB] border-t border-[#E5E7EB] text-[11px] text-[#6B7280] flex items-center justify-between">
-            <span>แสดง {filteredItems.slice(0, 10).length} จาก {filteredItems.length} รายการ</span>
+            <span>Showing {filteredItems.slice(0, 10).length} of {filteredItems.length} items</span>
             <Link href="/inventory" className="text-[#0B6B4F] font-semibold hover:underline flex items-center gap-1">
-              <span>ดูพัสดุทั้งหมด</span>
+              <span>View All Inventory</span>
               <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
@@ -688,11 +688,11 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-[#0B6B4F]" />
               <h3 className="text-sm font-bold text-[#111827]">
-                กิจกรรมล่าสุด (Activity Stream)
+                Recent Activity Stream
               </h3>
             </div>
             <Link href="/history" className="text-xs text-[#0B6B4F] font-medium hover:underline">
-              ดูทั้งหมด
+              View All
             </Link>
           </div>
 
@@ -700,7 +700,7 @@ export default function HomePage() {
           <div className="space-y-2.5 flex-1 overflow-y-auto">
             {recentTransactions.length === 0 ? (
               <p className="text-xs text-[#6B7280] text-center py-6">
-                ยังไม่มีบันทึกกิจกรรมล่าสุด
+                No recent activity recorded yet
               </p>
             ) : (
               recentTransactions.slice(0, 8).map(tx => {
@@ -717,9 +717,9 @@ export default function HomePage() {
                         </span>
                       </div>
                       <div className="text-[10px] text-[#6B7280] flex items-center gap-1.5 mt-0.5">
-                        <span>{tx.requesterName || tx.userName || tx.department || 'เจ้าหน้าที่'}</span>
+                        <span>{tx.requesterName || tx.userName || tx.department || 'Staff'}</span>
                         <span>•</span>
-                        <span>{new Date(tx.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</span>
+                        <span>{new Date(tx.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </div>
 
@@ -775,9 +775,9 @@ export default function HomePage() {
             );
             if (found) {
               setSelectedItemForDeduct(found);
-              showToast(`พบพัสดุ: ${found.name}`);
+              showToast(`Item found: ${found.name}`);
             } else {
-              showToast(`ไม่พบรหัส: ${code}`);
+              showToast(`Item not found for code: ${code}`);
             }
           }}
         />

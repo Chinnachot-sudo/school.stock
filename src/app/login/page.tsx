@@ -26,7 +26,7 @@ export default function LoginPage() {
       await signInWithGoogle();
     } catch (err: any) {
       setIsSigningIn(false);
-      setError(err.message || 'ไม่สามารถเชื่อมต่อกับ Google ได้ กรุณาลองใหม่อีกครั้ง');
+      setError(err.message || 'Unable to connect to Google. Please try again.');
     }
   };
 
@@ -59,10 +59,10 @@ export default function LoginPage() {
         </p>
 
         <h1 className="text-lg font-bold text-[#111827] mt-3">
-          เข้าสู่ระบบ
+          Sign In
         </h1>
         <p className="text-xs text-[#6B7280] mt-0.5">
-          ระบบ ERP & คลังพัสดุ (ใช้บัญชีโรงเรียนเท่านั้น)
+          School ERP & Inventory System (School account required)
         </p>
 
         {error && (
@@ -101,7 +101,7 @@ export default function LoginPage() {
                 />
               </svg>
             )}
-            <span>เข้าสู่ระบบด้วย Google</span>
+            <span>Sign in with Google</span>
           </button>
 
           <p className="text-[11px] text-[#6B6560] text-center font-mono">
@@ -116,7 +116,7 @@ export default function LoginPage() {
               href="/"
               className="text-xs text-[#6B6560] hover:text-[#1A1A1A] flex items-center justify-center gap-1 transition"
             >
-              <span>เข้าใช้งานโหมดทดสอบ (Local Dev)</span>
+              <span>Enter Local Development Mode</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
           </div>

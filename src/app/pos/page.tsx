@@ -59,7 +59,7 @@ export default function PosPage() {
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [customerName, setCustomerName] = useState('ผู้ปกครอง / นักเรียน');
+  const [customerName, setCustomerName] = useState('Parent / Student');
   const [customerType, setCustomerType] = useState<CustomerType>('STUDENT');
   const [studentClass, setStudentClass] = useState(ALL_IB_GRADES[3] || 'Grade 1 (PYP 1)');
   const [studentId, setStudentId] = useState('');
@@ -149,7 +149,7 @@ export default function PosPage() {
 
   const handleClearSelectedCustomer = () => {
     setSelectedCustomer(null);
-    setCustomerName('ผู้ปกครอง / นักเรียน');
+    setCustomerName('Parent / Student');
     setStudentId('');
     setCustomerSearch('');
   };
@@ -157,7 +157,7 @@ export default function PosPage() {
   // Add to cart
   const addToCart = (item: Item) => {
     if (item.currentStock <= 0) {
-      showToast(`สินค้า "${item.name}" หมดสต็อกแล้ว`);
+      showToast(`Item "${item.name}" is out of stock`);
       return;
     }
 
@@ -165,7 +165,7 @@ export default function PosPage() {
       const existing = prev.find(ci => ci.item.id === item.id);
       if (existing) {
         if (existing.quantity >= item.currentStock) {
-          showToast(`สินค้าคงเหลือเพียง ${item.currentStock} ${item.unit}`);
+          showToast(`Only ${item.currentStock} ${item.unit} available in stock`);
           return prev;
         }
         return prev.map(ci =>
@@ -186,7 +186,7 @@ export default function PosPage() {
           if (ci.item.id === itemId) {
             const newQty = ci.quantity + delta;
             if (newQty > ci.item.currentStock) {
-              showToast(`ไม่สามารถเพิ่มได้เกินสต็อกคงเหลือ (${ci.item.currentStock} ${ci.item.unit})`);
+              showToast(`Cannot exceed available stock (${ci.item.currentStock} ${ci.item.unit})`);
               return ci;
             }
             return newQty > 0 ? { ...ci, quantity: newQty } : null;
@@ -203,7 +203,7 @@ export default function PosPage() {
 
   const clearCart = () => {
     if (cart.length === 0) return;
-    if (confirm('ต้องการล้างรายการในตะกร้าทั้งหมดหรือไม่?')) {
+    if (confirm('Are you sure you want to clear all items in the cart?')) {
       setCart([]);
     }
   };
@@ -250,9 +250,9 @@ export default function PosPage() {
 
     if (found) {
       addToCart(found);
-      showToast(`เพิ่ม: ${found.name}`);
+      showToast(`Added: ${found.name}`);
     } else {
-      alert(`ไม่พบสินค้าที่มีรหัส "${code}" ในระบบ`);
+      alert(`Item with code "${code}" not found in system`);
     }
   };
 
@@ -260,7 +260,7 @@ export default function PosPage() {
   const handleConfirmSale = async () => {
     if (cart.length === 0) return;
     if (paymentMethod === 'CASH' && cashReceived < totalAmount) {
-      setCheckoutError(`ยอดเงินที่รับมาน้อยกว่ายอดชำระ (ขาดอีก ${(totalAmount - cashReceived).toFixed(2)} บาท)`);
+      setCheckoutError(`Tendered amount is less than total due (remaining: ฿${(totalAmount - cashReceived).toFixed(2)})`);
       return;
     }
 
@@ -268,11 +268,11 @@ export default function PosPage() {
     setCheckoutError(null);
 
     try {
-      const cashierName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'จนท. สหกรณ์';
+      const cashierName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'School Store Staff';
       const cashierEmail = user?.email || '';
 
       const payload = {
-        customerName: customerName.trim() || 'ผู้ปกครอง / นักเรียน',
+        customerName: customerName.trim() || 'Parent / Student',
         customerType,
         studentClass: customerType === 'STUDENT' ? studentClass : undefined,
         studentId: studentId.trim() || undefined,
@@ -298,7 +298,7 @@ export default function PosPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาดในการบันทึกการขาย');
+      if (!res.ok) throw new Error(data.error || 'Error recording sale transaction');
 
       // Update local item stock
       setItems(prev =>
@@ -316,9 +316,9 @@ export default function PosPage() {
       setCart([]);
       setDiscount(0);
       setCompletedReceipt(data.receipt);
-      showToast(`ออกใบเสร็จ #${data.receipt.receiptNumber} สำเร็จ`);
+      showToast(`Issued receipt #${data.receipt.receiptNumber} successfully`);
     } catch (err: any) {
-      setCheckoutError(err.message || 'ไม่สามารถบันทึกรายการขายได้');
+      setCheckoutError(err.message || 'Failed to record sale transaction');
     } finally {
       setIsSubmitting(false);
     }
@@ -331,14 +331,14 @@ export default function PosPage() {
     setCheckoutError(null);
 
     try {
-      const creatorName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'จนท. สหกรณ์';
+      const creatorName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'School Store Staff';
       const creatorEmail = user?.email || '';
 
       const res = await fetch('/api/invoices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: customerName.trim() || 'ผู้ปกครอง / นักเรียน',
+          customerName: customerName.trim() || 'Parent / Student',
           customerType,
           studentClass: customerType === 'STUDENT' ? studentClass : undefined,
           studentId: studentId.trim() || undefined,
@@ -356,7 +356,7 @@ export default function PosPage() {
           discount,
           creatorName,
           creatorEmail,
-          note: 'ออกใบแจ้งชำระจากระบบขายของ (POS)'
+          note: 'Issued invoice from School Store (POS)'
         })
       });
 
@@ -367,9 +367,9 @@ export default function PosPage() {
       setCart([]);
       setDiscount(0);
       setCompletedInvoice(data.invoice);
-      showToast(`ออกใบแจ้งชำระ #${data.invoice.invoiceNumber} สำเร็จ`);
+      showToast(`Issued invoice #${data.invoice.invoiceNumber} successfully`);
     } catch (err: any) {
-      setCheckoutError(err.message || 'ไม่สามารถออกใบแจ้งชำระได้');
+      setCheckoutError(err.message || 'Failed to issue invoice');
     } finally {
       setIsCreatingInvoice(false);
     }
@@ -394,10 +394,10 @@ export default function PosPage() {
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
-                จุดขายสินค้าและสหกรณ์โรงเรียน (School POS)
+                Point of Sale & School Store (POS)
               </h1>
               <p className="text-[11px] text-slate-400">
-                เลือกสินค้า คิดเงิน ออกใบเสร็จ A4 ตัดครึ่ง และหักสต็อกอัตโนมัติ
+                Item checkout, payment processing, half-A4 receipt printing, and live inventory sync
               </p>
             </div>
           </div>
@@ -409,7 +409,7 @@ export default function PosPage() {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95"
           >
             <Scan className="w-4 h-4 text-blue-600" />
-            <span>สแกนบาร์โค้ด</span>
+            <span>Scan Barcode</span>
           </button>
 
           <Link
@@ -417,7 +417,7 @@ export default function PosPage() {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
           >
             <ReceiptIcon className="w-4 h-4 text-emerald-600" />
-            <span>ดูใบเสร็จย้อนหลัง</span>
+            <span>Sales & Receipts</span>
           </Link>
         </div>
       </div>
@@ -434,7 +434,7 @@ export default function PosPage() {
               <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               <input
                 type="text"
-                placeholder="ค้นหาชื่อสินค้า, รหัสบาร์โค้ด..."
+                placeholder="Search items, barcode, SKU..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -451,7 +451,7 @@ export default function PosPage() {
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                ทั้งหมด ({items.length})
+                All Items ({items.length})
               </button>
 
               {categories.map(c => {
@@ -479,12 +479,12 @@ export default function PosPage() {
           {loading ? (
             <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-200">
               <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
-              <p className="text-xs font-semibold">กำลังโหลดข้อมูลสินค้า...</p>
+              <p className="text-xs font-semibold">Loading catalog items...</p>
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-200">
-              <p className="text-sm font-bold text-slate-600">ไม่พบสินค้า</p>
-              <p className="text-xs mt-1">ลองเปลี่ยนคำค้นหาหรือหมวดหมู่</p>
+              <p className="text-sm font-bold text-slate-600">No items found</p>
+              <p className="text-xs mt-1">Try changing your search query or category filter</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -506,11 +506,11 @@ export default function PosPage() {
                         </span>
                         {isOut ? (
                           <span className="text-[9px] font-bold bg-red-100 text-red-700 px-1.5 rounded">
-                            หมด
+                            Out of Stock
                           </span>
                         ) : (
                           <span className="text-[9px] font-medium text-slate-500">
-                            เหลือ {item.currentStock} {item.unit}
+                            {item.currentStock} {item.unit} left
                           </span>
                         )}
                       </div>
@@ -543,14 +543,14 @@ export default function PosPage() {
             <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4 text-amber-400" />
-                <h2 className="font-bold text-xs">ตะกร้าสินค้า ({cart.length} รายการ)</h2>
+                <h2 className="font-bold text-xs">Shopping Cart ({cart.length})</h2>
               </div>
               {cart.length > 0 && (
                 <button
                   onClick={clearCart}
                   className="text-[11px] text-slate-400 hover:text-red-400 transition"
                 >
-                  ล้างทั้งหมด
+                  Clear All
                 </button>
               )}
             </div>
@@ -559,7 +559,7 @@ export default function PosPage() {
             <div className="p-3.5 border-b border-slate-100 bg-slate-50/70 space-y-2.5 text-xs">
               <div className="flex items-center justify-between">
                 <label className="block text-[10px] font-bold text-slate-500">
-                  ประเภทผู้ซื้อ
+                  Customer Type
                 </label>
                 <Link
                   href="/customers"
@@ -567,7 +567,7 @@ export default function PosPage() {
                   className="text-[10px] text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 hover:underline"
                 >
                   <Users className="w-3 h-3" />
-                  <span>ฐานข้อมูลนักเรียน IB ↗</span>
+                  <span>IB Student Directory ↗</span>
                 </Link>
               </div>
 
@@ -583,7 +583,7 @@ export default function PosPage() {
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    {t === 'STUDENT' ? 'นักเรียน' : t === 'PARENT' ? 'ผู้ปกครอง' : t === 'TEACHER' ? 'ครู' : 'ทั่วไป'}
+                    {t === 'STUDENT' ? 'Student' : t === 'PARENT' ? 'Parent' : t === 'TEACHER' ? 'Teacher' : 'General'}
                   </button>
                 ))}
               </div>
@@ -600,7 +600,7 @@ export default function PosPage() {
                         {selectedCustomer.name} {selectedCustomer.nickname && `(${selectedCustomer.nickname})`}
                       </p>
                       <p className="text-[10px] text-blue-700">
-                        {selectedCustomer.grade} {selectedCustomer.studentId && `• รหัส ${selectedCustomer.studentId}`}
+                        {selectedCustomer.grade} {selectedCustomer.studentId && `• ID: ${selectedCustomer.studentId}`}
                       </p>
                     </div>
                   </div>
@@ -608,7 +608,7 @@ export default function PosPage() {
                     type="button"
                     onClick={handleClearSelectedCustomer}
                     className="text-slate-400 hover:text-red-500 p-1 shrink-0"
-                    title="ยกเลิกการเลือก"
+                    title="Clear selection"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -620,7 +620,7 @@ export default function PosPage() {
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#6B6560]" />
                     <input
                       type="text"
-                      placeholder="ค้นหานักเรียนในระบบ (ชื่อ, ชื่อเล่น, รหัส)..."
+                      placeholder="Search students (name, nickname, ID)..."
                       value={customerSearch}
                       onChange={e => {
                         setCustomerSearch(e.target.value);
@@ -644,7 +644,7 @@ export default function PosPage() {
                             <span className="font-semibold text-[#1A1A1A] text-xs">{c.name}</span>
                             {c.nickname && <span className="text-[#6B6560] text-xs ml-1">({c.nickname})</span>}
                             <div className="text-[10px] text-[#6B6560]">
-                              {c.grade} {c.studentId && `• รหัส ${c.studentId}`}
+                              {c.grade} {c.studentId && `• ID: ${c.studentId}`}
                             </div>
                           </div>
                           <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A]/20">
@@ -658,7 +658,7 @@ export default function PosPage() {
                           onClick={() => setShowCustomerList(false)}
                           className="text-[10px] text-[#6B6560] hover:text-[#1A1A1A] font-medium"
                         >
-                          ปิดเมนูค้นหา
+                          Close search
                         </button>
                       </div>
                     </div>
@@ -669,13 +669,13 @@ export default function PosPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                    ชื่อผู้ซื้อ / นักเรียน
+                    Customer / Student Name
                   </label>
                   <input
                     type="text"
                     value={customerName}
                     onChange={e => setCustomerName(e.target.value)}
-                    placeholder="เช่น ด.ช. วิชัย หรือ ผู้ปกครอง"
+                    placeholder="e.g. John Doe, Parent, or Staff"
                     className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
                   />
                 </div>
@@ -683,7 +683,7 @@ export default function PosPage() {
                 {customerType === 'STUDENT' ? (
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                      ระดับชั้น (IB Curriculum)
+                      IB Grade / Programme
                     </label>
                     <select
                       value={studentClass}
@@ -698,7 +698,7 @@ export default function PosPage() {
                 ) : (
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                      เบอร์โทรศัพท์ (ไม่บังคับ)
+                      Phone / Student ID (Optional)
                     </label>
                     <input
                       type="text"
@@ -717,9 +717,9 @@ export default function PosPage() {
               {cart.length === 0 ? (
                 <div className="py-12 text-center text-slate-400">
                   <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-xs font-semibold">ยังไม่มีสินค้าในตะกร้า</p>
+                  <p className="text-xs font-semibold">Cart is empty</p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    แตะที่รายการสินค้าทางซ้ายเพื่อเลือก
+                    Click an item on the left to add to cart
                   </p>
                 </div>
               ) : (
@@ -730,7 +730,7 @@ export default function PosPage() {
                         {ci.item.name}
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        @{ci.unitPrice.toFixed(2)} บาท / {ci.item.unit}
+                        @{ci.unitPrice.toFixed(2)} / {ci.item.unit}
                       </p>
                     </div>
 
@@ -762,7 +762,7 @@ export default function PosPage() {
                         onClick={() => removeFromCart(ci.item.id)}
                         className="text-[10px] text-slate-400 hover:text-red-500"
                       >
-                        ลบ
+                        Remove
                       </button>
                     </div>
                   </div>
@@ -773,12 +773,12 @@ export default function PosPage() {
             {/* Price Calculations & Checkout Button */}
             <div className="p-3.5 border-t border-slate-200 bg-slate-50 space-y-2">
               <div className="flex justify-between text-xs text-slate-600">
-                <span>ยอดรวมสินค้า:</span>
+                <span>Subtotal:</span>
                 <span className="font-bold">฿{subtotal.toFixed(2)}</span>
               </div>
 
               <div className="flex items-center justify-between text-xs text-slate-600">
-                <span>ส่วนลด (บาท):</span>
+                <span>Discount (THB):</span>
                 <input
                   type="number"
                   min="0"
@@ -791,7 +791,7 @@ export default function PosPage() {
               </div>
 
               <div className="flex justify-between text-sm font-black text-slate-900 pt-1 border-t border-slate-200">
-                <span>ยอดชำระสุทธิ:</span>
+                <span>Net Total:</span>
                 <span className="text-lg text-blue-700">฿{totalAmount.toFixed(2)}</span>
               </div>
 
@@ -801,7 +801,7 @@ export default function PosPage() {
                 className="w-full mt-2 py-2.5 rounded-lg bg-[#C45C26] hover:bg-[#A84A1C] disabled:opacity-40 text-white font-semibold text-xs flex items-center justify-center gap-2 transition"
               >
                 <Banknote className="w-4 h-4" />
-                <span>ชำระเงิน (฿{totalAmount.toFixed(2)})</span>
+                <span>Checkout (฿{totalAmount.toFixed(2)})</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -820,7 +820,7 @@ export default function PosPage() {
             <div className="bg-[#1F4D3A] text-white px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Banknote className="w-4 h-4 text-white/80" />
-                <h3 className="font-semibold text-sm">การชำระเงินและออกใบเสร็จ</h3>
+                <h3 className="font-semibold text-sm">Payment & Receipt Checkout</h3>
               </div>
               <button
                 onClick={() => setIsCheckoutOpen(false)}
@@ -841,7 +841,7 @@ export default function PosPage() {
 
               {/* Total Summary */}
               <div className="text-center p-3 bg-[#F7F4EF] border border-[#E5E0D8] rounded-xl">
-                <span className="text-xs text-[#6B6560] font-medium">ยอดที่ต้องชำระ</span>
+                <span className="text-xs text-[#6B6560] font-medium">Total Due</span>
                 <div className="text-2xl font-bold font-mono text-[#1F4D3A] mt-0.5">
                   ฿{totalAmount.toFixed(2)}
                 </div>
@@ -853,7 +853,7 @@ export default function PosPage() {
               {/* Payment Method Selector */}
               <div>
                 <label className="block font-medium text-[#1A1A1A] mb-1.5">
-                  เลือกช่องทางชำระเงิน
+                  Select Payment Method
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -866,7 +866,7 @@ export default function PosPage() {
                     }`}
                   >
                     <Banknote className="w-4 h-4" />
-                    <span>เงินสด (Cash)</span>
+                    <span>Cash</span>
                   </button>
 
                   <button
@@ -889,7 +889,7 @@ export default function PosPage() {
                 <div className="space-y-2.5 bg-[#F7F4EF] p-3 rounded-xl border border-[#E5E0D8] text-xs">
                   <div>
                     <label className="block font-medium text-[#1A1A1A] mb-1">
-                      รับเงินสดมา (บาท)
+                      Cash Received (THB)
                     </label>
                     <input
                       type="number"
@@ -908,14 +908,14 @@ export default function PosPage() {
                         onClick={() => setCashReceived(amt)}
                         className="py-1 bg-white hover:bg-[#F7F4EF] border border-[#E5E0D8] rounded text-xs font-mono text-[#1A1A1A]"
                       >
-                        {amt === totalAmount ? 'พอดี' : `฿${amt}`}
+                        {amt === totalAmount ? 'Exact' : `฿${amt}`}
                       </button>
                     ))}
                   </div>
 
                   {/* Change Calculation */}
                   <div className="flex justify-between items-center pt-2 border-t border-[#E5E0D8]">
-                    <span className="text-[#6B6560]">เงินทอน:</span>
+                    <span className="text-[#6B6560]">Change Due:</span>
                     <span className={`text-sm font-bold font-mono ${changeAmount >= 0 ? 'text-[#1F4D3A]' : 'text-[#B42318]'}`}>
                       ฿{changeAmount.toFixed(2)}
                     </span>
@@ -938,7 +938,7 @@ export default function PosPage() {
                           : 'text-[#6B6560] hover:bg-[#F7F4EF]'
                       }`}
                     >
-                      ป้าย QR ทางการโรงเรียน
+                      Official School Account
                     </button>
                     <button
                       type="button"
@@ -949,7 +949,7 @@ export default function PosPage() {
                           : 'text-[#6B6560] hover:bg-[#F7F4EF]'
                       }`}
                     >
-                      QR ระบุยอดเงินอัตโนมัติ
+                      Dynamic Amount QR
                     </button>
                   </div>
 
@@ -966,11 +966,11 @@ export default function PosPage() {
 
                       <div className="bg-white p-2.5 rounded-lg border border-[#E5E0D8] text-left space-y-1 text-[11px]">
                         <div className="flex justify-between">
-                          <span className="text-[#6B6560]">ธนาคาร:</span>
+                          <span className="text-[#6B6560]">Bank:</span>
                           <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.bankName}</strong>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-[#6B6560]">ชื่อบัญชี:</span>
+                          <span className="text-[#6B6560]">Account Name:</span>
                           <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.accountName}</strong>
                         </div>
                         <div className="flex justify-between font-mono">
@@ -982,13 +982,13 @@ export default function PosPage() {
                           <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.ref3}</strong>
                         </div>
                         <div className="flex justify-between pt-1 border-t border-[#E5E0D8] text-xs font-semibold">
-                          <span className="text-[#1A1A1A]">ยอดที่ต้องชำระ:</span>
-                          <span className="text-[#1F4D3A] font-mono">฿{totalAmount.toFixed(2)} บาท</span>
+                          <span className="text-[#1A1A1A]">Total Due:</span>
+                          <span className="text-[#1F4D3A] font-mono">฿{totalAmount.toFixed(2)} THB</span>
                         </div>
                       </div>
 
                       <p className="text-[11px] text-[#6B6560]">
-                        สแกนด้วยแอปธนาคาร ระบุยอดชำระ <strong className="text-[#1A1A1A]">฿{totalAmount.toFixed(2)} บาท</strong> แล้วแสดงสลิปแก่เจ้าหน้าที่
+                        Scan using any mobile banking app, specify <strong className="text-[#1A1A1A]">฿{totalAmount.toFixed(2)} THB</strong>, and show payment slip to staff.
                       </p>
                     </div>
                   )}
@@ -997,12 +997,12 @@ export default function PosPage() {
                   {qrMode === 'DYNAMIC' && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-center gap-1.5 font-medium text-[#1A1A1A]">
-                        <span>QR พร้อมระบุยอดเงินอัตโนมัติ</span>
+                        <span>Dynamic QR with Auto Amount</span>
                         <button
                           type="button"
                           onClick={() => setIsEditingPromptPay(!isEditingPromptPay)}
                           className="text-[#6B6560] hover:text-[#1A1A1A] p-1"
-                          title="แก้ไขเลข PromptPay"
+                          title="Edit PromptPay ID"
                         >
                           <Edit2 className="w-3 h-3" />
                         </button>
@@ -1014,7 +1014,7 @@ export default function PosPage() {
                             type="text"
                             value={promptPayId}
                             onChange={e => setPromptPayId(e.target.value)}
-                            placeholder="เบอร์โทรศัพท์ หรือ เลขผู้เสียภาษี 13 หลัก"
+                            placeholder="Phone number or 13-digit Tax ID"
                             className="flex-1 px-2 py-1 text-xs border border-[#E5E0D8] rounded-lg bg-white font-mono"
                           />
                           <button
@@ -1022,7 +1022,7 @@ export default function PosPage() {
                             onClick={() => setIsEditingPromptPay(false)}
                             className="px-2 py-1 bg-[#1F4D3A] text-white rounded-lg text-xs font-medium"
                           >
-                            ตกลง
+                            Save
                           </button>
                         </div>
                       )}
@@ -1037,13 +1037,13 @@ export default function PosPage() {
                           />
                         ) : (
                           <div className="w-[165px] h-[165px] flex items-center justify-center text-[#6B6560]">
-                            ระบุเลข PromptPay
+                            Enter PromptPay ID
                           </div>
                         )}
                       </div>
 
                       <p className="text-[11px] text-[#6B6560]">
-                        เปิดแอปธนาคาร สแกนจ่ายยอด <strong className="text-[#1A1A1A]">฿{totalAmount.toFixed(2)} บาท</strong> ได้ทันที
+                        Open banking app and scan to pay <strong className="text-[#1A1A1A]">฿{totalAmount.toFixed(2)} THB</strong> immediately
                       </p>
                       <p className="text-[10px] text-[#6B6560] font-mono">
                         (PromptPay ID: {promptPayId})
@@ -1064,7 +1064,7 @@ export default function PosPage() {
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>
-                    {isSubmitting ? 'กำลังบันทึกและหักสต็อก...' : 'ยืนยันการรับเงิน & พิมพ์ใบเสร็จ'}
+                    {isSubmitting ? 'Recording & Syncing Stock...' : 'Confirm Payment & Print Receipt'}
                   </span>
                 </button>
 
@@ -1077,7 +1077,7 @@ export default function PosPage() {
                 >
                   <FileText className="w-3.5 h-3.5 text-[#6B6560]" />
                   <span>
-                    {isCreatingInvoice ? 'กำลังออกใบแจ้งชำระ...' : 'ออกเป็นใบแจ้งชำระเงินครึ่ง A4 (ส่งผู้ปกครองชำระทีหลัง)'}
+                    {isCreatingInvoice ? 'Generating Invoice...' : 'Generate Half-A4 Invoice (Pay Later)'}
                   </span>
                 </button>
               </div>

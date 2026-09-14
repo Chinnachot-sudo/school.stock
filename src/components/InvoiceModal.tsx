@@ -31,16 +31,16 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
     }
   };
 
-  const thaiCreatedDate = new Date(invoice.createdAt).toLocaleDateString('th-TH', {
+  const enCreatedDate = new Date(invoice.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric'
   });
 
-  const thaiDueDate = invoice.dueDate
-    ? new Date(invoice.dueDate).toLocaleDateString('th-TH', {
+  const enDueDate = invoice.dueDate
+    ? new Date(invoice.dueDate).toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric'
       })
     : '-';
@@ -48,7 +48,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
   const statusInfo = INVOICE_STATUS_LABELS[invoice.status] || INVOICE_STATUS_LABELS.PENDING;
 
   const handleMarkAsPaid = async () => {
-    if (!confirm(`ยืนยันบันทึกการชำระเงินสำหรับใบแจ้ง #${invoice.invoiceNumber} ยอด ฿${invoice.totalAmount.toLocaleString()} บาท?`)) {
+    if (!confirm(`Confirm recording payment for Invoice #${invoice.invoiceNumber} in the amount of ฿${invoice.totalAmount.toLocaleString()}?`)) {
       return;
     }
 
@@ -131,7 +131,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
             </div>
             <div>
               <h2 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
-                <span>ใบแจ้งหนี้ (A4 Invoice)</span>
+                <span>Invoice (A4)</span>
                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${statusInfo.bg} ${statusInfo.color}`}>
                   {statusInfo.label}
                 </span>
@@ -150,17 +150,17 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                 className="bg-[#027A48] hover:bg-[#036039] disabled:opacity-50 text-white font-medium text-xs px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 transition"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>บันทึกชำระแล้ว</span>
+                <span>Mark as Paid</span>
               </button>
             )}
 
             <button
               onClick={handleCopyLink}
               className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs flex items-center gap-1 font-medium transition"
-              title="คัดลอกลิงก์"
+              title="Copy Link"
             >
               <Copy className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{copied ? 'คัดลอกแล้ว!' : 'แชร์'}</span>
+              <span className="hidden sm:inline">{copied ? 'Copied!' : 'Share'}</span>
             </button>
 
             <button
@@ -168,7 +168,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
               className="bg-white hover:bg-white/90 text-[#0B6B4F] font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 transition active:scale-95"
             >
               <Printer className="w-4 h-4" />
-              <span>พิมพ์ใบแจ้งหนี้ (A4)</span>
+              <span>Print Invoice (A4)</span>
             </button>
 
             <button
@@ -193,20 +193,20 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
             {invoice.status === 'CANCELLED' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                 <div className="text-red-500/20 text-7xl font-black border-8 border-red-500/20 px-10 py-5 rounded-3xl -rotate-12 select-none">
-                  ยกเลิก / CANCELLED
+                  CANCELLED
                 </div>
               </div>
             )}
 
             <div>
-              {/* 1. TOP HEADER: INVOICE & LOGO (สอดคล้องตามภาพตัวอย่าง) */}
+              {/* 1. TOP HEADER: INVOICE & LOGO */}
               <div className="flex items-start justify-between pb-6 mb-6">
                 <div>
                   <h1 className="text-4xl sm:text-5xl font-extrabold text-[#111827] tracking-tight font-sans">
                     INVOICE
                   </h1>
-                  <h2 className="text-base sm:text-lg font-bold text-[#111827] mt-0.5">
-                    ใบแจ้งหนี้
+                  <h2 className="text-base sm:text-lg font-semibold text-[#6B7280] mt-0.5">
+                    Official Payment Notice
                   </h2>
                 </div>
 
@@ -230,36 +230,36 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                 </div>
               </div>
 
-              {/* 2. METADATA SECTION: CUSTOMER, DOCUMENT & ISSUER DETAILS (ตาราง 2 คอลัมน์ตามรูปตัวอย่าง) */}
+              {/* 2. METADATA SECTION: CUSTOMER, DOCUMENT & ISSUER DETAILS */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 pb-6 mb-6 text-xs">
                 {/* Column 1: Customer Details */}
                 <div className="space-y-1.5">
                   <div className="flex">
-                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">ชื่อลูกค้า</span>
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Customer Name</span>
                     <span className="font-bold text-[#111827] flex-1">{invoice.customerName}</span>
                   </div>
                   <div className="flex">
-                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">ที่อยู่</span>
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Address / Class</span>
                     <span className="text-[#111827] flex-1">
-                      {invoice.studentClass || 'โรงเรียนนานาชาติรุ่งอรุณ'} (ชั้นเรียน/แผนก)
+                      {invoice.studentClass || 'Roong Aroon International School'} (Class / Dept)
                     </span>
                   </div>
                   <div className="flex">
-                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">เลขผู้เสียภาษี</span>
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Tax ID / Student ID</span>
                     <span className="text-[#111827] flex-1 font-mono">{invoice.studentId || '-'}</span>
                   </div>
                   <div className="flex">
-                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">อีเมล</span>
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Email</span>
                     <span className="text-[#111827] flex-1 truncate font-mono">
                       {(invoice as any).email || (invoice.studentId ? `${invoice.studentId}@roong-aroon.ac.th` : '-')}
                     </span>
                   </div>
                   <div className="flex">
-                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">ผู้ติดต่อ</span>
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Contact Person</span>
                     <span className="text-[#111827] flex-1">{invoice.parentName || invoice.customerName}</span>
                   </div>
                   <div className="flex">
-                    <span className="w-24 text-[#6B7280] shrink-0 font-medium">เบอร์โทรศัพท์</span>
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Phone</span>
                     <span className="text-[#111827] flex-1 font-mono">{invoice.phone || '-'}</span>
                   </div>
                 </div>
@@ -267,24 +267,24 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                 {/* Column 2: Document Metadata & Dates */}
                 <div className="space-y-1.5 md:text-right">
                   <div className="flex md:justify-end">
-                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">เลขที่</span>
+                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Invoice No.</span>
                     <span className="font-bold text-[#111827] font-mono">#{invoice.invoiceNumber}</span>
                   </div>
                   <div className="flex md:justify-end">
-                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">วันที่</span>
-                    <span className="text-[#111827]">{thaiCreatedDate}</span>
+                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Issue Date</span>
+                    <span className="text-[#111827]">{enCreatedDate}</span>
                   </div>
                   <div className="flex md:justify-end">
-                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">ครบกำหนด</span>
-                    <span className="font-bold text-[#B42318]">{thaiDueDate}</span>
+                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Due Date</span>
+                    <span className="font-bold text-[#B42318]">{enDueDate}</span>
                   </div>
                   <div className="flex md:justify-end">
-                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">เครดิต</span>
-                    <span className="text-[#111827]">7 วัน (ชำระตามกำหนด)</span>
+                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Payment Terms</span>
+                    <span className="text-[#111827]">7 Days upon receipt</span>
                   </div>
                   <div className="flex md:justify-end">
-                    <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">อ้างอิง</span>
-                    <span className="text-[#111827]">ใบเบิกพัสดุและสวัสดิการการศึกษา</span>
+                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Reference</span>
+                    <span className="text-[#111827]">School Supply & Welfare Requisition</span>
                   </div>
                 </div>
 
@@ -292,40 +292,40 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                 <div className="md:col-span-2 pt-3 border-t border-[#E5E7EB] grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] text-[#4B5563]">
                   <div className="space-y-1">
                     <div className="flex">
-                      <span className="w-24 text-[#6B7280] shrink-0 font-medium">ผู้ออก</span>
+                      <span className="w-28 text-[#6B7280] shrink-0 font-medium">Issued By</span>
                       <span className="font-medium text-[#111827]">
-                        โรงเรียนนานาชาติรุ่งอรุณ (Roong Aroon International School) • Romaneeya
+                        Roong Aroon International School • Romaneeya
                       </span>
                     </div>
                     <div className="flex">
-                      <span className="w-24 text-[#6B7280] shrink-0 font-medium">ที่อยู่</span>
-                      <span>392 ถนนริมคลองชักพระ แขวงคลองขวาง เขตภาษีเจริญ กรุงเทพฯ 10160</span>
+                      <span className="w-28 text-[#6B7280] shrink-0 font-medium">Address</span>
+                      <span>392 Rim Klong Chak Phra Rd., Khlong Khwang, Phasi Charoen, Bangkok 10160</span>
                     </div>
                   </div>
 
                   <div className="space-y-1 md:text-right">
                     <div className="flex md:justify-end">
-                      <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">เลขประจำตัวผู้เสียภาษี</span>
+                      <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">School Tax ID</span>
                       <span className="font-mono">0105541008918</span>
                     </div>
                     <div className="flex md:justify-end">
-                      <span className="w-24 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">เบอร์โทร / อีเมล</span>
+                      <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Tel / Email</span>
                       <span>02-870-7512 / finance@roong-aroon.ac.th</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 3. TABLE OF ITEMS (กรอบตารางเส้นบางแบบภาพตัวอย่าง) */}
+              {/* 3. TABLE OF ITEMS */}
               <div className="border border-[#E5E7EB] rounded-lg overflow-hidden mb-6">
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="border-b border-[#E5E7EB] text-[#111827] font-semibold text-[11px] bg-[#F9FAFB]">
-                      <th className="py-2.5 px-3 text-center w-12">ลำดับ</th>
-                      <th className="py-2.5 px-4 text-left">รายการสินค้า</th>
-                      <th className="py-2.5 px-3 text-center w-20">จำนวน</th>
-                      <th className="py-2.5 px-4 text-right w-28">ราคา/หน่วย</th>
-                      <th className="py-2.5 px-4 text-right w-32">ราคารวม</th>
+                      <th className="py-2.5 px-3 text-center w-12">No.</th>
+                      <th className="py-2.5 px-4 text-left">Item Description</th>
+                      <th className="py-2.5 px-3 text-center w-20">Qty</th>
+                      <th className="py-2.5 px-4 text-right w-28">Unit Price</th>
+                      <th className="py-2.5 px-4 text-right w-32">Total Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
@@ -370,40 +370,40 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
               <div className="border-t border-[#E5E7EB] pt-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 {/* Notes */}
                 <div>
-                  <span className="font-bold text-[#111827] block mb-1">หมายเหตุ</span>
+                  <span className="font-bold text-[#111827] block mb-1">Notes</span>
                   <p className="text-[#6B7280] text-[11px] leading-relaxed">
-                    {invoice.note || 'โปรดชำระภายในกำหนดเวลา และส่งหลักฐานการโอนเงินเพื่อออกใบเสร็จรับเงินฉบับจริง'}
+                    {invoice.note || 'Please process payment by the due date and submit the transfer receipt for official receipt issuance.'}
                   </p>
                 </div>
 
                 {/* Subtotals */}
                 <div className="space-y-1.5 md:text-right">
                   <div className="flex md:justify-end">
-                    <span className="w-32 text-[#6B7280]">ราคารวม</span>
+                    <span className="w-32 text-[#6B7280]">Subtotal</span>
                     <span className="w-32 font-mono font-medium text-[#111827]">
                       {invoice.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex md:justify-end">
-                    <span className="w-32 text-[#6B7280]">ส่วนลด</span>
+                    <span className="w-32 text-[#6B7280]">Discount</span>
                     <span className="w-32 font-mono text-[#6B7280]">
                       {invoice.discount > 0 ? `-${invoice.discount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                     </span>
                   </div>
                   <div className="flex md:justify-end">
-                    <span className="w-32 text-[#6B7280]">ภาษีมูลค่าเพิ่ม 7%</span>
+                    <span className="w-32 text-[#6B7280]">VAT (7%)</span>
                     <span className="w-32 font-mono text-[#6B7280]">
-                      0.00 (ยกเว้น)
+                      0.00 (Exempt)
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* 5. GRAND TOTAL BOX (สไตล์แถบไฮไลต์ตามตัวอย่าง) */}
+              {/* 5. GRAND TOTAL BOX */}
               <div className="border border-[#E5E7EB] rounded-lg p-4 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F9FAFB]/50">
                 <div>
                   <span className="font-bold text-sm text-[#111827] block">
-                    จำนวนเงินรวมทั้งสิ้น
+                    Total Amount Due
                   </span>
                   <span className="text-xs text-[#0B6B4F] font-semibold mt-0.5 block">
                     ({thaiBahtText(invoice.totalAmount)})
@@ -417,43 +417,43 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                 </div>
               </div>
 
-              {/* 6. DUAL SIGNATURES (ช่องลงชื่อผู้รับใบแจ้งหนี้ และ ผู้อนุมัติ ตามตัวอย่าง) */}
+              {/* 6. DUAL SIGNATURES */}
               <div className="grid grid-cols-2 gap-8 text-center text-xs text-[#6B7280] mb-8 pt-4">
                 <div className="space-y-1.5">
                   <div className="border-b border-[#D1D5DB] w-48 sm:w-60 mx-auto h-12"></div>
-                  <p className="font-medium text-[#111827]">ผู้รับใบแจ้งหนี้</p>
+                  <p className="font-medium text-[#111827]">Received By / Customer Signature</p>
                   <p className="text-[11px] text-[#6B7280]">({invoice.customerName})</p>
-                  <p className="text-[10px] text-[#9CA3AF]">วันที่ ..... / ..... / ..........</p>
+                  <p className="text-[10px] text-[#9CA3AF]">Date ..... / ..... / ..........</p>
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="border-b border-[#D1D5DB] w-48 sm:w-60 mx-auto h-12"></div>
-                  <p className="font-medium text-[#111827]">ผู้อนุมัติ</p>
-                  <p className="text-[11px] text-[#6B7280]">({invoice.creatorName || 'เจ้าหน้าที่การเงินโรงเรียน'})</p>
-                  <p className="text-[10px] text-[#9CA3AF]">วันที่ ..... / ..... / ..........</p>
+                  <p className="font-medium text-[#111827]">Authorized Signatory</p>
+                  <p className="text-[11px] text-[#6B7280]">({invoice.creatorName || 'School Finance Officer'})</p>
+                  <p className="text-[10px] text-[#9CA3AF]">Date ..... / ..... / ..........</p>
                 </div>
               </div>
 
-              {/* 7. FOOTER: TERMS & PAYMENT METHODS (สอดคล้องตามตัวอย่าง) */}
+              {/* 7. FOOTER: TERMS & PAYMENT METHODS */}
               <div className="border-t border-[#E5E7EB] pt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
                 {/* Terms */}
                 <div>
-                  <h4 className="font-bold text-[#111827] mb-1.5">เงื่อนไข</h4>
+                  <h4 className="font-bold text-[#111827] mb-1.5">Terms & Conditions</h4>
                   <ul className="text-[11px] text-[#6B7280] space-y-1 list-disc list-inside">
-                    <li>เอกสารนี้เป็นใบแจ้งหนี้สำหรับชำระค่าสวัสดิการการศึกษาและพัสดุ</li>
-                    <li>เมื่อชำระเงินเรียบร้อย กรุณาส่งสลิปหลักฐานเพื่อออกใบเสร็จรับเงินฉบับจริง</li>
-                    <li>หากพ้นกำหนดชำระ กรุณาติดต่อฝ่ายการเงินโรงเรียนเพื่อปรับปรุงเอกสาร</li>
+                    <li>This document is an official payment notice for educational supplies and student welfare.</li>
+                    <li>Upon payment completion, please submit transfer confirmation for official receipt issuance.</li>
+                    <li>For overdue payments or inquiries, please contact the School Finance Office.</li>
                   </ul>
                 </div>
 
                 {/* Payment Instructions + Mini PromptPay QR */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <h4 className="font-bold text-[#111827] mb-1">ช่องทางการชำระเงิน</h4>
+                    <h4 className="font-bold text-[#111827] mb-1">Payment Instructions</h4>
                     <div className="text-[11px] text-[#4B5563] space-y-0.5">
-                      <p><span className="text-[#6B7280]">ชื่อบัญชี:</span> <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong></p>
-                      <p><span className="text-[#6B7280]">เลขที่บัญชี:</span> <strong className="font-mono text-[#0B6B4F]">002203089172</strong></p>
-                      <p><span className="text-[#6B7280]">ธนาคาร:</span> {SCHOOL_BANK_INFO.bankName}</p>
+                      <p><span className="text-[#6B7280]">Account Name:</span> <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong></p>
+                      <p><span className="text-[#6B7280]">Account No.:</span> <strong className="font-mono text-[#0B6B4F]">002203089172</strong></p>
+                      <p><span className="text-[#6B7280]">Bank:</span> {SCHOOL_BANK_INFO.bankName}</p>
                       <p className="text-[10px] text-[#6B7280] font-mono mt-1">Ref 1: {SCHOOL_BANK_INFO.ref1} | Ref 3: {SCHOOL_BANK_INFO.ref3}</p>
                     </div>
                   </div>

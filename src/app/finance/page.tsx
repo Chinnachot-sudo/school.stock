@@ -186,7 +186,7 @@ export default function FinancePage() {
   const handleVoidReceipt = async (receipt: Receipt) => {
     if (receipt.status === 'VOIDED') return;
 
-    const reason = prompt(`กรุณาระบุเหตุผลการยกเลิกใบเสร็จ #${receipt.receiptNumber}:\n(ระบบจะคืนยอดสต็อกสินค้าทั้งหมดกลับเข้าคลังอัตโนมัติ)`);
+    const reason = prompt(`Please specify reason for voiding receipt #${receipt.receiptNumber}:\n(All items will be automatically returned to inventory stock)`);
     if (!reason || !reason.trim()) return;
 
     try {
@@ -197,12 +197,12 @@ export default function FinancePage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถยกเลิกใบเสร็จได้');
+      if (!res.ok) throw new Error(data.error || 'Failed to void receipt');
 
       setReceipts(prev =>
         prev.map(r => (r.id === receipt.id ? { ...r, status: 'VOIDED', voidReason: reason.trim() } : r))
       );
-      showToast(`ยกเลิกใบเสร็จ #${receipt.receiptNumber} และคืนสต็อกเรียบร้อย`);
+      showToast(`Receipt #${receipt.receiptNumber} voided and stock returned.`);
     } catch (err: any) {
       alert(err.message);
     }
@@ -211,7 +211,7 @@ export default function FinancePage() {
   // Cancel invoice handler
   const handleCancelInvoice = async (invoice: Invoice) => {
     if (invoice.status === 'CANCELLED') return;
-    const reason = prompt(`กรุณาระบุเหตุผลการยกเลิกใบแจ้งชำระ #${invoice.invoiceNumber}:`);
+    const reason = prompt(`Please specify reason for cancelling invoice #${invoice.invoiceNumber}:`);
     if (!reason || !reason.trim()) return;
 
     try {
@@ -226,7 +226,7 @@ export default function FinancePage() {
       setInvoices(prev =>
         prev.map(i => (i.id === invoice.id ? { ...i, status: 'CANCELLED', note: reason.trim() } : i))
       );
-      showToast(`ยกเลิกใบแจ้งชำระ #${invoice.invoiceNumber} เรียบร้อย`);
+      showToast(`Invoice #${invoice.invoiceNumber} cancelled.`);
     } catch (err: any) {
       alert(err.message);
     }
@@ -234,7 +234,7 @@ export default function FinancePage() {
 
   // Mark invoice as paid
   const handleMarkInvoicePaid = async (invoice: Invoice) => {
-    if (!confirm(`ยืนยันบันทึกการรับชำระเงินสำหรับใบแจ้ง #${invoice.invoiceNumber} ยอด ฿${invoice.totalAmount.toLocaleString()} บาท?`)) {
+    if (!confirm(`Confirm recording payment for invoice #${invoice.invoiceNumber} for ฿${invoice.totalAmount.toLocaleString()}?`)) {
       return;
     }
 
@@ -254,7 +254,7 @@ export default function FinancePage() {
       setInvoices(prev =>
         prev.map(i => (i.id === invoice.id ? { ...i, status: 'PAID', paidAt: new Date().toISOString() } : i))
       );
-      showToast(`บันทึกชำระเงินสำหรับ #${invoice.invoiceNumber} เรียบร้อย`);
+      showToast(`Payment recorded for invoice #${invoice.invoiceNumber}.`);
     } catch (err: any) {
       alert(err.message);
     }
@@ -267,29 +267,29 @@ export default function FinancePage() {
     const rows = filteredReceipts.map((r, idx) => {
       const itemsList = r.items.map(i => `${i.itemName} x${i.quantity}`).join(', ');
       return {
-        ลำดับ: idx + 1,
-        เลขที่ใบเสร็จ: r.receiptNumber,
-        วันที่เวลา: new Date(r.createdAt).toLocaleString('th-TH'),
-        ชื่อผู้ซื้อ: r.customerName,
-        ประเภทผู้ซื้อ: CUSTOMER_TYPE_LABELS[r.customerType] || r.customerType,
-        ชั้นเรียน: r.studentClass || '-',
-        รายการสินค้า: itemsList,
-        ยอดรวมก่อนหักส่วนลด: r.subtotal,
-        ส่วนลด: r.discount,
-        ยอดเงินสุทธิ: r.totalAmount,
-        ช่องทางชำระเงิน: PAYMENT_METHOD_LABELS[r.paymentMethod] || r.paymentMethod,
-        รับเงินสด: r.cashReceived || r.totalAmount,
-        เงินทอน: r.change || 0,
-        ผู้รับเงิน: r.cashierName,
-        สถานะ: r.status === 'COMPLETED' ? 'ปกติ' : `ยกเลิก (${r.voidReason || '-'})`
+        'No.': idx + 1,
+        'Receipt No.': r.receiptNumber,
+        'Date & Time': new Date(r.createdAt).toLocaleString('en-US'),
+        'Customer Name': r.customerName,
+        'Customer Type': CUSTOMER_TYPE_LABELS[r.customerType] || r.customerType,
+        'Grade / Class': r.studentClass || '-',
+        'Purchased Items': itemsList,
+        'Subtotal': r.subtotal,
+        'Discount': r.discount,
+        'Total Amount': r.totalAmount,
+        'Payment Method': PAYMENT_METHOD_LABELS[r.paymentMethod] || r.paymentMethod,
+        'Cash Received': r.cashReceived || r.totalAmount,
+        'Change': r.change || 0,
+        'Cashier': r.cashierName,
+        'Status': r.status === 'COMPLETED' ? 'Completed' : `Voided (${r.voidReason || '-'})`
       };
     });
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'รายงานรายรับสหกรณ์');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'School Store Revenue');
 
-    const fileName = `รายงานรายรับ_การเงิน_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const fileName = `financial_revenue_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
 
@@ -317,10 +317,10 @@ export default function FinancePage() {
           </div>
           <h1 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
             <DollarSign className="w-6 h-6 text-emerald-600" />
-            <span>ศูนย์บริหารการเงินและใบแจ้งชำระเงิน</span>
+            <span>Finance & Invoicing Center</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            สรุปยอดขายสหกรณ์ ปิดกะรายวัน และออกใบแจ้งชำระเงินครึ่ง A4 พร้อม QR Code ทางการ
+            School store revenue summary, daily register closeout, and half-A4 invoices with official QR code
           </p>
         </div>
 
@@ -330,7 +330,7 @@ export default function FinancePage() {
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition"
           >
             <Plus className="w-4 h-4" />
-            <span>ออกใบแจ้งชำระใหม่</span>
+            <span>New Invoice</span>
           </button>
 
           <Link
@@ -338,14 +338,14 @@ export default function FinancePage() {
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
           >
             <Store className="w-4 h-4 text-blue-600" />
-            <span>เปิด POS</span>
+            <span>Open POS</span>
           </Link>
 
           <button
             onClick={handleExportExcel}
             disabled={filteredReceipts.length === 0}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-bold transition"
-            title="ส่งออก Excel"
+            title="Export Excel"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span className="hidden sm:inline">Excel</span>
@@ -358,64 +358,64 @@ export default function FinancePage() {
         {/* Total Sales */}
         <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:shadow-md transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">ยอดขายรวมสุทธิ</span>
+            <span className="text-xs font-bold text-slate-500">Total Net Revenue</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-blue-700 mt-2 tracking-tight">
-            ฿{totalSales.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ฿{totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <span className="text-[10px] text-slate-400 mt-0.5 block">
-            จาก {activeReceipts.length} ใบเสร็จรับเงิน
+            From {activeReceipts.length} receipts
           </span>
         </div>
 
         {/* Total Cash */}
         <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:shadow-md transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-700">เงินสดในเก๊ะ (Cash)</span>
+            <span className="text-xs font-bold text-emerald-700">Cash in Drawer</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Banknote className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-700 mt-2 tracking-tight">
-            ฿{totalCash.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ฿{totalCash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <span className="text-[10px] text-slate-400 mt-0.5 block">
-            สำหรับนับเงินปิดกะ
+            For register shift closeout
           </span>
         </div>
 
         {/* Total PromptPay */}
         <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:shadow-md transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-700">เงินโอน PromptPay</span>
+            <span className="text-xs font-bold text-indigo-700">PromptPay QR</span>
             <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <QrCode className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-indigo-700 mt-2 tracking-tight">
-            ฿{totalPromptPay.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ฿{totalPromptPay.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <span className="text-[10px] text-slate-400 mt-0.5 block">
-            ยอดเงินเข้าบัญชีโรงเรียน
+            Direct deposit to school bank
           </span>
         </div>
 
         {/* Pending Invoices */}
         <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:shadow-md transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-700">รอชำระตามใบแจ้งหนี้</span>
+            <span className="text-xs font-bold text-amber-700">Pending Invoices</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <Clock className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-amber-700 mt-2 tracking-tight">
-            ฿{totalPendingInvoicesAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ฿{totalPendingInvoicesAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <span className="text-[10px] text-slate-400 mt-0.5 block">
-            ค้างชำระ {pendingInvoices.length} ฉบับ
+            {pendingInvoices.length} unpaid invoices
           </span>
         </div>
       </div>
@@ -431,7 +431,7 @@ export default function FinancePage() {
           }`}
         >
           <ReceiptIcon className="w-4 h-4 text-blue-600" />
-          <span>ประวัติใบเสร็จรับเงิน (Receipts)</span>
+          <span>Official Receipts</span>
           <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.2 rounded-full">
             {receipts.length}
           </span>
@@ -446,7 +446,7 @@ export default function FinancePage() {
           }`}
         >
           <FileText className="w-4 h-4 text-amber-600" />
-          <span>ใบแจ้งชำระเงินครึ่ง A4 (Invoices)</span>
+          <span>Half-A4 Invoices</span>
           <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded-full">
             {invoices.length}
           </span>
@@ -463,7 +463,7 @@ export default function FinancePage() {
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="ค้นหาเลขที่บิล, ชื่อผู้ซื้อ หรือชั้นเรียน..."
+                placeholder="Search receipt no., customer name, or class..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -476,8 +476,8 @@ export default function FinancePage() {
                 onChange={e => setPaymentFilter(e.target.value)}
                 className="px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
               >
-                <option value="ALL">ช่องทาง: ทั้งหมด</option>
-                <option value="CASH">เงินสด</option>
+                <option value="ALL">Method: All</option>
+                <option value="CASH">Cash</option>
                 <option value="PROMPTPAY">PromptPay</option>
               </select>
 
@@ -486,15 +486,15 @@ export default function FinancePage() {
                 onChange={e => setStatusFilter(e.target.value)}
                 className="px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
               >
-                <option value="ALL">สถานะ: ทั้งหมด</option>
-                <option value="COMPLETED">สำเร็จ</option>
-                <option value="VOIDED">ยกเลิกแล้ว</option>
+                <option value="ALL">Status: All</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="VOIDED">Voided</option>
               </select>
 
               <button
                 onClick={fetchReceipts}
                 className="p-2 rounded-lg bg-white border border-[#E5E0D8] text-[#6B6560] hover:text-[#1A1A1A]"
-                title="รีเฟรชข้อมูล"
+                title="Refresh"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingReceipts ? 'animate-spin' : ''}`} />
               </button>
@@ -505,28 +505,28 @@ export default function FinancePage() {
           {filteredReceipts.length === 0 ? (
             <div className="py-16 text-center text-[#6B6560]">
               <ReceiptIcon className="w-10 h-10 mx-auto mb-2 opacity-30 text-[#E5E0D8]" />
-              <p className="text-sm font-semibold text-[#1A1A1A]">ไม่พบรายการใบเสร็จ</p>
-              <p className="text-xs text-[#6B6560] mt-1">ลองเปลี่ยนคำค้นหา หรือเปิดบิลขายที่หน้า POS</p>
+              <p className="text-sm font-semibold text-[#1A1A1A]">No receipts found</p>
+              <p className="text-xs text-[#6B6560] mt-1">Try adjusting your search terms or create a sale at the POS terminal</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead className="bg-[#F7F4EF] text-[#6B6560] font-semibold border-b border-[#E5E0D8]">
                   <tr>
-                    <th className="py-2.5 px-3.5">เลขที่ใบเสร็จ</th>
-                    <th className="py-2.5 px-3">วันที่-เวลา</th>
-                    <th className="py-2.5 px-3">ผู้ซื้อ / นักเรียน</th>
-                    <th className="py-2.5 px-3">รายการสินค้า</th>
-                    <th className="py-2.5 px-3">ยอดเงินสุทธิ</th>
-                    <th className="py-2.5 px-3">ช่องทาง</th>
-                    <th className="py-2.5 px-3">สถานะ</th>
-                    <th className="py-2.5 px-3.5 text-right">การจัดการ</th>
+                    <th className="py-2.5 px-3.5">Receipt No.</th>
+                    <th className="py-2.5 px-3">Date & Time</th>
+                    <th className="py-2.5 px-3">Customer / Student</th>
+                    <th className="py-2.5 px-3">Items</th>
+                    <th className="py-2.5 px-3">Total Amount</th>
+                    <th className="py-2.5 px-3">Method</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E0D8]">
                   {filteredReceipts.map(receipt => {
                     const isVoid = receipt.status === 'VOIDED';
-                    const dateStr = new Date(receipt.createdAt).toLocaleDateString('th-TH', {
+                    const dateStr = new Date(receipt.createdAt).toLocaleDateString('en-GB', {
                       day: 'numeric',
                       month: 'short',
                       year: '2-digit',
@@ -553,7 +553,7 @@ export default function FinancePage() {
                           <div className="font-semibold text-[#1A1A1A]">{receipt.customerName}</div>
                           {receipt.studentClass && (
                             <span className="text-[10px] text-[#6B6560]">
-                              ชั้น {receipt.studentClass}
+                              Class {receipt.studentClass}
                             </span>
                           )}
                         </td>
@@ -569,7 +569,7 @@ export default function FinancePage() {
                           <span className="inline-flex items-center gap-1 text-[11px] font-medium">
                             {receipt.paymentMethod === 'CASH' ? (
                               <span className="text-[#1F4D3A] bg-[#E8F0EB] px-2 py-0.5 rounded border border-[#1F4D3A]/20">
-                                เงินสด
+                                Cash
                               </span>
                             ) : (
                               <span className="text-[#1A1A1A] bg-[#F7F4EF] px-2 py-0.5 rounded border border-[#E5E0D8]">
@@ -581,11 +581,11 @@ export default function FinancePage() {
                         <td className="py-3 px-3 whitespace-nowrap">
                           {isVoid ? (
                             <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">
-                              ยกเลิกแล้ว
+                              Voided
                             </span>
                           ) : (
                             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                              สำเร็จ
+                              Completed
                             </span>
                           )}
                         </td>
@@ -594,17 +594,17 @@ export default function FinancePage() {
                             <button
                               onClick={() => setSelectedReceipt(receipt)}
                               className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] flex items-center gap-1 transition"
-                              title="ดู / พิมพ์ใบเสร็จ A4 ตัดครึ่ง"
+                              title="View / Print Half-A4 Receipt"
                             >
                               <Printer className="w-3.5 h-3.5" />
-                              <span>พิมพ์</span>
+                              <span>Print</span>
                             </button>
 
                             {!isVoid && (isSuperAdmin || isInventoryManager) && (
                               <button
                                 onClick={() => handleVoidReceipt(receipt)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-                                title="ยกเลิกใบเสร็จ (คืนสต็อกเข้าคลัง)"
+                                title="Void Receipt (Return stock to warehouse)"
                               >
                                 <Ban className="w-3.5 h-3.5" />
                               </button>
@@ -621,7 +621,7 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* TAB 2: INVOICES (ใบแจ้งชำระเงินครึ่ง A4) VIEW */}
+      {/* TAB 2: INVOICES (Half-A4 Payment Notices) VIEW */}
       {activeTab === 'INVOICES' && (
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
           
@@ -631,7 +631,7 @@ export default function FinancePage() {
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="ค้นหาเลขที่ใบแจ้ง, นักเรียน หรือชั้นเรียน..."
+                placeholder="Search invoice no., student name, or class..."
                 value={invoiceSearch}
                 onChange={e => setInvoiceSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -644,16 +644,16 @@ export default function FinancePage() {
                 onChange={e => setInvoiceStatusFilter(e.target.value)}
                 className="px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
               >
-                <option value="ALL">สถานะ: ทั้งหมด</option>
-                <option value="PENDING">รอชำระเงิน</option>
-                <option value="PAID">ชำระแล้ว</option>
-                <option value="CANCELLED">ยกเลิก</option>
+                <option value="ALL">Status: All</option>
+                <option value="PENDING">Pending Payment</option>
+                <option value="PAID">Paid</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
 
               <button
                 onClick={fetchInvoices}
                 className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800"
-                title="รีเฟรชข้อมูล"
+                title="Refresh"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingInvoices ? 'animate-spin' : ''}`} />
               </button>
@@ -663,7 +663,7 @@ export default function FinancePage() {
                 className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>สร้างใบแจ้ง</span>
+                <span>New Invoice</span>
               </button>
             </div>
           </div>
@@ -672,32 +672,32 @@ export default function FinancePage() {
           {filteredInvoices.length === 0 ? (
             <div className="py-16 text-center text-slate-400">
               <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p className="text-sm font-semibold">ไม่พบรายการใบแจ้งการชำระเงิน</p>
-              <p className="text-xs text-slate-400 mt-1">กดปุ่ม &quot;ออกใบแจ้งชำระใหม่&quot; เพื่อสร้างเอกสารขนาดครึ่ง A4</p>
+              <p className="text-sm font-semibold">No invoices found</p>
+              <p className="text-xs text-slate-400 mt-1">Click &quot;New Invoice&quot; to generate half-A4 billing notices</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200">
                   <tr>
-                    <th className="py-3 px-3.5">เลขที่ใบแจ้ง</th>
-                    <th className="py-3 px-3">วันที่ออก / กำหนดชำระ</th>
-                    <th className="py-3 px-3">ผู้รับชำระ / นักเรียน</th>
-                    <th className="py-3 px-3">รายการ</th>
-                    <th className="py-3 px-3">ยอดรวมสุทธิ</th>
-                    <th className="py-3 px-3">สถานะ</th>
-                    <th className="py-3 px-3.5 text-right">การจัดการ</th>
+                    <th className="py-3 px-3.5">Invoice No.</th>
+                    <th className="py-3 px-3">Issued / Due Date</th>
+                    <th className="py-3 px-3">Customer / Student</th>
+                    <th className="py-3 px-3">Items</th>
+                    <th className="py-3 px-3">Total Amount</th>
+                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredInvoices.map(invoice => {
                     const statusConfig = INVOICE_STATUS_LABELS[invoice.status] || INVOICE_STATUS_LABELS.PENDING;
-                    const createdDateStr = new Date(invoice.createdAt).toLocaleDateString('th-TH', {
+                    const createdDateStr = new Date(invoice.createdAt).toLocaleDateString('en-GB', {
                       day: 'numeric',
                       month: 'short'
                     });
                     const dueDateStr = invoice.dueDate
-                      ? new Date(invoice.dueDate).toLocaleDateString('th-TH', {
+                      ? new Date(invoice.dueDate).toLocaleDateString('en-GB', {
                           day: 'numeric',
                           month: 'short'
                         })
@@ -711,14 +711,14 @@ export default function FinancePage() {
                           </span>
                         </td>
                         <td className="py-3 px-3 text-slate-500 text-[11px] whitespace-nowrap">
-                          <div>ออก: {createdDateStr}</div>
-                          <div className="text-red-600 font-medium mt-0.5">ครบ: {dueDateStr}</div>
+                          <div>Issued: {createdDateStr}</div>
+                          <div className="text-red-600 font-medium mt-0.5">Due: {dueDateStr}</div>
                         </td>
                         <td className="py-3 px-3">
                           <div className="font-bold text-slate-900">{invoice.customerName}</div>
                           {invoice.studentClass && (
                             <span className="text-[10px] text-slate-500 font-medium">
-                              ชั้น {invoice.studentClass}
+                              Class {invoice.studentClass}
                             </span>
                           )}
                         </td>
@@ -726,7 +726,7 @@ export default function FinancePage() {
                           {invoice.items.map(i => `${i.itemName} (${i.quantity})`).join(', ')}
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap font-black text-slate-900 text-sm">
-                          ฿{invoice.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ฿{invoice.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusConfig.bg} ${statusConfig.color}`}>
@@ -738,20 +738,20 @@ export default function FinancePage() {
                             <button
                               onClick={() => setSelectedInvoice(invoice)}
                               className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] flex items-center gap-1 transition"
-                              title="ดู / พิมพ์ใบแจ้งหนี้ขนาดครึ่ง A4"
+                              title="View / Print Half-A4 Invoice"
                             >
                               <Printer className="w-3.5 h-3.5" />
-                              <span>พิมพ์ครึ่ง A4</span>
+                              <span>Print Half-A4</span>
                             </button>
 
                             {invoice.status === 'PENDING' && (
                               <button
                                 onClick={() => handleMarkInvoicePaid(invoice)}
                                 className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center gap-1 transition"
-                                title="บันทึกว่าชำระแล้ว"
+                                title="Mark as Paid"
                               >
                                 <CheckCircle className="w-3.5 h-3.5" />
-                                <span>ชำระแล้ว</span>
+                                <span>Paid</span>
                               </button>
                             )}
 
@@ -759,7 +759,7 @@ export default function FinancePage() {
                               <button
                                 onClick={() => handleCancelInvoice(invoice)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-                                title="ยกเลิกใบแจ้ง"
+                                title="Cancel Invoice"
                               >
                                 <Ban className="w-3.5 h-3.5" />
                               </button>
@@ -805,7 +805,7 @@ export default function FinancePage() {
           setInvoices(prev => [newInv, ...prev]);
           setActiveTab('INVOICES');
           setSelectedInvoice(newInv);
-          showToast(`สร้างใบแจ้งชำระ #${newInv.invoiceNumber} เรียบร้อย`);
+          showToast(`Invoice #${newInv.invoiceNumber} created successfully.`);
         }}
       />
 

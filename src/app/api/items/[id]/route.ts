@@ -17,7 +17,7 @@ export async function GET(
         .maybeSingle();
 
       if (error || !data) {
-        return NextResponse.json({ error: 'ไม่พบสินค้านี้' }, { status: 404 });
+        return NextResponse.json({ error: 'Item not found' }, { status: 404 });
       }
 
       return NextResponse.json({
@@ -44,7 +44,7 @@ export async function GET(
     const item = db.items.find(i => i.id === id || i.code.toLowerCase() === id.toLowerCase());
 
     if (!item) {
-      return NextResponse.json({ error: 'ไม่พบสินค้านี้' }, { status: 404 });
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
     return NextResponse.json({ item });
@@ -123,7 +123,7 @@ export async function PUT(
     const db = readDb();
     const index = db.items.findIndex(i => i.id === id);
     if (index === -1) {
-      return NextResponse.json({ error: 'ไม่พบสินค้าที่ต้องการแก้ไข' }, { status: 404 });
+      return NextResponse.json({ error: 'Item not found for update' }, { status: 404 });
     }
 
     const current = db.items[index];
@@ -166,7 +166,7 @@ export async function DELETE(
     const db = readDb();
     const index = db.items.findIndex(i => i.id === id);
     if (index === -1) {
-      return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
     db.items.splice(index, 1);

@@ -32,7 +32,7 @@ export async function PUT(
     const db = readDb();
     const index = db.categories.findIndex(c => c.id === id);
     if (index === -1) {
-      return NextResponse.json({ error: 'ไม่พบหมวดหมู่นี้' }, { status: 404 });
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
     db.categories[index] = {
@@ -63,7 +63,7 @@ export async function DELETE(
         // If items are referencing this category
         if (error.message?.includes('violates foreign key')) {
           return NextResponse.json(
-            { error: 'ไม่สามารถลบหมวดหมู่นี้ได้เนื่องจากมีสินค้าที่ผูกกับหมวดหมู่นี้อยู่ กรุณาย้ายหมวดหมู่ของสินค้าก่อน' },
+            { error: 'Cannot delete category: existing items are linked to this category. Please reassign items first.' },
             { status: 400 }
           );
         }
@@ -76,13 +76,13 @@ export async function DELETE(
     const db = readDb();
     const index = db.categories.findIndex(c => c.id === id);
     if (index === -1) {
-      return NextResponse.json({ error: 'ไม่พบหมวดหมู่' }, { status: 404 });
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
     const itemsUsing = db.items.filter(i => i.categoryId === id);
     if (itemsUsing.length > 0) {
       return NextResponse.json(
-        { error: `ไม่สามารถลบได้เนื่องจากมีสินค้า ${itemsUsing.length} รายการผูกกับหมวดหมู่นี้อยู่` },
+        { error: `Cannot delete category: ${itemsUsing.length} item(s) are linked to this category.` },
         { status: 400 }
       );
     }

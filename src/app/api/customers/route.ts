@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
     const cleanName = (name || '').trim();
     if (!cleanName) {
-      return NextResponse.json({ error: 'กรุณากรอกชื่อลูกค้า / นักเรียน' }, { status: 400 });
+      return NextResponse.json({ error: 'Customer / Student name is required' }, { status: 400 });
     }
 
     const cleanNickname = (nickname || '').trim() || undefined;
@@ -139,9 +139,9 @@ export async function POST(request: Request) {
         console.error('Supabase customers insert error:', error);
         let msg = error.message;
         if (msg.includes('relation "customers" does not exist') || msg.includes('does not exist')) {
-          msg = 'ยังไม่มีตาราง "customers" ใน Supabase — กรุณารันสคริปต์ SQL ใน Supabase SQL Editor';
+          msg = 'Table "customers" does not exist in Supabase. Please run the schema SQL script in Supabase SQL Editor.';
         } else if (msg.includes('row-level security') || msg.includes('policy')) {
-          msg = 'ติดสิทธิ์ Row Level Security (RLS) ของ Supabase table "customers" — กรุณารัน SQL ปิด RLS หรือใส่ SUPABASE_SERVICE_ROLE_KEY ใน Vercel';
+          msg = 'Supabase Row Level Security (RLS) restriction on "customers" table. Please ensure SUPABASE_SERVICE_ROLE_KEY is configured.';
         }
         return NextResponse.json({ error: msg }, { status: 500 });
       }

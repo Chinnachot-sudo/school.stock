@@ -10,8 +10,8 @@ export interface UserRoleRecord {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
-  INVENTORY_MANAGER: 'เจ้าหน้าที่พัสดุ / การเงิน',
-  TEACHER: 'ครู / บุคลากร'
+  INVENTORY_MANAGER: 'Inventory Manager',
+  TEACHER: 'Teacher / Staff'
 };
 
 // Whitelist mapping for school accounts
@@ -32,14 +32,14 @@ export function getUserRole(email?: string | null): UserRole {
 export interface Item {
   id: string;
   code: string; // Barcode or QR Code string (e.g. "SK-001", "8850029012345")
-  name: string; // e.g. "กระดาษ Double A 80 แกรม (A4)"
+  name: string; // e.g. "Double A Copier Paper 80gsm (A4)"
   categoryId: string; // e.g. "cat-stationery"
   currentStock: number;
   minStock: number; // Safety stock alert threshold
-  unit: string; // e.g. "รีม", "ด้าม", "กล่อง", "เล่ม", "ขวด", "ตัว"
-  location: string; // e.g. "ตู้พัสดุ A ชั้น 2", "ห้องหมวดคณิตศาสตร์"
-  price?: number; // Selling price (บาท) เช่น 25, 250
-  cost?: number; // Cost price (บาท) เช่น 18, 190
+  unit: string; // e.g. "Ream", "Pcs", "Box", "Pack", "Bottle", "Set"
+  location: string; // e.g. "Cabinet A Fl.2", "Math Department Room"
+  price?: number; // Selling price (THB) e.g. 25, 250
+  cost?: number; // Cost price (THB) e.g. 18, 190
   isForSale?: boolean; // For school store / POS sale
   note?: string;
   isBorrowable?: boolean; // For equipment like projector, presenter clicker
@@ -65,7 +65,7 @@ export type IBProgramme = 'PYP' | 'MYP' | 'DP' | 'CP' | 'STAFF' | 'GENERAL';
 export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; grades: string[] }> = {
   PYP: {
     name: 'Primary Years Programme',
-    label: 'PYP (อนุบาล - ประถม)',
+    label: 'PYP (Early Years - Primary)',
     grades: [
       'EY1 (Early Years 1)',
       'EY2 (Early Years 2)',
@@ -79,7 +79,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   MYP: {
     name: 'Middle Years Programme',
-    label: 'MYP (มัธยมต้น)',
+    label: 'MYP (Middle Years)',
     grades: [
       'Grade 6 (MYP 1)',
       'Grade 7 (MYP 2)',
@@ -90,7 +90,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   DP: {
     name: 'Diploma Programme',
-    label: 'DP (มัธยมปลาย Diploma)',
+    label: 'DP (Diploma Programme)',
     grades: [
       'Grade 11 (DP 1)',
       'Grade 12 (DP 2)'
@@ -98,7 +98,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   CP: {
     name: 'Career-related Programme',
-    label: 'CP (มัธยมปลาย อาชีพ/ทักษะ)',
+    label: 'CP (Career-related Programme)',
     grades: [
       'Grade 11 (CP 1)',
       'Grade 12 (CP 2)'
@@ -106,7 +106,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   STAFF: {
     name: 'Faculty & Staff',
-    label: 'บุคลากร / ครูอาจารย์',
+    label: 'Faculty & Staff',
     grades: [
       'PYP Faculty',
       'MYP Faculty',
@@ -116,7 +116,7 @@ export const IB_PROGRAMMES: Record<IBProgramme, { name: string; label: string; g
   },
   GENERAL: {
     name: 'General / Visitor',
-    label: 'บุคคลภายนอก / ทั่วไป',
+    label: 'General / Visitor',
     grades: ['General Visitor']
   }
 };
@@ -168,28 +168,28 @@ export type CustomerType = 'STUDENT' | 'PARENT' | 'TEACHER' | 'GENERAL';
 export type PaymentMethod = 'CASH' | 'PROMPTPAY' | 'TRANSFER';
 
 export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
-  STUDENT: 'นักเรียน IB',
-  PARENT: 'ผู้ปกครอง',
-  TEACHER: 'ครู / บุคลากร',
-  GENERAL: 'บุคคลภายนอก / ทั่วไป'
+  STUDENT: 'IB Student',
+  PARENT: 'Parent / Guardian',
+  TEACHER: 'Teacher / Staff',
+  GENERAL: 'General / Visitor'
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  CASH: 'เงินสด',
+  CASH: 'Cash',
   PROMPTPAY: 'PromptPay QR',
-  TRANSFER: 'เงินโอนธนาคาร'
+  TRANSFER: 'Bank Transfer'
 };
 
 // Customer Database Record
 export interface Customer {
   id: string;
-  name: string; // e.g. "ด.ช. ปัญญาวุฒิ สุขใจ" or "Sarah Jenkins"
-  nickname?: string; // e.g. "น้องวิน" or "Ken"
+  name: string; // e.g. "Sarah Jenkins" or "Panyawut Sukjai"
+  nickname?: string; // e.g. "Ken" or "Win"
   type: CustomerType;
   programme: IBProgramme;
   grade: string; // e.g. "Grade 7 (MYP 2)"
   studentId?: string; // e.g. "RAIS-2024-042"
-  parentName?: string; // e.g. "คุณสมศักดิ์ สุขใจ"
+  parentName?: string; // e.g. "Mr. David Jenkins"
   phone?: string;
   email?: string;
   note?: string;
@@ -229,13 +229,13 @@ export interface Receipt {
   createdAt: string;
 }
 
-// Half-A4 Billing Invoice (ใบแจ้งการชำระเงิน)
+// Half-A4 Billing Invoice (Payment Notice / Invoice)
 export type InvoiceStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, { label: string; color: string; bg: string }> = {
-  PENDING: { label: 'รอชำระเงิน', color: 'text-[#B54708]', bg: 'bg-[#FEF0C7] border-[#E5E0D8]' },
-  PAID: { label: 'ชำระแล้ว', color: 'text-[#027A48]', bg: 'bg-[#D1FADF] border-[#E5E0D8]' },
-  CANCELLED: { label: 'ยกเลิก', color: 'text-[#B42318]', bg: 'bg-[#FEE4E2] border-[#E5E0D8]' }
+  PENDING: { label: 'Pending Payment', color: 'text-[#B54708]', bg: 'bg-[#FEF0C7] border-[#E5E0D8]' },
+  PAID: { label: 'Paid', color: 'text-[#027A48]', bg: 'bg-[#D1FADF] border-[#E5E0D8]' },
+  CANCELLED: { label: 'Cancelled', color: 'text-[#B42318]', bg: 'bg-[#FEE4E2] border-[#E5E0D8]' }
 };
 
 export interface InvoiceItem {
@@ -274,7 +274,7 @@ export interface Invoice {
 
 // Official Bangkok Bank Thai QR payment metadata for Roong Aroon International School
 export const SCHOOL_BANK_INFO = {
-  bankName: 'ธนาคารกรุงเทพ (Bangkok Bank)',
+  bankName: 'Bangkok Bank',
   accountName: 'ROONG AROON INTERN',
   ref1: '002203089172',
   ref3: '43008918',

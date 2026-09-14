@@ -28,7 +28,7 @@ export default function AuthCallbackPage() {
           
           if (allowedDomain && !email.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
             await client.auth.signOut();
-            setError(`ขออภัย: อนุญาตเฉพาะบัญชีอีเมลโรงเรียน (@${allowedDomain}) เท่านั้น (อีเมลที่คุณใช้คือ: ${email})`);
+            setError(`Access restricted: Only official school email accounts (@${allowedDomain}) are permitted (you signed in with: ${email})`);
             return;
           }
 
@@ -43,7 +43,7 @@ export default function AuthCallbackPage() {
         }
       } catch (err: any) {
         console.error('Auth callback error:', err);
-        setError(err.message || 'เกิดข้อผิดพลาดในการยืนยันตัวตน');
+        setError(err.message || 'Authentication error occurred');
       }
     };
 
@@ -58,20 +58,20 @@ export default function AuthCallbackPage() {
             <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <h2 className="text-base font-bold text-slate-800">ไม่สามารถเข้าสู่ระบบได้</h2>
+            <h2 className="text-base font-bold text-slate-800">Sign-in Failed</h2>
             <p className="text-xs text-red-600 leading-relaxed">{error}</p>
             <button
               onClick={() => router.replace('/login')}
               className="w-full mt-2 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
             >
-              กลับสู่หน้าเข้าสู่ระบบ
+              Return to Sign In
             </button>
           </>
         ) : (
           <>
             <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto" />
-            <h2 className="text-base font-bold text-slate-800">กำลังเข้าสู่ระบบ...</h2>
-            <p className="text-xs text-slate-400">กรุณารอสักครู่ ระบบกำลังยืนยันบัญชีอีเมลโรงเรียนของคุณ</p>
+            <h2 className="text-base font-bold text-slate-800">Signing in...</h2>
+            <p className="text-xs text-slate-400">Please wait while we verify your school email account.</p>
           </>
         )}
       </div>

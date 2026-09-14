@@ -20,7 +20,7 @@ export default function QuickRestockModal({
   onSuccess
 }: QuickRestockModalProps) {
   const [quantity, setQuantity] = useState<number>(5);
-  const [department, setDepartment] = useState<string>('งานพัสดุ อาคารสถานที่');
+  const [department, setDepartment] = useState<string>('Facilities & Operations');
   const [note, setNote] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,20 +49,20 @@ export default function QuickRestockModal({
           itemId: item.id,
           type: 'IN',
           quantity,
-          department: department || 'งานพัสดุ อาคารสถานที่',
-          note: note || 'รับพัสดุเข้าคลัง'
+          department: department || 'Facilities & Operations',
+          note: note || 'Inventory restock receipt'
         })
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'เกิดข้อผิดพลาดในการรับเข้าสต็อก');
+        throw new Error(data.error || 'An error occurred while receiving stock');
       }
 
       onSuccess(data.updatedItem, quantity);
       onClose();
     } catch (err: any) {
-      setError(err.message || 'ไม่สามารถรับเข้าสต็อกได้');
+      setError(err.message || 'Unable to receive stock');
     } finally {
       setIsSubmitting(false);
     }
@@ -76,7 +76,7 @@ export default function QuickRestockModal({
         <div className="bg-white border-b border-[#E5E0D8] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <PackagePlus className="w-4 h-4 text-[#1F4D3A]" />
-            <h2 className="font-semibold text-sm text-[#1A1A1A]">รับของเข้าสต็อก (Stock In)</h2>
+            <h2 className="font-semibold text-sm text-[#1A1A1A]">Receive Stock (Stock In)</h2>
           </div>
           <button
             onClick={onClose}
@@ -98,12 +98,12 @@ export default function QuickRestockModal({
               </h3>
               <div className="flex items-center gap-1 text-[11px] text-[#6B6560] mt-1">
                 <MapPin className="w-3 h-3 text-[#6B6560] shrink-0" />
-                <span>{item.location || 'ไม่ระบุจุดจัดเก็บ'}</span>
+                <span>{item.location || 'Unassigned Location'}</span>
               </div>
             </div>
 
             <div className="text-right shrink-0 bg-white px-3 py-1.5 rounded-lg border border-[#E5E0D8]">
-              <span className="text-[10px] text-[#6B6560] block">คงเหลือ</span>
+              <span className="text-[10px] text-[#6B6560] block">In Stock</span>
               <div className="text-lg font-bold font-mono text-[#1A1A1A] leading-tight">
                 {item.currentStock}
               </div>
@@ -123,7 +123,7 @@ export default function QuickRestockModal({
 
           <div>
             <label className="block text-xs font-medium text-[#1A1A1A] mb-1.5">
-              จำนวนที่รับเข้าเพิ่ม ({item.unit})
+              Quantity to Restock ({item.unit})
             </label>
             <div className="grid grid-cols-4 gap-2 mb-2">
               {[5, 10, 20, 50].map(q => (
@@ -155,17 +155,17 @@ export default function QuickRestockModal({
               </span>
             </div>
             <p className="text-[11px] text-[#6B6560] mt-1">
-              ยอดคงเหลือใหม่หลังรับเข้า: <strong className="font-mono text-[#027A48]">{item.currentStock + quantity} {item.unit}</strong>
+              New balance after restock: <strong className="font-mono text-[#027A48]">{item.currentStock + quantity} {item.unit}</strong>
             </p>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-[#1A1A1A] mb-1">
-              หมายเหตุ / เลขที่ใบส่งของ (ไม่บังคับ)
+              Notes / PO Number (Optional)
             </label>
             <input
               type="text"
-              placeholder="เช่น ใบส่งของ บจก.สยามพัสดุ #INV-9821"
+              placeholder="e.g. Supplier delivery note, PO #INV-9821"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="w-full text-xs bg-white border border-[#E5E0D8] rounded-lg px-3 py-2 text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
@@ -179,7 +179,7 @@ export default function QuickRestockModal({
               className="w-full min-h-[48px] bg-[#1F4D3A] hover:bg-[#183D2E] disabled:opacity-50 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-2 transition"
             >
               <Plus className="w-4 h-4" />
-              <span>ยืนยันการรับเข้า (+{quantity} {item.unit})</span>
+              <span>Confirm Stock Receipt (+{quantity} {item.unit})</span>
             </button>
           </div>
         </form>

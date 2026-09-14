@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     const { code, name, categoryId, currentStock, minStock, unit, location, note, isBorrowable, price, cost, isForSale } = body;
 
     if (!code || !name || !unit) {
-      return NextResponse.json({ error: 'กรุณากรอกรหัสสินค้า, ชื่อสินค้า และหน่วยนับ' }, { status: 400 });
+      return NextResponse.json({ error: 'Item code, name, and unit are required' }, { status: 400 });
     }
 
     const trimmedCode = code.trim();
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
       if (existing) {
         return NextResponse.json(
-          { error: `รหัสสินค้า ${trimmedCode} มีอยู่ในระบบแล้ว (${existing.name})` },
+          { error: `Item code ${trimmedCode} already exists in the system (${existing.name})` },
           { status: 400 }
         );
       }
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
             // Auto-create category to satisfy FK
             const { data: createdCat } = await supabase
               .from('categories')
-              .insert({ id: targetCatId, name: 'พัสดุและสินค้าทั่วไป', icon: '📦' })
+              .insert({ id: targetCatId, name: 'General Supplies & Items', icon: '📦' })
               .select('id')
               .maybeSingle();
             if (createdCat) targetCatId = createdCat.id;
@@ -150,7 +150,7 @@ export async function POST(request: Request) {
         current_stock: Number(currentStock) || 0,
         min_stock: Number(minStock) || 5,
         unit: unit.trim(),
-        location: (location || 'ตู้พัสดุกลาง').trim(),
+        location: (location || 'Central Storage').trim(),
         price: Number(price) || 0,
         cost: Number(cost) || 0,
         is_for_sale: Boolean(isForSale),
@@ -182,9 +182,9 @@ export async function POST(request: Request) {
 
       if (insertRes.error) {
         console.error('Supabase item insertion failed:', insertRes.error);
-        let msg = insertRes.error.message || insertRes.error.details || 'ไม่สามารถบันทึกพัสดุลงในฐานข้อมูลได้';
+        let msg = insertRes.error.message || insertRes.error.details || 'Failed to save item in database';
         if (msg.includes('row-level security') || msg.includes('policy')) {
-          msg = 'ติดสิทธิ์ Row Level Security (RLS) ของ Supabase table "items" — กรุณารัน SQL ปิด RLS หรือใส่ SUPABASE_SERVICE_ROLE_KEY ใน Vercel';
+          msg = 'Supabase Row Level Security (RLS) restriction on "items" table. Please ensure SUPABASE_SERVICE_ROLE_KEY is configured.';
         }
         return NextResponse.json(
           { error: msg },
@@ -219,7 +219,7 @@ export async function POST(request: Request) {
     const db = readDb();
     const existing = db.items.find(i => i.code.toLowerCase() === trimmedCode.toLowerCase());
     if (existing) {
-      return NextResponse.json({ error: `รหัสสินค้า ${code} มีอยู่ในระบบแล้ว (${existing.name})` }, { status: 400 });
+      return NextResponse.json({ error: `Item code ${code} already exists in the system (${existing.name})` }, { status: 400 });
     }
 
     const newItem: Item = {
@@ -230,7 +230,7 @@ export async function POST(request: Request) {
       currentStock: Number(currentStock) || 0,
       minStock: Number(minStock) || 5,
       unit: unit.trim(),
-      location: (location || 'ตู้พัสดุกลาง').trim(),
+      location: (location || 'Central Storage').trim(),
       price: Number(price) || 0,
       cost: Number(cost) || 0,
       isForSale: Boolean(isForSale),

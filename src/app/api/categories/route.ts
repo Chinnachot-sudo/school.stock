@@ -4,16 +4,16 @@ import { Category } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 
 const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat-uniform', name: 'ชุดนักเรียนและเครื่องแบบ (Uniforms)', icon: '👕', description: 'เครื่องแบบนักเรียน เสื้อเชิ้ต กางเกง กระโปรง ชุดพละ' },
-  { id: 'cat-books', name: 'หนังสือและแบบเรียน IB (Textbooks & Workbooks)', icon: '📚', description: 'หนังสือเรียน PYP, MYP, DP, CP และแบบฝึกหัด' },
-  { id: 'cat-stationery', name: 'เครื่องเขียนและอุปกรณ์การเรียน (Stationery)', icon: '✏️', description: 'ปากกา ดินสอ ยางลบ ไม้บรรทัด กรรไกร สี' },
-  { id: 'cat-paper', name: 'กระดาษและสมุดโรงเรียน (Paper & Notebooks)', icon: '📄', description: 'สมุดรายงานโรงเรียน กระดาษ A4 สมุดจดการบ้าน' },
-  { id: 'cat-it', name: 'หมึกพิมพ์และอุปกรณ์ไอที (IT & EdTech)', icon: '💻', description: 'หมึกพิมพ์ สายต่อคอมพิวเตอร์ อุปกรณ์ไอที' },
-  { id: 'cat-science', name: 'อุปกรณ์การทดลองวิทย์ (Science Lab)', icon: '🔬', description: 'หลอดทดลอง สารเคมี แว่นตานิรภัย' },
-  { id: 'cat-art', name: 'อุปกรณ์ศิลปะและงานดีไซน์ (Art & Design)', icon: '🎨', description: 'สีน้ำ สีโปสเตอร์ กระดาษวาดเขียน ดินน้ำมัน' },
-  { id: 'cat-pe', name: 'อุปกรณ์กีฬาและพลศึกษา (PHE & Sports)', icon: '⚽', description: 'ลูกบอล กรวยฝึกซ้อม ไม้แบดมินตัน' },
-  { id: 'cat-cleaning', name: 'อุปกรณ์ทำความสะอาด (Hygiene & Facilities)', icon: '🧹', description: 'น้ำยาทำความสะอาด ทิชชู่ ถุงขยะ' },
-  { id: 'cat-equipment', name: 'ครุภัณฑ์ยืม-คืน (Audio-Visual Equipment)', icon: '📽️', description: 'โปรเจคเตอร์ ไมโครโฟน สายสัญญาณ' }
+  { id: 'cat-uniform', name: 'Uniforms & Dress Code', icon: '👕', description: 'School uniforms, polo shirts, shorts, skirts, PE kit' },
+  { id: 'cat-books', name: 'IB Textbooks & Workbooks', icon: '📚', description: 'PYP, MYP, DP, CP curriculum books and workbooks' },
+  { id: 'cat-stationery', name: 'Stationery & Study Supplies', icon: '✏️', description: 'Pens, pencils, erasers, rulers, scissors, art colors' },
+  { id: 'cat-paper', name: 'Paper & School Notebooks', icon: '📄', description: 'School exercise notebooks, A4 reams, planners' },
+  { id: 'cat-it', name: 'IT & EdTech Supplies', icon: '💻', description: 'Printer toners, computer accessories, AV cables' },
+  { id: 'cat-science', name: 'Science Lab Equipment', icon: '🔬', description: 'Test tubes, lab glassware, safety goggles' },
+  { id: 'cat-art', name: 'Art & Design Supplies', icon: '🎨', description: 'Watercolors, canvas, sketch pads, sculpting clay' },
+  { id: 'cat-pe', name: 'PHE & Sports Equipment', icon: '⚽', description: 'Balls, cones, badminton rackets, sports gear' },
+  { id: 'cat-cleaning', name: 'Hygiene & Facilities', icon: '🧹', description: 'Cleaning supplies, sanitizers, tissues' },
+  { id: 'cat-equipment', name: 'Audio-Visual & Loans', icon: '📽️', description: 'Projectors, wireless microphones, adapters' }
 ];
 
 export async function GET() {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     const { name, icon = '🏷️', description = '' } = body;
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'กรุณาระบุชื่อหมวดหมู่' }, { status: 400 });
+      return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
     }
 
     const cleanName = name.trim();
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
 
       if (error) {
         console.error('Supabase category insert error:', error);
-        throw new Error(error.message || 'ไม่สามารถเพิ่มหมวดหมู่ใน Supabase ได้');
+        throw new Error(error.message || 'Failed to insert category in Supabase');
       }
 
       return NextResponse.json({
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
 
     const existing = db.categories.find(c => c.name.toLowerCase() === cleanName.toLowerCase());
     if (existing) {
-      return NextResponse.json({ error: `มีหมวดหมู่ "${cleanName}" อยู่แล้ว` }, { status: 400 });
+      return NextResponse.json({ error: `Category "${cleanName}" already exists` }, { status: 400 });
     }
 
     db.categories.push(newCategory);
@@ -125,6 +125,6 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Error creating category:', error);
-    return NextResponse.json({ error: error.message || 'เกิดข้อผิดพลาดในการสร้างหมวดหมู่' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal error creating category' }, { status: 500 });
   }
 }

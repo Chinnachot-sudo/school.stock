@@ -48,10 +48,10 @@ function SettingsContent() {
   };
 
   const tabs: { id: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'users', label: 'ผู้ใช้และสิทธิ์', icon: ShieldCheck },
-    { id: 'master', label: 'ข้อมูลหลัก Master Data', icon: Database },
-    { id: 'system', label: 'เชื่อมต่อระบบ / API', icon: Sliders },
-    { id: 'general', label: 'ข้อมูลโรงเรียน & ทั่วไป', icon: School },
+    { id: 'users', label: 'Users & Permissions', icon: ShieldCheck },
+    { id: 'master', label: 'Master Data', icon: Database },
+    { id: 'system', label: 'System & Integrations', icon: Sliders },
+    { id: 'general', label: 'School Identity & Info', icon: School },
   ];
 
   const superAdmins = ['chinnachot@roong-aroon.ac.th'];
@@ -63,23 +63,23 @@ function SettingsContent() {
   ];
 
   const deductionReasons = [
-    { id: 'teach', label: 'เบิกใช้ประกอบการเรียนการสอน', desc: 'อุปกรณ์การเรียน เอกสาร สมุด แบบเรียน' },
-    { id: 'activity', label: 'กิจกรรมโรงเรียน / งานพิเศษ', desc: 'งานอีเวนต์ กีฬาสี งานนิทรรศการ' },
-    { id: 'office', label: 'ใช้งานสำนักงานและฝ่ายบริหาร', desc: 'อุปกรณ์สำนักงาน แฟ้ม กระดาษ' },
-    { id: 'damage', label: 'พัสดุชำรุด / เสียหาย / ตกรุ่น', desc: 'ตัดจำหน่ายพัสดุที่ไม่สามารถใช้การได้' },
-    { id: 'adjust', label: 'ปรับปรุงยอดตรวจนับประจำงวด', desc: 'ปรับยอดตามการตรวจนับสต็อกจริง' },
+    { id: 'teach', label: 'Instructional & Classroom Use', desc: 'Learning materials, student handouts, exercise books, textbooks' },
+    { id: 'activity', label: 'School Events & Co-Curricular', desc: 'Campus events, sports day, exhibitions, workshops' },
+    { id: 'office', label: 'Administrative & Office Operations', desc: 'Office stationery, paper, folders, general office supplies' },
+    { id: 'damage', label: 'Damaged / Obsolete / Expired', desc: 'Disposal of unusable, broken, or outdated inventory' },
+    { id: 'adjust', label: 'Periodic Stock Audit Adjustment', desc: 'Discrepancy adjustment following physical stock count' },
   ];
 
   const unitList = [
-    'ชิ้น', 'เล่ม', 'ด้าม', 'กล่อง', 'แพ็ค', 'ห่อ', 'ม้วน', 'รีม', 'แผ่น', 'ขวด', 'อัน', 'ชุด', 'กิโลกรัม'
+    'Pcs', 'Book', 'Pen', 'Box', 'Pack', 'Roll', 'Ream', 'Sheet', 'Bottle', 'Unit', 'Set', 'Kg'
   ];
 
   const warehouseLocations = [
-    { name: 'คลังกลาง (Central Warehouse)', desc: 'อาคารอำนวยการ ชั้น 1' },
-    { name: 'ห้องพัสดุมัธยม (Secondary Store)', desc: 'อาคารมัธยมศึกษา ชั้น 2' },
-    { name: 'ห้องวิชาการประถม (Primary Store)', desc: 'อาคารประถมศึกษา' },
-    { name: 'ศูนย์กีฬาและนันทนาการ (Sports Center)', desc: 'อาคารพละและสระว่ายน้ำ' },
-    { name: 'ห้องสวัสดิการร้านค้า (School Shop)', desc: 'จุดขายชุดนักเรียนและอุปกรณ์' },
+    { name: 'Central Warehouse', desc: 'Administration Building, Floor 1' },
+    { name: 'Secondary Store', desc: 'Secondary School Building, Floor 2' },
+    { name: 'Primary Store', desc: 'Primary School Building' },
+    { name: 'Sports Center', desc: 'Athletics Complex & Swimming Pool' },
+    { name: 'School Shop', desc: 'Uniforms, stationery, and student supply counter' },
   ];
 
   return (
@@ -88,16 +88,16 @@ function SettingsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#E5E7EB]">
         <div>
           <h1 className="text-xl font-bold text-[#111827] tracking-tight">
-            ตั้งค่าระบบ (Backend Administration)
+            System Settings (Backend Administration)
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">
-            จัดการสิทธิ์ผู้ใช้งาน ข้อมูลหลัก Master Data การเชื่อมต่อคลาวด์ และข้อมูลโรงเรียน
+            Manage user roles, master data presets, cloud integrations, and school profile
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs px-2.5 py-1 bg-[#E6F5EF] text-[#0B6B4F] font-semibold rounded-lg border border-[#0B6B4F]/20">
-            ระบบ ERP พร้อมใช้งาน
+            ERP Operational
           </span>
         </div>
       </div>
@@ -134,17 +134,17 @@ function SettingsContent() {
                 {user?.email?.[0].toUpperCase()}
               </div>
               <div>
-                <span className="text-xs text-[#6B7280] font-medium block">บัญชีของคุณในปัจจุบัน</span>
+                <span className="text-xs text-[#6B7280] font-medium block">Current Account</span>
                 <span className="text-sm font-bold text-[#111827] block">{user?.email}</span>
                 <span className="text-xs text-[#0B6B4F] font-medium inline-flex items-center gap-1 mt-0.5">
                   <UserCheck className="w-3.5 h-3.5" />
-                  {isSuperAdmin ? 'ผู้ดูแลระบบสูงสุด (Super Admin)' : isInventoryManager ? 'เจ้าหน้าที่พัสดุ (Inventory Manager)' : 'ผู้ใช้งานทั่วไป'}
+                  {isSuperAdmin ? 'Super Admin' : isInventoryManager ? 'Inventory Manager' : 'Staff / User'}
                 </span>
               </div>
             </div>
 
             <div className="text-xs text-[#6B7280] bg-[#F3F4F6] px-3 py-2 rounded-xl border border-[#E5E7EB]">
-              ยืนยันตัวตนผ่าน Google Workspace โรงเรียน
+              Authenticated via School Google Workspace
             </div>
           </div>
 
@@ -154,21 +154,21 @@ function SettingsContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#0B6B4F]" />
-                  <h3 className="text-sm font-bold text-[#111827]">ผู้ดูแลระบบสูงสุด (Super Admin)</h3>
+                  <h3 className="text-sm font-bold text-[#111827]">Super Admin</h3>
                 </div>
                 <span className="text-[11px] bg-[#E6F5EF] text-[#0B6B4F] font-semibold px-2 py-0.5 rounded-full">
-                  {superAdmins.length} บัญชี
+                  {superAdmins.length} Accounts
                 </span>
               </div>
               <p className="text-xs text-[#6B7280]">
-                มีสิทธิ์เต็มทุกส่วน: จัดการสต็อก, ออกใบเสร็จ, เพิ่ม-ลบข้อมูลลูกค้า, พิมพ์ป้าย QR, กำหนดสิทธิ์
+                Full permissions: inventory management, sales receipts, customer records, QR code generator, and role assignment
               </p>
               <div className="space-y-2 pt-1">
                 {superAdmins.map(email => (
                   <div key={email} className="flex items-center justify-between p-2.5 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
                     <span className="text-xs font-mono text-[#111827]">{email}</span>
                     <span className="text-[10px] text-[#027A48] font-medium bg-[#E6F5EF] px-2 py-0.5 rounded-md">
-                      อนุมัติแล้ว
+                      Approved
                     </span>
                   </div>
                 ))}
@@ -180,21 +180,21 @@ function SettingsContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-[#0B6B4F]" />
-                  <h3 className="text-sm font-bold text-[#111827]">เจ้าหน้าที่พัสดุ (Inventory Managers)</h3>
+                  <h3 className="text-sm font-bold text-[#111827]">Inventory Managers</h3>
                 </div>
                 <span className="text-[11px] bg-[#E6F5EF] text-[#0B6B4F] font-semibold px-2 py-0.5 rounded-full">
-                  {inventoryManagers.length} บัญชี
+                  {inventoryManagers.length} Accounts
                 </span>
               </div>
               <p className="text-xs text-[#6B7280]">
-                จัดการงานคลัง ตัด/รับเข้าสต็อก บันทึกจุดขายสวัสดิการ (POS) และจัดการข้อมูลนักเรียน
+                Warehouse operations, stock issue/receipt, school store POS terminal, and customer records
               </p>
               <div className="space-y-2 pt-1">
                 {inventoryManagers.map(email => (
                   <div key={email} className="flex items-center justify-between p-2.5 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
                     <span className="text-xs font-mono text-[#111827]">{email}</span>
                     <span className="text-[10px] text-[#027A48] font-medium bg-[#E6F5EF] px-2 py-0.5 rounded-md">
-                      อนุมัติแล้ว
+                      Approved
                     </span>
                   </div>
                 ))}
@@ -207,15 +207,15 @@ function SettingsContent() {
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5 text-[#0B6B4F]" />
               <div>
-                <h4 className="text-sm font-bold text-[#111827]">ฐานข้อมูลนักเรียนและลูกค้า (IB Directory)</h4>
-                <p className="text-xs text-[#6B7280]">ค้นหาและจัดการรายชื่อนักเรียน ผู้ปกครอง ครู และบุคลากร</p>
+                <h4 className="text-sm font-bold text-[#111827]">Student & Customer Directory (IB Directory)</h4>
+                <p className="text-xs text-[#6B7280]">Search and manage students, parents, teachers, and school personnel</p>
               </div>
             </div>
             <Link
               href="/customers"
               className="px-4 py-2 bg-[#0B6B4F] hover:bg-[#0F3D2E] text-white text-xs font-medium rounded-xl transition"
             >
-              ไปที่รายชื่อลูกค้า
+              Go to Directory
             </Link>
           </div>
         </div>
@@ -228,10 +228,10 @@ function SettingsContent() {
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-3">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-[#0B6B4F]" />
-              <h3 className="text-sm font-bold text-[#111827]">เหตุผลการตัดสต็อก (Deduction Reasons)</h3>
+              <h3 className="text-sm font-bold text-[#111827]">Deduction Reasons</h3>
             </div>
             <p className="text-xs text-[#6B7280]">
-              เหตุผลมาตรฐานสำหรับการตัดสต็อกและบันทึกในประวัติธุรกรรม
+              Standard reason presets for stock issue transactions and audit logging
             </p>
             <div className="space-y-2 pt-1">
               {deductionReasons.map(r => (
@@ -247,10 +247,10 @@ function SettingsContent() {
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-3">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-[#0B6B4F]" />
-              <h3 className="text-sm font-bold text-[#111827]">จุดจัดเก็บพัสดุ (Storage Locations)</h3>
+              <h3 className="text-sm font-bold text-[#111827]">Storage Locations</h3>
             </div>
             <p className="text-xs text-[#6B7280]">
-              จุดคลังพัสดุและอาคารที่เก็บของในโรงเรียน
+              Campus storage depots, department rooms, and fulfillment points
             </p>
             <div className="space-y-2 pt-1">
               {warehouseLocations.map((loc, i) => (
@@ -266,10 +266,10 @@ function SettingsContent() {
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-3 md:col-span-2">
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4 text-[#0B6B4F]" />
-              <h3 className="text-sm font-bold text-[#111827]">หน่วยนับสินค้า (Units of Measure)</h3>
+              <h3 className="text-sm font-bold text-[#111827]">Units of Measure</h3>
             </div>
             <p className="text-xs text-[#6B7280]">
-              หน่วยนับมาตรฐานที่ใช้ในการรับเข้าและตัดจ่ายพัสดุ
+              Standard units used for inventory receipts, issues, and packaging
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               {unitList.map(unit => (
@@ -294,13 +294,13 @@ function SettingsContent() {
               <div className="flex items-center gap-2.5">
                 <Server className="w-5 h-5 text-[#0B6B4F]" />
                 <div>
-                  <h3 className="text-sm font-bold text-[#111827]">ระบบฐานข้อมูลคลาวด์ (Supabase Cloud PostgreSQL)</h3>
-                  <span className="text-xs text-[#6B7280]">จัดเก็บข้อมูลพัสดุ สต็อก ธุรกรรม ใบเสร็จ และลูกค้าแบบ Realtime</span>
+                  <h3 className="text-sm font-bold text-[#111827]">Cloud Database (Supabase Cloud PostgreSQL)</h3>
+                  <span className="text-xs text-[#6B7280]">Realtime storage for items, stock balances, transactions, receipts, and customers</span>
                 </div>
               </div>
               <span className="inline-flex items-center gap-1.5 text-xs text-[#027A48] font-semibold bg-[#E6F5EF] px-3 py-1 rounded-full">
                 <span className="w-2 h-2 rounded-full bg-[#027A48]"></span>
-                เชื่อมต่อแล้ว (Connected)
+                Connected
               </span>
             </div>
 
@@ -308,13 +308,13 @@ function SettingsContent() {
               <div className="p-3 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
                 <span className="text-[11px] text-[#6B7280] block">Supabase Project URL</span>
                 <span className="font-mono text-[#111827] font-medium block mt-0.5 truncate">
-                  https://bdfjnvuxkrdylfcfbqqy.supabase.co
+                  https://wiulvyluvgeeaapbjtvc.supabase.co
                 </span>
               </div>
               <div className="p-3 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
                 <span className="text-[11px] text-[#6B7280] block">Service Role Security</span>
                 <span className="text-[#027A48] font-medium block mt-0.5">
-                  เปิดใช้งาน Row Level Security (RLS) ครอบคลุม
+                  Row Level Security (RLS) Active
                 </span>
               </div>
             </div>
@@ -326,8 +326,8 @@ function SettingsContent() {
               <div className="flex items-center gap-2.5">
                 <QrCode className="w-5 h-5 text-[#0B6B4F]" />
                 <div>
-                  <h3 className="text-sm font-bold text-[#111827]">ระบบชำระเงิน ธนาคารกรุงเทพ BeMerchant (Thai QR Payment)</h3>
-                  <span className="text-xs text-[#6B7280]">QR Code ทางการของโรงเรียนนานาชาติรุ่งอรุณ สำหรับจุดขาย POS</span>
+                  <h3 className="text-sm font-bold text-[#111827]">Bangkok Bank BeMerchant (Thai QR Payment)</h3>
+                  <span className="text-xs text-[#6B7280]">Official Roong Aroon International School merchant QR code for POS cashier</span>
                 </div>
               </div>
               <span className="text-xs text-[#0B6B4F] font-medium bg-[#E6F5EF] px-2.5 py-1 rounded-lg">
@@ -339,10 +339,10 @@ function SettingsContent() {
               <div className="md:col-span-2 space-y-3 text-xs">
                 <div className="p-3 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB] flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] text-[#6B7280] block">ชื่อบัญชีรับชำระ</span>
-                    <span className="font-bold text-[#111827] text-sm block">ROONG AROON INTERNATIONAL</span>
+                    <span className="text-[11px] text-[#6B7280] block">Merchant Account Name</span>
+                    <span className="font-bold text-[#111827] text-sm block">ROONG AROON INTERN</span>
                   </div>
-                  <span className="text-[11px] text-[#0B6B4F] font-semibold bg-[#E6F5EF] px-2 py-0.5 rounded">ธนาคารกรุงเทพ</span>
+                  <span className="text-[11px] text-[#0B6B4F] font-semibold bg-[#E6F5EF] px-2 py-0.5 rounded">Bangkok Bank</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -357,7 +357,7 @@ function SettingsContent() {
                 </div>
 
                 <p className="text-[11px] text-[#6B7280]">
-                  เมื่อผู้ซื้อชำระผ่าน PromptPay QR ยอดเงินจะเข้าบัญชีโรงเรียนโดยตรง พร้อมระบุเลขอ้างอิงใบเสร็จ
+                  When customers pay via PromptPay QR, funds deposit directly to the school account with receipt reference numbers.
                 </p>
               </div>
 
@@ -368,7 +368,7 @@ function SettingsContent() {
                   alt="BeMerchant Thai QR"
                   className="w-36 h-auto rounded-lg shadow-2xs border border-[#E5E7EB]"
                 />
-                <span className="text-[10px] text-[#6B7280] mt-1.5 font-medium">ป้าย QR ทางการ</span>
+                <span className="text-[10px] text-[#6B7280] mt-1.5 font-medium">Official Merchant QR</span>
               </div>
             </div>
           </div>
@@ -383,40 +383,40 @@ function SettingsContent() {
               <School className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#111827]">ข้อมูลโรงเรียนนานาชาติรุ่งอรุณ (School Identity)</h3>
+              <h3 className="text-sm font-bold text-[#111827]">School Identity & Profile</h3>
               <p className="text-xs text-[#6B7280]">Roong Aroon International School - IB World School</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div className="p-3.5 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
-              <span className="text-[11px] text-[#6B7280] block">ชื่อโรงเรียนภาษาอังกฤษ</span>
+              <span className="text-[11px] text-[#6B7280] block">School Name (English)</span>
               <span className="text-sm font-bold text-[#111827] block mt-0.5">
                 Roong Aroon International School
               </span>
             </div>
             <div className="p-3.5 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
-              <span className="text-[11px] text-[#6B7280] block">ชื่อโรงเรียนภาษาไทย</span>
+              <span className="text-[11px] text-[#6B7280] block">School Name (Thai)</span>
               <span className="text-sm font-bold text-[#111827] block mt-0.5">
                 โรงเรียนนานาชาติรุ่งอรุณ
               </span>
             </div>
             <div className="p-3.5 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
-              <span className="text-[11px] text-[#6B7280] block">ระบบหลักสูตร</span>
+              <span className="text-[11px] text-[#6B7280] block">Curriculum Continuum</span>
               <span className="text-sm font-bold text-[#111827] block mt-0.5">
                 International Baccalaureate (IB) Continuum
               </span>
               <span className="text-[11px] text-[#6B7280] block mt-1">
-                ครอบคลุม PYP (EY-G5), MYP (G6-G10), DP & CP (G11-G12)
+                Encompassing PYP (EY-G5), MYP (G6-G10), DP & CP (G11-G12)
               </span>
             </div>
             <div className="p-3.5 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
-              <span className="text-[11px] text-[#6B7280] block">อีเมลระบบที่ได้รับอนุญาต</span>
+              <span className="text-[11px] text-[#6B7280] block">Authorized Email Domain</span>
               <span className="text-sm font-bold text-[#111827] block mt-0.5">
                 @roong-aroon.ac.th
               </span>
               <span className="text-[11px] text-[#6B7280] block mt-1">
-                จำกัดเฉพาะบุคลากรและเจ้าหน้าที่ภายในโรงเรียน
+                Restricted to authorized faculty, staff, and administrators
               </span>
             </div>
           </div>

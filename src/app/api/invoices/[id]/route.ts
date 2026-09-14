@@ -54,7 +54,7 @@ export async function GET(
     const db = readDb();
     const invoice = (db.invoices || []).find(i => i.id === id || i.invoiceNumber === id);
     if (!invoice) {
-      return NextResponse.json({ error: 'ไม่พบใบแจ้งชำระเงิน' }, { status: 404 });
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
     return NextResponse.json({ invoice });
@@ -125,7 +125,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const reason = body?.reason || 'ยกเลิกใบแจ้งชำระ';
+    const reason = body?.reason || 'Invoice cancelled';
 
     const db = readDb();
     const idx = (db.invoices || []).findIndex(i => i.id === id || i.invoiceNumber === id);

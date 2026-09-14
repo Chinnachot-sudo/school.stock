@@ -49,7 +49,7 @@ export async function GET(
     const found = db.receipts?.find(r => r.id === id || r.receiptNumber.toLowerCase() === id.toLowerCase());
 
     if (!found) {
-      return NextResponse.json({ error: 'ไม่พบใบเสร็จรับเงินนี้' }, { status: 404 });
+      return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
     }
 
     return NextResponse.json({ receipt: found });
@@ -65,7 +65,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const voidReason = body.reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
+    const voidReason = body.reason || 'Cancelled by administrator';
 
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
@@ -77,7 +77,7 @@ export async function DELETE(
 
       if (sbReceipt) {
         if (sbReceipt.status === 'VOIDED') {
-          return NextResponse.json({ error: 'ใบเสร็จนี้ถูกยกเลิกไปแล้ว' }, { status: 400 });
+          return NextResponse.json({ error: 'This receipt has already been voided' }, { status: 400 });
         }
 
         await supabase
@@ -112,8 +112,8 @@ export async function DELETE(
               quantity: item.quantity,
               balance_after: restoredStock,
               department: 'School Store & Co-op',
-              requester_name: 'ระบบ (ยกเลิกบิล)',
-              note: `คืนสต็อกเนื่องจากยกเลิกใบเสร็จ #${sbReceipt.receipt_number} (${voidReason})`,
+              requester_name: 'System (Void Transaction)',
+              note: `Restocked due to voided receipt #${sbReceipt.receipt_number} (${voidReason})`,
               receipt_id: sbReceipt.id,
               created_at: new Date().toISOString()
             });
@@ -133,7 +133,7 @@ export async function DELETE(
 
         return NextResponse.json({
           success: true,
-          message: `ยกเลิกใบเสร็จ #${sbReceipt.receipt_number} และคืนยอดสต็อกเรียบร้อยแล้ว`,
+          message: `Receipt #${sbReceipt.receipt_number} voided and inventory restored successfully.`,
           receipt: { ...sbReceipt, status: 'VOIDED', voidReason }
         });
       }
@@ -144,12 +144,12 @@ export async function DELETE(
     const index = db.receipts?.findIndex(r => r.id === id || r.receiptNumber.toLowerCase() === id.toLowerCase());
 
     if (index === -1 || !db.receipts) {
-      return NextResponse.json({ error: 'ไม่พบใบเสร็จรับเงิน' }, { status: 404 });
+      return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
     }
 
     const receipt = db.receipts[index];
     if (receipt.status === 'VOIDED') {
-      return NextResponse.json({ error: 'ใบเสร็จนี้ถูกยกเลิกไปแล้ว' }, { status: 400 });
+      return NextResponse.json({ error: 'This receipt has already been voided' }, { status: 400 });
     }
 
     receipt.status = 'VOIDED';
@@ -169,9 +169,9 @@ export async function DELETE(
           type: 'VOID_SALE',
           quantity: item.quantity,
           balanceAfter: db.items[itemIdx].currentStock,
-          department: 'ร้านค้าสวัสดิการ / สหกรณ์',
-          requesterName: 'ระบบ (ยกเลิกบิล)',
-          note: `คืนสต็อกเนื่องจากยกเลิกใบเสร็จ #${receipt.receiptNumber} (${voidReason})`,
+          department: 'School Store & Co-op',
+          requesterName: 'System (Void Transaction)',
+          note: `Restocked due to voided receipt #${receipt.receiptNumber} (${voidReason})`,
           receiptId: receipt.id,
           createdAt: new Date().toISOString()
         };
@@ -183,7 +183,7 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: `ยกเลิกใบเสร็จ #${receipt.receiptNumber} และคืนยอดสต็อกเรียบร้อยแล้ว`,
+      message: `Receipt #${receipt.receiptNumber} voided and inventory restored successfully.`,
       receipt
     });
   } catch (error: any) {
