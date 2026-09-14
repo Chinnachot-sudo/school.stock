@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "figma": "node scripts/figma.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
