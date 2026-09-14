@@ -509,6 +509,34 @@
       "status": "PENDING",
       "createdAt": "2026-09-14T09:00:04.956Z",
       "updatedAt": "2026-09-14T09:00:04.956Z"
+    },
+    {
+      "id": "inv-1789377506588-646",
+      "invoiceNumber": "INV2609-0001",
+      "customerName": "Gitphob (Prab) Napassakornpong",
+      "customerType": "STUDENT",
+      "studentClass": "Grade 6 (MYP 1)",
+      "studentId": "260237",
+      "dueDate": "2026-09-21",
+      "items": [
+        {
+          "itemId": "item-1789030842778",
+          "itemCode": "๊UNI-M",
+          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "quantity": 1,
+          "unitPrice": 150,
+          "unit": "ตัว",
+          "totalPrice": 150
+        }
+      ],
+      "subtotal": 150,
+      "discount": 0,
+      "totalAmount": 150,
+      "creatorName": "Super Administrator",
+      "creatorEmail": "superadmin@roong-aroon.ac.th",
+      "status": "PENDING",
+      "createdAt": "2026-09-14T09:18:26.588Z",
+      "updatedAt": "2026-09-14T09:18:26.588Z"
     }
   ],
   "customers": [
