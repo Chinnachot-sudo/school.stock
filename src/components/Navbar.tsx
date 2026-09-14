@@ -40,7 +40,7 @@ export default function Navbar() {
   const roleDisplay = isSuperAdmin
     ? 'Super Admin'
     : isInventoryManager
-    ? 'Inventory Manager'
+    ? 'Admin'
     : 'Teacher / Staff';
 
   return (

@@ -228,7 +228,7 @@ export default function HomePage() {
             Dashboard
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">
-            Daily inventory movements and warehouse overview • Roong Aroon Int. School
+            Daily inventory movements and warehouse overview • Roong Aroon International School
           </p>
         </div>
 

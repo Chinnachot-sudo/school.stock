@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Item, Category, CustomerType, PaymentMethod, Receipt, CUSTOMER_TYPE_LABELS, Customer, ALL_IB_GRADES, Invoice, SCHOOL_BANK_INFO } from '@/types/inventory';
 import { useAuth } from '@/lib/auth-context';
-import { generatePromptPayPayload } from '@/lib/promptpay';
+import { generatePromptPayPayload, generateSchoolPromptPayPayload } from '@/lib/promptpay';
 import ScannerModal from '@/components/ScannerModal';
 import ReceiptModal from '@/components/ReceiptModal';
 import InvoiceModal from '@/components/InvoiceModal';
@@ -221,8 +221,18 @@ export default function PosPage() {
     return Math.max(0, cashReceived - totalAmount);
   }, [cashReceived, totalAmount]);
 
-  // PromptPay QR payload
-  const promptPayPayload = useMemo(() => {
+  // Official School PromptPay QR payloads (Bangkok Bank Bill Payment)
+  const schoolDynamicQrPayload = useMemo(() => {
+    if (totalAmount <= 0) return '';
+    return generateSchoolPromptPayPayload(totalAmount);
+  }, [totalAmount]);
+
+  const schoolStaticQrPayload = useMemo(() => {
+    return generateSchoolPromptPayPayload();
+  }, []);
+
+  // Custom fallback PromptPay QR payload if user enters custom ID
+  const customPromptPayPayload = useMemo(() => {
     if (!promptPayId || totalAmount <= 0) return '';
     return generatePromptPayPayload(promptPayId, totalAmount);
   }, [promptPayId, totalAmount]);
@@ -953,100 +963,91 @@ export default function PosPage() {
                     </button>
                   </div>
 
-                  {/* Mode 1: Official Bangkok Bank School Card Image */}
+                  {/* Mode 1: Official Bangkok Bank School QR */}
                   {qrMode === 'OFFICIAL' && (
-                    <div className="space-y-2">
-                      <div className="bg-white p-2 rounded-xl inline-block border border-[#E5E0D8] mx-auto max-w-xs">
-                        <img
-                          src={SCHOOL_BANK_INFO.qrImagePath}
-                          alt="Bangkok Bank Thai QR Payment"
-                          className="w-48 h-auto max-h-56 mx-auto rounded-lg object-contain"
+                    <div className="space-y-2.5">
+                      <div className="bg-white p-3 rounded-2xl inline-block border border-[#E5E0D8] mx-auto shadow-xs">
+                        <QRCodeSVG
+                          value={schoolStaticQrPayload}
+                          size={175}
+                          level="M"
+                          includeMargin={true}
                         />
+                        <div className="text-[10px] font-bold text-[#0B6B4F] mt-1">
+                          Bangkok Bank Thai QR
+                        </div>
                       </div>
 
-                      <div className="bg-white p-2.5 rounded-lg border border-[#E5E0D8] text-left space-y-1 text-[11px]">
+                      <div className="bg-white p-2.5 rounded-xl border border-[#E5E0D8] text-left space-y-1 text-[11px]">
                         <div className="flex justify-between">
-                          <span className="text-[#6B6560]">Bank:</span>
-                          <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.bankName}</strong>
+                          <span className="text-[#6B7280]">Bank:</span>
+                          <strong className="text-[#111827]">{SCHOOL_BANK_INFO.bankName}</strong>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-[#6B6560]">Account Name:</span>
-                          <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.accountName}</strong>
+                          <span className="text-[#6B7280]">Account:</span>
+                          <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong>
                         </div>
                         <div className="flex justify-between font-mono">
-                          <span className="text-[#6B6560]">Ref.1 (MID):</span>
-                          <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.ref1}</strong>
+                          <span className="text-[#6B7280]">Ref.1 (MID):</span>
+                          <strong className="text-[#111827]">{SCHOOL_BANK_INFO.ref1}</strong>
                         </div>
                         <div className="flex justify-between font-mono">
-                          <span className="text-[#6B6560]">Ref.3 (TID):</span>
-                          <strong className="text-[#1A1A1A]">{SCHOOL_BANK_INFO.ref3}</strong>
+                          <span className="text-[#6B7280]">Ref.2 (TID):</span>
+                          <strong className="text-[#111827]">{SCHOOL_BANK_INFO.ref3}</strong>
                         </div>
                         <div className="flex justify-between pt-1 border-t border-[#E5E0D8] text-xs font-semibold">
-                          <span className="text-[#1A1A1A]">Total Due:</span>
-                          <span className="text-[#1F4D3A] font-mono">฿{totalAmount.toFixed(2)} THB</span>
+                          <span className="text-[#111827]">Total Due:</span>
+                          <span className="text-[#0B6B4F] font-mono">฿{totalAmount.toFixed(2)} THB</span>
                         </div>
                       </div>
 
-                      <p className="text-[11px] text-[#6B6560]">
-                        Scan using any mobile banking app, specify <strong className="text-[#1A1A1A]">฿{totalAmount.toFixed(2)} THB</strong>, and show payment slip to staff.
+                      <p className="text-[11px] text-[#6B7280]">
+                        Scan using any mobile banking app, enter <strong className="text-[#111827]">฿{totalAmount.toFixed(2)} THB</strong>, and confirm payee is <strong>ROONG AROON INTERNATIONAL</strong>.
                       </p>
                     </div>
                   )}
 
-                  {/* Mode 2: Dynamic Amount QR (Auto Fills Cart Total) */}
+                  {/* Mode 2: Dynamic Amount QR (Auto-Fills Exact Cart Amount) */}
                   {qrMode === 'DYNAMIC' && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-1.5 font-medium text-[#1A1A1A]">
-                        <span>Dynamic QR with Auto Amount</span>
-                        <button
-                          type="button"
-                          onClick={() => setIsEditingPromptPay(!isEditingPromptPay)}
-                          className="text-[#6B6560] hover:text-[#1A1A1A] p-1"
-                          title="Edit PromptPay ID"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-center gap-1.5 font-semibold text-xs text-[#0B6B4F]">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#0B6B4F]" />
+                        <span>Dynamic QR (Auto-filled Amount)</span>
                       </div>
 
-                      {isEditingPromptPay && (
-                        <div className="flex gap-1 max-w-xs mx-auto">
-                          <input
-                            type="text"
-                            value={promptPayId}
-                            onChange={e => setPromptPayId(e.target.value)}
-                            placeholder="Phone number or 13-digit Tax ID"
-                            className="flex-1 px-2 py-1 text-xs border border-[#E5E0D8] rounded-lg bg-white font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingPromptPay(false)}
-                            className="px-2 py-1 bg-[#1F4D3A] text-white rounded-lg text-xs font-medium"
-                          >
-                            Save
-                          </button>
+                      <div className="bg-white p-3 rounded-2xl inline-block border border-[#0B6B4F]/30 mx-auto shadow-sm">
+                        <QRCodeSVG
+                          value={schoolDynamicQrPayload}
+                          size={185}
+                          level="M"
+                          includeMargin={true}
+                        />
+                        <div className="text-[11px] font-bold text-[#0B6B4F] mt-1 font-mono">
+                          ฿{totalAmount.toFixed(2)} THB
                         </div>
-                      )}
-
-                      <div className="bg-white p-3 rounded-xl inline-block border border-[#E5E0D8] mx-auto">
-                        {promptPayPayload ? (
-                          <QRCodeSVG
-                            value={promptPayPayload}
-                            size={165}
-                            level="M"
-                            includeMargin={true}
-                          />
-                        ) : (
-                          <div className="w-[165px] h-[165px] flex items-center justify-center text-[#6B6560]">
-                            Enter PromptPay ID
-                          </div>
-                        )}
                       </div>
 
-                      <p className="text-[11px] text-[#6B6560]">
-                        Open banking app and scan to pay <strong className="text-[#1A1A1A]">฿{totalAmount.toFixed(2)} THB</strong> immediately
-                      </p>
-                      <p className="text-[10px] text-[#6B6560] font-mono">
-                        (PromptPay ID: {promptPayId})
+                      <div className="bg-white p-2.5 rounded-xl border border-[#E5E0D8] text-left space-y-1 text-[11px]">
+                        <div className="flex justify-between">
+                          <span className="text-[#6B7280]">Payee:</span>
+                          <strong className="text-[#111827]">ROONG AROON INTERNATIONAL</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#6B7280]">Account (Ref 1):</span>
+                          <strong className="font-mono text-[#0B6B4F]">{SCHOOL_BANK_INFO.ref1}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#6B7280]">Bank:</span>
+                          <strong className="text-[#111827]">{SCHOOL_BANK_INFO.bankName}</strong>
+                        </div>
+                        <div className="flex justify-between pt-1 border-t border-[#E5E0D8] text-xs font-bold">
+                          <span className="text-[#111827]">Auto-Filled Amount:</span>
+                          <span className="text-[#0B6B4F] font-mono">฿{totalAmount.toFixed(2)} THB</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-[#6B7280]">
+                        Open any mobile banking app and scan to pay <strong className="text-[#111827]">฿{totalAmount.toFixed(2)} THB</strong> immediately without typing the amount!
                       </p>
                     </div>
                   )}

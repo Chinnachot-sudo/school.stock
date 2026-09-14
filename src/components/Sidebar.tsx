@@ -159,7 +159,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             Romaneeya
           </span>
           <span className="text-[10px] text-[#6B7280] block font-mono truncate">
-            Roong Aroon Int. School
+            Roong Aroon International School
           </span>
         </div>
       </div>

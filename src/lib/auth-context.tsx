@@ -1,11 +1,9 @@
-'use client';
+﻿'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { UserRole, getUserRole, ROLE_LABELS } from '@/types/inventory';
-
-const ALLOWED_SCHOOL_DOMAIN = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || 'roong-aroon.ac.th';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { UserRole, getUserRole, ROLE_LABELS, AppUser } from '@/types/inventory';
 
 interface AuthContextType {
   user: User | null;
@@ -15,12 +13,15 @@ interface AuthContextType {
   role: UserRole;
   roleLabel: string;
   isSuperAdmin: boolean;
+  isAdmin: boolean;
   isInventoryManager: boolean;
   canManageItems: boolean;
   canRestock: boolean;
   canDeleteItems: boolean;
   canPrintQr: boolean;
   canExportExcel: boolean;
+  canManageUsers: boolean;
+  signIn: (username: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -33,150 +34,110 @@ const AuthContext = createContext<AuthContextType>({
   role: 'TEACHER',
   roleLabel: 'Teacher / Staff',
   isSuperAdmin: false,
+  isAdmin: false,
   isInventoryManager: false,
   canManageItems: false,
   canRestock: false,
   canDeleteItems: false,
   canPrintQr: false,
   canExportExcel: false,
+  canManageUsers: false,
+  signIn: async () => {},
   signInWithGoogle: async () => {},
   signOut: async () => {}
 });
 
-const MOCK_DEV_USER: User = {
-  id: 'local-dev-user',
-  app_metadata: { provider: 'local' },
-  user_metadata: {
-    full_name: 'Chinnachot (Local Dev)',
-    avatar_url: ''
-  },
-  aud: 'authenticated',
-  confirmation_sent_at: '',
-  recovery_sent_at: '',
-  email_change_sent_at: '',
-  new_email: '',
-  invited_at: '',
-  action_link: '',
-  email: 'chinnachot@roong-aroon.ac.th',
-  phone: '',
-  created_at: '2026-01-01T00:00:00.000Z',
-  confirmed_at: '2026-01-01T00:00:00.000Z',
-  email_confirmed_at: '2026-01-01T00:00:00.000Z',
-  phone_confirmed_at: '',
-  last_sign_in_at: '2026-01-01T00:00:00.000Z',
-  role: 'authenticated',
-  updated_at: '2026-01-01T00:00:00.000Z',
-  identities: [],
-  factors: []
-};
-
-const isDev = process.env.NODE_ENV === 'development';
+function formatUserObject(data: any): User {
+  return {
+    id: data.id || 'usr-default',
+    email: data.email || `${data.username || 'staff'}@roong-aroon.ac.th`,
+    app_metadata: { provider: 'credentials' },
+    user_metadata: {
+      full_name: data.name || data.username || 'Staff User',
+      username: data.username || ''
+    },
+    role: data.role || 'TEACHER',
+    aud: 'authenticated',
+    created_at: data.createdAt || new Date().toISOString()
+  } as unknown as User;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(isDev ? MOCK_DEV_USER : null);
+  const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState<boolean>(!isDev);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) {
-      setUser(MOCK_DEV_USER);
-      setLoading(false);
-      return;
-    }
-
-    // 1. Get initial session
-    supabase.auth.getSession().then(({ data }: any) => {
-      const currentSession = data?.session ?? null;
-      setSession(currentSession);
-      setUser(currentSession?.user ?? (isDev ? MOCK_DEV_USER : null));
-      setLoading(false);
-    });
-
-    // 2. Subscribe to auth changes
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
-      setSession(session ?? null);
-      setUser(session?.user ?? (isDev ? MOCK_DEV_USER : null));
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const signInWithGoogle = async () => {
-    if (!supabase) {
-      setUser({
-        id: 'local-dev-user',
-        app_metadata: { provider: 'local' },
-        user_metadata: {
-          full_name: 'Chinnachot (Local Dev)',
-          avatar_url: ''
-        },
-        aud: 'authenticated',
-        confirmation_sent_at: '',
-        recovery_sent_at: '',
-        email_change_sent_at: '',
-        new_email: '',
-        invited_at: '',
-        action_link: '',
-        email: 'chinnachot@roong-aroon.ac.th',
-        phone: '',
-        created_at: new Date().toISOString(),
-        confirmed_at: new Date().toISOString(),
-        email_confirmed_at: new Date().toISOString(),
-        phone_confirmed_at: '',
-        last_sign_in_at: new Date().toISOString(),
-        role: 'authenticated',
-        updated_at: new Date().toISOString(),
-        identities: [],
-        factors: []
-      } as unknown as User);
-      return;
-    }
-
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${origin}/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'select_account',
-          ...(ALLOWED_SCHOOL_DOMAIN ? { hd: ALLOWED_SCHOOL_DOMAIN } : {})
+    // Check localStorage for persisted user session
+    try {
+      const stored = localStorage.getItem('school_auth_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.username) {
+          setUser(formatUserObject(parsed));
         }
       }
-    });
+    } catch (err) {
+      console.warn('Failed to parse cached auth user:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    if (error) {
-      console.error('Sign in with Google error:', error);
-      throw error;
+  const signIn = async (username: string, password: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Login failed. Please check your credentials.');
+      }
+
+      const formatted = formatUserObject(data.user);
+      setUser(formatted);
+      localStorage.setItem('school_auth_user', JSON.stringify(data.user));
+    } finally {
+      setLoading(false);
     }
   };
 
+  const signInWithGoogle = async () => {
+    // Deprecated in favor of credentials, but provided for compatibility
+    throw new Error('Google Sign-In has been disabled by School Administration. Please use your Username and Password.');
+  };
+
   const signOut = async () => {
-    if (supabase) {
-      await supabase.auth.signOut();
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // ignore
     }
     setUser(null);
     setSession(null);
+    localStorage.removeItem('school_auth_user');
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
     }
   };
 
-  // Compute permissions based on user email
-  const role: UserRole = getUserRole(user?.email);
-  const roleLabel = ROLE_LABELS[role];
+  // Determine permissions
+  const rawRole = (user as any)?.role || user?.email;
+  const role: UserRole = getUserRole(rawRole);
+  const roleLabel = ROLE_LABELS[role] || 'Teacher / Staff';
   const isSuperAdmin = role === 'SUPER_ADMIN';
-  const isInventoryManager = role === 'INVENTORY_MANAGER' || isSuperAdmin;
-  const canManageItems = isInventoryManager;
-  const canRestock = isInventoryManager;
+  const isAdmin = role === 'ADMIN' || isSuperAdmin;
+  const isInventoryManager = isAdmin; // alias
+  const canManageItems = isAdmin;
+  const canRestock = isAdmin;
   const canDeleteItems = isSuperAdmin;
-  const canPrintQr = isInventoryManager;
-  const canExportExcel = isInventoryManager;
+  const canPrintQr = isAdmin;
+  const canExportExcel = isAdmin;
+  const canManageUsers = isSuperAdmin || isAdmin;
 
   return (
     <AuthContext.Provider
@@ -188,12 +149,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         roleLabel,
         isSuperAdmin,
+        isAdmin,
         isInventoryManager,
         canManageItems,
         canRestock,
         canDeleteItems,
         canPrintQr,
         canExportExcel,
+        canManageUsers,
+        signIn,
         signInWithGoogle,
         signOut
       }}

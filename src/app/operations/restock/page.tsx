@@ -224,14 +224,6 @@ export default function StockRestockPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsScannerOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#0B6B4F] bg-[#E6F5EF] hover:bg-[#d4efe2] transition shadow-xs"
-          >
-            <ScanLine className="w-4 h-4" />
-            <span>Scan Barcode</span>
-          </button>
           <Link
             href="/history?type=IN"
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium text-[#6B7280] bg-white border border-[#E5E7EB] hover:text-[#111827] hover:bg-[#F9FAFB] transition shadow-xs"

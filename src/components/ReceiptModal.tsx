@@ -43,7 +43,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
   const renderReceiptHalf = (copyType: 'ORIGINAL' | 'COPY') => {
     const isOriginal = copyType === 'ORIGINAL';
     return (
-      <div className="border border-slate-300 rounded-xl p-4 sm:p-5 bg-white text-slate-800 text-[11px] leading-relaxed relative flex flex-col justify-between min-h-[380px]">
+      <div className="receipt-half border border-slate-300 rounded-xl p-4 sm:p-5 bg-white text-slate-800 text-[11px] leading-relaxed relative flex flex-col justify-between min-h-[380px] print:min-h-0">
         {/* Void Watermark */}
         {isVoided && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
@@ -55,17 +55,21 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
 
         <div>
           {/* Header Row */}
-          <div className="flex items-start justify-between border-b border-slate-200 pb-2.5 mb-2.5">
+          <div className="flex items-start justify-between border-b border-slate-200 pb-2 mb-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                <School className="w-5 h-5" />
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0">
+                <img
+                  src="/images/school_logo.png"
+                  alt="Roong Aroon International School Crest"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <h3 className="font-black text-sm text-slate-900 leading-tight">
                   Roong Aroon International School
                 </h3>
-                <p className="text-[10px] font-medium text-slate-600">
-                  Roong Aroon International School • School Store & Co-op
+                <p className="text-xs font-semibold text-slate-700 mt-0.5">
+                  โรงเรียนนานาชาติรุ่งอรุณ
                 </p>
               </div>
             </div>
@@ -203,6 +207,63 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
+      
+      {/* Print Specific CSS to enforce Full-A4 sizing and two symmetrical halves */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 12mm;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #111827 !important;
+            font-size: 10pt !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-receipt,
+          #printable-receipt * {
+            visibility: visible !important;
+          }
+          #printable-receipt {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 280mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            z-index: 9999999 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+          }
+          .receipt-half {
+            flex: 1 1 0% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            box-sizing: border-box !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 12px 16px !important;
+            background: #ffffff !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[96vh] my-auto">
         
         {/* Top Controls Bar (Hidden when printing) */}
@@ -262,12 +323,12 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
           </div>
 
           {/* The Actual Dual-Half Receipt Paper */}
-          <div className="receipt-print-area space-y-4 print:space-y-2 bg-white p-4 rounded-xl border border-slate-200 shadow-sm print:shadow-none print:border-none print:p-0">
+          <div id="printable-receipt" className="receipt-print-area space-y-4 print:space-y-2 bg-white p-4 rounded-xl border border-slate-200 shadow-sm print:shadow-none print:border-none print:p-0">
             {/* Top Half: Original for Parent / Student */}
             {renderReceiptHalf('ORIGINAL')}
 
             {/* Scissor Cut Line Divider */}
-            <div className="flex items-center justify-center gap-2 text-slate-400 text-[10px] my-1 select-none">
+            <div className="flex items-center justify-center gap-2 text-slate-400 text-[10px] my-1 py-1 select-none shrink-0">
               <Scissors className="w-3.5 h-3.5 rotate-90" />
               <span className="tracking-widest font-mono">
                 - - - - - - - - Cut Along Perforation (Half-A4) - - - - - - - -

@@ -1,15 +1,18 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { School, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { AlertCircle, Loader2, Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading, isConfigured, signInWithGoogle } = useAuth();
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  const { user, loading, signIn } = useAuth();
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // If already logged in, redirect to home
@@ -19,15 +22,28 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
-  const handleGoogleLogin = async () => {
-    try {
-      setIsSigningIn(true);
-      setError(null);
-      await signInWithGoogle();
-    } catch (err: any) {
-      setIsSigningIn(false);
-      setError(err.message || 'Unable to connect to Google. Please try again.');
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password) {
+      setError('Please enter both your username and password.');
+      return;
     }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      await signIn(username.trim(), password);
+      router.push('/');
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setError(err.message || 'Login failed. Please check your username and password.');
+    }
+  };
+
+  const handleQuickFill = (u: string, p: string) => {
+    setUsername(u);
+    setPassword(p);
+    setError(null);
   };
 
   if (loading) {
@@ -39,88 +55,145 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white border border-[#E5E7EB] rounded-2xl p-6 sm:p-8 flex flex-col items-center text-center shadow-xs">
+    <div className="min-h-[85vh] flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-3xl p-7 sm:p-9 flex flex-col items-center text-center shadow-lg shadow-black/5">
         
-        {/* Romaneeya Green Leaf Icon */}
-        <div className="w-14 h-14 rounded-2xl overflow-hidden mb-3 shadow-xs border border-[#E5E7EB] bg-[#E6F5EF] p-1">
+        {/* School Crest / Romaneeya Logo */}
+        <div className="w-16 h-16 rounded-2xl overflow-hidden mb-3.5 shadow-sm border border-[#E5E7EB] bg-[#F7F4EF] p-1.5 flex items-center justify-center">
           <img
-            src="/images/romaneeya_leaf_logo.svg"
-            alt="Romaneeya Logo"
+            src="/images/school_logo.png"
+            alt="Roong Aroon International School Crest"
             className="w-full h-full object-contain"
           />
         </div>
 
-        <span className="text-base font-extrabold text-[#111827] tracking-tight block">
-          Romaneeya
-        </span>
-        <p className="text-[11px] font-mono text-[#6B7280] tracking-wide uppercase">
+        <span className="text-lg font-black text-[#111827] tracking-tight block">
           Roong Aroon International School
+        </span>
+        <p className="text-xs font-semibold text-[#6B7280] tracking-wide mt-0.5">
+          โรงเรียนนานาชาติรุ่งอรุณ • Inventory Portal
         </p>
 
-        <h1 className="text-lg font-bold text-[#111827] mt-3">
-          Sign In
-        </h1>
-        <p className="text-xs text-[#6B7280] mt-0.5">
-          School ERP & Inventory System (School account required)
-        </p>
+        <div className="w-full border-t border-[#F3F4F6] my-5" />
 
-        {error && (
-          <div className="w-full mt-4 p-3 bg-[#FEE4E2] border border-[#B42318]/20 text-[#B42318] text-xs rounded-xl flex items-start gap-2 text-left">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Primary Google Login Button */}
-        <div className="w-full mt-6 space-y-3">
-          <button
-            onClick={handleGoogleLogin}
-            disabled={isSigningIn}
-            className="w-full min-h-[48px] bg-[#0B6B4F] hover:bg-[#0F3D2E] active:scale-98 text-white font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-3 text-xs transition disabled:opacity-60 shadow-xs"
-          >
-            {isSigningIn ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-            ) : (
-              <svg className="w-4 h-4 shrink-0 bg-white rounded-full p-0.5" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-            )}
-            <span>Sign in with Google</span>
-          </button>
-
-          <p className="text-[11px] text-[#6B6560] text-center font-mono">
-            @roong-aroon.ac.th
+        <div className="w-full text-left mb-5">
+          <h1 className="text-base font-bold text-[#111827]">
+            Staff Sign In
+          </h1>
+          <p className="text-xs text-[#6B7280] mt-0.5">
+            Restricted access. Please sign in with your assigned credentials.
           </p>
         </div>
 
-        {/* Fallback for local development */}
-        {!isConfigured && (
-          <div className="w-full mt-6 pt-4 border-t border-[#E5E0D8]">
-            <Link
-              href="/"
-              className="text-xs text-[#6B6560] hover:text-[#1A1A1A] flex items-center justify-center gap-1 transition"
-            >
-              <span>Enter Local Development Mode</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
+        {error && (
+          <div className="w-full mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start gap-2.5 text-left animate-in fade-in">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+            <span className="leading-relaxed">{error}</span>
           </div>
         )}
+
+        {/* Credentials Form */}
+        <form onSubmit={handleSubmit} className="w-full space-y-4 text-left">
+          <div>
+            <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              Username
+            </label>
+            <div className="relative">
+              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. superadmin or admin"
+                required
+                autoComplete="username"
+                className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white transition"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full min-h-[44px] mt-2 bg-[#0B6B4F] hover:bg-[#084D39] active:scale-[0.99] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition disabled:opacity-60 shadow-sm"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <span>Signing In...</span>
+              </>
+            ) : (
+              <span>Sign In to System</span>
+            )}
+          </button>
+        </form>
+
+        {/* Quick Demo Credentials Panel */}
+        <div className="w-full mt-6 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-left text-xs text-slate-600">
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>Default System Accounts:</span>
+          </div>
+          <div className="space-y-1.5 text-[11px]">
+            <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+              <div>
+                <span className="font-bold text-slate-900">Super Admin:</span>
+                <span className="font-mono text-slate-600 ml-1.5">superadmin</span>
+                <span className="text-slate-400 mx-1">/</span>
+                <span className="font-mono text-slate-600">rais2026</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('superadmin', 'rais2026')}
+                className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer"
+              >
+                Use
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+              <div>
+                <span className="font-bold text-slate-900">Admin:</span>
+                <span className="font-mono text-slate-600 ml-1.5">admin</span>
+                <span className="text-slate-400 mx-1">/</span>
+                <span className="font-mono text-slate-600">admin2026</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('admin', 'admin2026')}
+                className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer"
+              >
+                Use
+              </button>
+            </div>
+          </div>
+        </div>
 
       </div>
     </div>

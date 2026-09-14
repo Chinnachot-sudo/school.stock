@@ -59,3 +59,32 @@ export function generatePromptPayPayload(target: string, amount?: number): strin
 
   return `${dataToCrc}${checksum}`;
 }
+
+/**
+ * Official Bangkok Bank PromptPay Bill Payment QR Code Generator
+ * for Roong Aroon International School.
+ * Decoded directly from physical payment stand:
+ * - Biller: ROONG AROON INTERNATIONAL
+ * - Tax ID / Biller ID: 010753600037403
+ * - Ref 1 (Mid): 002203089172
+ * - Ref 2 (Tid): 43008918
+ */
+export function generateSchoolPromptPayPayload(amount?: number): string {
+  let payload = '';
+  payload += formatField('00', '01'); // Format indicator
+  payload += formatField('01', amount && amount > 0 ? '12' : '11'); // 12 = Dynamic, 11 = Static
+  payload += formatField('15', '2676076426760764000002203089172');
+  payload += formatField('30', '0016A0000006770101120115010753600037403021500000220308917203194300891811109150202');
+  payload += formatField('52', '0000'); // Merchant Category Code
+  payload += formatField('53', '764'); // Currency THB
+  if (amount !== undefined && amount > 0) {
+    payload += formatField('54', amount.toFixed(2)); // Auto-filled amount
+  }
+  payload += formatField('58', 'TH'); // Country code
+  payload += formatField('59', 'ROONG AROON INTERNATIONAL'); // Merchant Name
+  payload += formatField('60', 'BANGKOK'); // Merchant City
+  payload += formatField('61', '10150'); // Postal Code
+  payload += formatField('62', '070843008918'); // Additional Data (TID)
+  const dataToCrc = `${payload}6304`;
+  return `${dataToCrc}${crc16(dataToCrc)}`;
+}

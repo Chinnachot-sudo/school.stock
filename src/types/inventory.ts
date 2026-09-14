@@ -1,6 +1,16 @@
 export type TransactionType = 'IN' | 'OUT' | 'ADJUST' | 'SALE' | 'VOID_SALE';
 
-export type UserRole = 'SUPER_ADMIN' | 'INVENTORY_MANAGER' | 'TEACHER';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'INVENTORY_MANAGER' | 'TEACHER';
+
+export interface AppUser {
+  id: string;
+  username: string;
+  name: string;
+  email?: string;
+  role: UserRole;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface UserRoleRecord {
   email: string;
@@ -10,23 +20,30 @@ export interface UserRoleRecord {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
-  INVENTORY_MANAGER: 'Inventory Manager',
+  ADMIN: 'Admin',
+  INVENTORY_MANAGER: 'Admin',
   TEACHER: 'Teacher / Staff'
 };
 
-// Whitelist mapping for school accounts
+// Whitelist mapping for school accounts fallback
 export const DEFAULT_ROLE_MAP: Record<string, UserRole> = {
   'chinnachot@roong-aroon.ac.th': 'SUPER_ADMIN',
-  'artima@roong-aroon.ac.th': 'INVENTORY_MANAGER',
-  'pakapol@roong-aroon.ac.th': 'INVENTORY_MANAGER',
-  'manusnan@roong-aroon.ac.th': 'INVENTORY_MANAGER',
-  'pattawadee.k@roong-aroon.ac.th': 'INVENTORY_MANAGER'
+  'superadmin': 'SUPER_ADMIN',
+  'admin': 'ADMIN',
+  'chinnachot': 'SUPER_ADMIN',
+  'artima@roong-aroon.ac.th': 'ADMIN',
+  'pakapol@roong-aroon.ac.th': 'ADMIN',
+  'manusnan@roong-aroon.ac.th': 'ADMIN',
+  'pattawadee.k@roong-aroon.ac.th': 'ADMIN'
 };
 
-export function getUserRole(email?: string | null): UserRole {
-  if (!email) return 'TEACHER';
-  const cleanEmail = email.toLowerCase().trim();
-  return DEFAULT_ROLE_MAP[cleanEmail] || 'TEACHER';
+export function getUserRole(emailOrRole?: string | null): UserRole {
+  if (!emailOrRole) return 'TEACHER';
+  const clean = emailOrRole.toLowerCase().trim();
+  if (clean === 'super_admin' || clean === 'superadmin') return 'SUPER_ADMIN';
+  if (clean === 'admin' || clean === 'inventory_manager') return 'ADMIN';
+  if (clean === 'teacher' || clean === 'staff') return 'TEACHER';
+  return DEFAULT_ROLE_MAP[clean] || 'TEACHER';
 }
 
 export interface Item {

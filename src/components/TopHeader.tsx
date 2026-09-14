@@ -72,7 +72,7 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
   const roleDisplay = isSuperAdmin
     ? 'Super Admin'
     : isInventoryManager
-    ? 'Inventory Manager'
+    ? 'Admin'
     : 'Teacher / Staff';
 
   return (
