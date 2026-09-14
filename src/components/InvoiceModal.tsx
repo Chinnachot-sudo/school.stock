@@ -96,7 +96,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
     : '-';
 
   const statusInfo = INVOICE_STATUS_LABELS[invoice.status] || INVOICE_STATUS_LABELS.PENDING;
-  const promptPayPayload = generateSchoolPromptPayPayload(invoice.totalAmount);
+  // Official Bangkok Bank Thai QR Payload matching physical bank payment stand exactly
+  const promptPayPayload = generateSchoolPromptPayPayload();
 
   const handleMarkAsPaid = async () => {
     if (!confirm(`Confirm recording payment for Invoice #${invoice.invoiceNumber} in the amount of ฿${invoice.totalAmount.toLocaleString()}?`)) {
@@ -278,16 +279,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                   </h2>
                 </div>
 
-                {/* Roong Aroon International School Official Gold Crest & Names */}
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="text-sm sm:text-base font-bold text-[#111827] tracking-tight block leading-tight">
-                      Roong Aroon International School
-                    </span>
-                    <span className="text-xs sm:text-sm font-medium text-[#4B5563] block mt-0.5">
-                      โรงเรียนนานาชาติรุ่งอรุณ
-                    </span>
-                  </div>
+                {/* Roong Aroon International School Official Gold Crest on Left of School Names */}
+                <div className="flex items-center gap-3.5">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0">
                     <img
                       src="/images/school_crest_gold.png"
@@ -295,13 +288,21 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                       className="w-full h-full object-contain"
                     />
                   </div>
+                  <div className="text-left">
+                    <span className="text-base sm:text-lg font-bold text-[#111827] tracking-tight block leading-tight">
+                      Roong Aroon International School
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-[#4B5563] block mt-0.5">
+                      โรงเรียนนานาชาติรุ่งอรุณ
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* 2. METADATA SECTION: CUSTOMER, DOCUMENT & ISSUER DETAILS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 pb-4 mb-4 text-xs">
+              {/* 2. METADATA SECTION: CUSTOMER (LEFT) PAIRED WITH INVOICE NO. (RIGHT) */}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-2 pb-3.5 mb-3.5 text-xs">
                 {/* Column 1: Customer Details */}
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <div className="flex">
                     <span className="w-28 text-[#6B7280] shrink-0 font-medium">Customer Name</span>
                     <span className="font-bold text-[#111827] flex-1">{invoice.customerName}</span>
@@ -332,36 +333,36 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                   </div>
                 </div>
 
-                {/* Column 2: Document Metadata & Dates */}
-                <div className="space-y-1.5 md:text-right">
-                  <div className="flex md:justify-end">
-                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Invoice No.</span>
-                    <span className="font-bold text-[#111827] font-mono">#{invoice.invoiceNumber}</span>
+                {/* Column 2: Document Metadata & Dates (Directly on the Right!) */}
+                <div className="space-y-1 text-right">
+                  <div className="flex justify-end items-center">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Invoice No.</span>
+                    <span className="font-extrabold text-[#111827] font-mono text-sm">#{invoice.invoiceNumber}</span>
                   </div>
-                  <div className="flex md:justify-end">
-                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Issue Date</span>
-                    <span className="text-[#111827]">{enCreatedDate}</span>
+                  <div className="flex justify-end">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Issue Date</span>
+                    <span className="text-[#111827] font-medium">{enCreatedDate}</span>
                   </div>
-                  <div className="flex md:justify-end">
-                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Due Date</span>
+                  <div className="flex justify-end">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Due Date</span>
                     <span className="font-bold text-[#B42318]">{enDueDate}</span>
                   </div>
-                  <div className="flex md:justify-end">
-                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Payment Terms</span>
+                  <div className="flex justify-end">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Payment Terms</span>
                     <span className="text-[#111827]">7 Days upon receipt</span>
                   </div>
-                  <div className="flex md:justify-end">
-                    <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Reference</span>
+                  <div className="flex justify-end">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Reference</span>
                     <span className="text-[#111827]">School Supply & Welfare Requisition</span>
                   </div>
                 </div>
 
-                {/* Issuer Info (Full Width / Split) */}
-                <div className="md:col-span-2 pt-2.5 border-t border-[#E5E7EB] grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-[11px] text-[#4B5563]">
+                {/* Issuer Info (Full Width Split across 2 columns) */}
+                <div className="col-span-2 pt-2 border-t border-[#E5E7EB] grid grid-cols-2 gap-x-8 text-[11px] text-[#4B5563]">
                   <div className="space-y-0.5">
                     <div className="flex">
                       <span className="w-28 text-[#6B7280] shrink-0 font-medium">Issued By</span>
-                      <span className="font-medium text-[#111827]">
+                      <span className="font-semibold text-[#111827]">
                         Roong Aroon International School
                       </span>
                     </div>
@@ -371,13 +372,13 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                     </div>
                   </div>
 
-                  <div className="space-y-0.5 md:text-right">
-                    <div className="flex md:justify-end">
-                      <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">School Tax ID</span>
-                      <span className="font-mono">0105541008918</span>
+                  <div className="space-y-0.5 text-right">
+                    <div className="flex justify-end">
+                      <span className="mr-3 text-[#6B7280] shrink-0 font-medium">School Tax ID</span>
+                      <span className="font-mono font-medium">0105541008918</span>
                     </div>
-                    <div className="flex md:justify-end">
-                      <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">Tel / Email</span>
+                    <div className="flex justify-end">
+                      <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Tel / Email</span>
                       <span>02-870-7512 / finance@roong-aroon.ac.th</span>
                     </div>
                   </div>
@@ -436,29 +437,49 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
 
               {/* 4. PAYMENT METHODS & TOTALS SECTION (Side by side for guaranteed single-page A4 print fit) */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 pb-4 mb-4 border-b border-[#E5E7EB]">
-                {/* Left 7 cols: Payment Instructions & Crisp PromptPay QR */}
-                <div className="sm:col-span-7 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3 flex items-center justify-between gap-3">
-                  <div className="space-y-1">
+                {/* Left 7 cols: Payment Instructions & Crisp Bangkok Bank PromptPay QR */}
+                <div className="sm:col-span-7 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3 sm:p-3.5 flex items-center justify-between gap-3">
+                  <div className="space-y-1 flex-1 min-w-0">
                     <h4 className="font-bold text-[#111827] text-xs">Payment Instructions (การชำระเงิน)</h4>
-                    <div className="text-[11px] text-[#4B5563] space-y-0.5">
-                      <p><span className="text-[#6B7280]">Account Name:</span> <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong></p>
-                      <p><span className="text-[#6B7280]">Bank:</span> <span className="font-medium text-[#111827]">{SCHOOL_BANK_INFO.bankName} (ธนาคารกรุงเทพ)</span></p>
-                      <p><span className="text-[#6B7280]">Account No.:</span> <strong className="font-mono text-[#0B6B4F] text-xs">002203089172</strong></p>
-                      <p className="text-[10px] text-[#6B7280] font-mono">Ref 1: {SCHOOL_BANK_INFO.ref1} | Ref 3: {SCHOOL_BANK_INFO.ref3}</p>
+                    <div className="text-[11px] text-[#374151] space-y-1">
+                      <p>
+                        <span className="text-[#6B7280]">Payee / ชื่อบัญชี:</span>{' '}
+                        <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong>
+                      </p>
+                      <p>
+                        <span className="text-[#6B7280]">Bank / ธนาคาร:</span>{' '}
+                        <strong className="text-[#111827]">{SCHOOL_BANK_INFO.bankName} (ธนาคารกรุงเทพ)</strong>
+                      </p>
+                      <p>
+                        <span className="text-[#6B7280]">Account No. / เลขที่บัญชี:</span>{' '}
+                        <strong className="font-mono text-[#0B6B4F] text-sm">002203089172</strong>
+                      </p>
+                      <div className="text-[10px] text-[#4B5563] font-mono bg-slate-100 px-2 py-0.5 rounded inline-block">
+                        Ref 1 (MID): {SCHOOL_BANK_INFO.ref1} | Ref 3 (TID): {SCHOOL_BANK_INFO.ref3}
+                      </div>
+                      <p className="text-[9.5px] text-[#6B7280] leading-snug">
+                        * Scan with any mobile banking app & confirm payee is <strong>ROONG AROON INTERNATIONAL</strong>.
+                      </p>
                     </div>
                   </div>
 
-                  {/* Vector Crisp PromptPay QR */}
-                  <div className="shrink-0 text-center bg-white p-1.5 rounded-lg border border-[#E5E7EB] shadow-xs">
+                  {/* Crisp Official Bangkok Bank PromptPay QR (Enlarged & Sharp) */}
+                  <div className="shrink-0 text-center bg-white p-2 rounded-xl border border-slate-200 shadow-xs">
                     <QRCodeSVG
                       value={promptPayPayload}
-                      size={76}
+                      size={96}
                       level="M"
                       includeMargin={false}
+                      className="mx-auto"
                     />
-                    <span className="text-[9px] text-[#0B6B4F] font-bold block mt-1 tracking-tight">
-                      PromptPay QR
-                    </span>
+                    <div className="mt-1.5">
+                      <span className="text-[10px] text-[#0B6B4F] font-bold block tracking-tight">
+                        Thai QR Payment
+                      </span>
+                      <span className="text-[8.5px] text-[#6B7280] block font-medium">
+                        Bangkok Bank
+                      </span>
+                    </div>
                   </div>
                 </div>
 

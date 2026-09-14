@@ -43,7 +43,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
   const renderReceiptHalf = (copyType: 'ORIGINAL' | 'COPY') => {
     const isOriginal = copyType === 'ORIGINAL';
     return (
-      <div className="receipt-half border border-slate-300 rounded-xl p-4 sm:p-5 bg-white text-slate-800 text-[11px] leading-relaxed relative flex flex-col justify-between min-h-[380px] print:min-h-0">
+      <div className="receipt-half p-3 sm:p-5 bg-white text-slate-900 text-xs leading-relaxed relative flex flex-col justify-between min-h-[370px] print:min-h-0">
         {/* Void Watermark */}
         {isVoided && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
@@ -55,9 +55,9 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
 
         <div>
           {/* Header Row */}
-          <div className="flex items-start justify-between border-b border-slate-200 pb-2 mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0">
+          <div className="flex items-start justify-between border-b border-slate-200 pb-2.5 mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
                 <img
                   src="/images/school_logo.png"
                   alt="Roong Aroon International School Crest"
@@ -65,17 +65,17 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
                 />
               </div>
               <div>
-                <h3 className="font-black text-sm text-slate-900 leading-tight">
+                <h3 className="font-black text-base text-slate-900 leading-tight">
                   Roong Aroon International School
                 </h3>
-                <p className="text-xs font-semibold text-slate-700 mt-0.5">
+                <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-0.5">
                   โรงเรียนนานาชาติรุ่งอรุณ
                 </p>
               </div>
             </div>
 
             <div className="text-right">
-              <div className="inline-block px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide mb-1 border">
+              <div className="inline-block px-2.5 py-0.5 rounded text-[11px] font-extrabold tracking-wide mb-1 border">
                 {isOriginal ? (
                   <span className="text-blue-800 bg-blue-50 border-blue-200">
                     Original (Parent / Student)
@@ -86,72 +86,74 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
                   </span>
                 )}
               </div>
-              <h4 className="font-bold text-xs text-slate-800">
+              <h4 className="font-extrabold text-sm text-slate-800">
                 Official Receipt
               </h4>
             </div>
           </div>
 
-          {/* Customer & Receipt Meta */}
-          <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-lg mb-2.5 border border-slate-200/80 text-[10px]">
-            <div>
+          {/* Customer & Receipt Meta (Clean frameless box, larger & high contrast text) */}
+          <div className="grid grid-cols-2 gap-3 bg-slate-50/80 p-3 rounded-xl mb-3 text-xs">
+            <div className="space-y-1">
               <p>
-                <span className="text-slate-500 font-medium">Customer: </span>
-                <strong className="text-slate-900 font-bold">{receipt.customerName}</strong>
+                <span className="text-slate-600 font-medium">Customer: </span>
+                <strong className="text-slate-950 font-bold text-sm">{receipt.customerName}</strong>
               </p>
               {receipt.studentClass && (
-                <p className="mt-0.5">
-                  <span className="text-slate-500 font-medium">Grade / Class: </span>
-                  <strong className="text-slate-800">{receipt.studentClass}</strong>
-                  {receipt.studentId && <span> (ID: {receipt.studentId})</span>}
+                <p>
+                  <span className="text-slate-600 font-medium">Grade / Class: </span>
+                  <strong className="text-slate-900 font-semibold">{receipt.studentClass}</strong>
+                  {receipt.studentId && <span className="text-slate-700 font-mono"> (ID: {receipt.studentId})</span>}
                 </p>
               )}
-              <p className="mt-0.5">
-                <span className="text-slate-500 font-medium">Type: </span>
-                <span>{CUSTOMER_TYPE_LABELS[receipt.customerType] || receipt.customerType}</span>
+              <p>
+                <span className="text-slate-600 font-medium">Type: </span>
+                <span className="font-semibold text-slate-800">{CUSTOMER_TYPE_LABELS[receipt.customerType] || receipt.customerType}</span>
               </p>
             </div>
 
-            <div className="text-right">
+            <div className="text-right space-y-1">
               <p>
-                <span className="text-slate-500 font-medium">Receipt No.: </span>
-                <strong className="font-mono font-bold text-blue-700">{receipt.receiptNumber}</strong>
+                <span className="text-slate-600 font-medium">Receipt No.: </span>
+                <strong className="font-mono font-extrabold text-blue-700 text-sm">{receipt.receiptNumber}</strong>
               </p>
-              <p className="mt-0.5">
-                <span className="text-slate-500 font-medium">Date & Time: </span>
-                <span>{formattedDate}</span>
+              <p>
+                <span className="text-slate-600 font-medium">Date & Time: </span>
+                <span className="font-semibold text-slate-800">{formattedDate}</span>
               </p>
-              <p className="mt-0.5">
-                <span className="text-slate-500 font-medium">Payment: </span>
-                <strong className="text-emerald-700">{PAYMENT_METHOD_LABELS[receipt.paymentMethod] || receipt.paymentMethod}</strong>
+              <p>
+                <span className="text-slate-600 font-medium">Payment: </span>
+                <strong className="text-emerald-700 font-bold">{PAYMENT_METHOD_LABELS[receipt.paymentMethod] || receipt.paymentMethod}</strong>
               </p>
             </div>
           </div>
 
           {/* Items Table */}
-          <table className="w-full border-collapse mb-2 text-[10px]">
+          <table className="w-full border-collapse mb-2.5 text-xs">
             <thead>
-              <tr className="border-y border-slate-300 bg-slate-100 text-slate-600">
-                <th className="py-1 px-1.5 text-center w-8">No.</th>
-                <th className="py-1 px-1.5 text-left">Description</th>
-                <th className="py-1 px-1.5 text-center w-14">Qty</th>
-                <th className="py-1 px-1.5 text-right w-16">Unit Price</th>
-                <th className="py-1 px-1.5 text-right w-18">Amount</th>
+              <tr className="border-y border-slate-300 bg-slate-100/90 text-slate-700 text-[11px] uppercase tracking-wider">
+                <th className="py-1.5 px-2 text-center w-8 font-bold">No.</th>
+                <th className="py-1.5 px-2 text-left font-bold">Description</th>
+                <th className="py-1.5 px-2 text-center w-16 font-bold">Qty</th>
+                <th className="py-1.5 px-2 text-right w-20 font-bold">Unit Price</th>
+                <th className="py-1.5 px-2 text-right w-24 font-bold">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {receipt.items.map((item, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/50">
-                  <td className="py-1 px-1.5 text-center text-slate-400">{idx + 1}</td>
-                  <td className="py-1 px-1.5 font-medium text-slate-900">
+                  <td className="py-1.5 px-2 text-center text-slate-500 font-mono text-[11px]">{idx + 1}</td>
+                  <td className="py-1.5 px-2 font-semibold text-slate-900">
                     {item.itemName}
-                    <span className="text-[9px] text-slate-400 font-mono ml-1">({item.itemCode})</span>
+                    {item.itemCode && (
+                      <span className="text-[10px] text-slate-500 font-mono ml-1.5">[{item.itemCode}]</span>
+                    )}
                   </td>
-                  <td className="py-1 px-1.5 text-center">
+                  <td className="py-1.5 px-2 text-center font-bold text-slate-900">
                     {item.quantity} {item.unit}
                   </td>
-                  <td className="py-1 px-1.5 text-right">฿{item.unitPrice.toFixed(2)}</td>
-                  <td className="py-1 px-1.5 text-right font-bold">฿{item.totalPrice.toFixed(2)}</td>
+                  <td className="py-1.5 px-2 text-right font-medium text-slate-800">฿{item.unitPrice.toFixed(2)}</td>
+                  <td className="py-1.5 px-2 text-right font-extrabold text-slate-950">฿{item.totalPrice.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -160,43 +162,43 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
 
         <div>
           {/* Total & Summary Box */}
-          <div className="border-t border-slate-200 pt-1.5 mt-1 flex items-start justify-between text-[10px]">
-            <div className="flex-1 pr-2">
-              <span className="text-slate-500 block">Amount in words:</span>
-              <span className="font-bold text-blue-900">
+          <div className="border-t border-slate-200 pt-2 mt-1 flex items-start justify-between text-xs">
+            <div className="flex-1 pr-3">
+              <span className="text-slate-600 font-medium block">Amount in words:</span>
+              <span className="font-extrabold text-blue-950 text-xs sm:text-sm">
                 ({thaiBahtText(receipt.totalAmount)})
               </span>
               {receipt.paymentMethod === 'CASH' && receipt.cashReceived !== undefined && (
-                <p className="text-[9px] text-slate-500 mt-1">
-                  Cash Received: <strong>฿{receipt.cashReceived.toFixed(2)}</strong> | Change: <strong>฿{(receipt.change || 0).toFixed(2)}</strong>
+                <p className="text-[11px] text-slate-600 mt-1">
+                  Cash Received: <strong className="text-slate-900">฿{receipt.cashReceived.toFixed(2)}</strong> | Change: <strong className="text-emerald-700">฿{(receipt.change || 0).toFixed(2)}</strong>
                 </p>
               )}
             </div>
 
-            <div className="w-44 text-right space-y-0.5">
+            <div className="w-48 text-right space-y-1">
               {receipt.discount > 0 && (
-                <div className="flex justify-between text-slate-500">
+                <div className="flex justify-between text-slate-600">
                   <span>Discount:</span>
-                  <span>-฿{receipt.discount.toFixed(2)}</span>
+                  <span className="font-mono text-red-600 font-semibold">-฿{receipt.discount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-extrabold text-xs text-slate-900 border-t border-slate-200 pt-0.5">
+              <div className="flex justify-between font-black text-sm sm:text-base text-slate-900 border-t border-slate-200 pt-1">
                 <span>Total Amount:</span>
-                <span className="text-blue-700">฿{receipt.totalAmount.toFixed(2)}</span>
+                <span className="text-blue-700 font-mono">฿{receipt.totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
           {/* Signatures */}
-          <div className="grid grid-cols-2 gap-4 mt-3 pt-2 border-t border-slate-100 text-[9px] text-slate-600">
+          <div className="grid grid-cols-2 gap-6 mt-4 pt-2.5 border-t border-slate-100 text-[11px] text-slate-700">
             <div className="text-center">
-              <p className="mt-4 border-b border-dotted border-slate-400 w-3/4 mx-auto"></p>
-              <p className="mt-1">Payer / Authorized Recipient</p>
+              <p className="mt-5 border-b border-dotted border-slate-400 w-44 mx-auto"></p>
+              <p className="mt-1 font-medium">Payer / Authorized Recipient</p>
             </div>
             <div className="text-center">
-              <p className="mt-4 border-b border-dotted border-slate-400 w-3/4 mx-auto"></p>
-              <p className="mt-1">
-                Cashier: <strong>{receipt.cashierName || 'Finance / Store Staff'}</strong>
+              <p className="mt-5 border-b border-dotted border-slate-400 w-44 mx-auto"></p>
+              <p className="mt-1 font-medium">
+                Cashier: <strong className="text-slate-900 font-bold">{receipt.cashierName || 'Finance / Store Staff'}</strong>
               </p>
             </div>
           </div>
@@ -208,7 +210,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
       
-      {/* Print Specific CSS to enforce Full-A4 sizing and two symmetrical halves */}
+      {/* Print Specific CSS to enforce Full-A4 sizing and frameless presentation */}
       <style jsx global>{`
         @media print {
           @page {
@@ -220,7 +222,9 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
             padding: 0 !important;
             background: #ffffff !important;
             color: #111827 !important;
-            font-size: 10pt !important;
+            font-size: 10.5pt !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           body * {
             visibility: hidden !important;
@@ -253,9 +257,9 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
             flex-direction: column !important;
             justify-content: space-between !important;
             box-sizing: border-box !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 8px !important;
-            padding: 12px 16px !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 8px 12px !important;
             background: #ffffff !important;
           }
           .no-print {
