@@ -22,7 +22,8 @@ import {
   ShieldCheck,
   Database,
   Sliders,
-  DollarSign
+  DollarSign,
+  Menu
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
@@ -42,7 +43,12 @@ interface MenuGroup {
   subItems?: SubMenuItem[];
 }
 
-export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+interface SidebarProps {
+  onNavigate?: () => void;
+  onToggleSidebar?: () => void;
+}
+
+export default function Sidebar({ onNavigate, onToggleSidebar }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isSuperAdmin, isInventoryManager, canPrintQr } = useAuth();
@@ -146,9 +152,21 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <aside className="w-72 bg-white border-r border-[#E5E7EB] flex flex-col h-full select-none">
       {/* Brand Header */}
-      <div className="h-16 px-4 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-xs border border-[#E5E7EB] bg-[#E6F5EF] p-0.5">
+      <div className="h-16 px-3.5 flex items-center justify-between border-b border-[#E5E7EB] shrink-0 bg-white">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* 3-Line Hamburger Menu in front of Romaneeya Logo */}
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="p-1.5 rounded-lg text-[#0B6B4F] bg-emerald-50 hover:bg-emerald-100 border-2 border-[#0B6B4F] transition flex items-center justify-center shadow-xs cursor-pointer shrink-0 active:scale-95"
+              title="Toggle Menu"
+            >
+              <Menu className="w-4 h-4 text-[#0B6B4F]" />
+            </button>
+          )}
+
+          <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0 shadow-xs border border-[#E5E7EB] bg-[#E6F5EF] p-0.5">
             <img
               src="/images/romaneeya_leaf_logo.svg"
               alt="Romaneeya Logo"

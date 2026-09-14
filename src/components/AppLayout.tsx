@@ -38,7 +38,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }`}
       >
         <React.Suspense fallback={<div className="w-72 bg-white border-r border-[#E5E7EB] h-full" />}>
-          <Sidebar />
+          <Sidebar onToggleSidebar={handleToggleSidebar} />
         </React.Suspense>
       </aside>
 
@@ -57,7 +57,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <X className="w-4 h-4" />
             </button>
             <React.Suspense fallback={<div className="w-full bg-white h-full" />}>
-              <Sidebar onNavigate={() => setMobileDrawerOpen(false)} />
+              <Sidebar
+                onNavigate={() => setMobileDrawerOpen(false)}
+                onToggleSidebar={() => setMobileDrawerOpen(false)}
+              />
             </React.Suspense>
           </div>
         </div>
@@ -69,6 +72,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           onToggleSidebar={handleToggleSidebar}
           onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
           onOpenScanner={() => setIsScannerOpen(true)}
+          isSidebarCollapsed={!desktopSidebarOpen}
         />
         <main className="flex-1 p-4 lg:p-6 pb-24 lg:pb-8 max-w-[1600px] w-full mx-auto">
           {children}

@@ -125,19 +125,18 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
     }
   };
 
-  // Keep display rows proportional so it fits comfortably on 1 sheet of A4
-  const minDisplayRows = Math.max(invoice.items.length, 3);
-  const emptyRowsCount = minDisplayRows - invoice.items.length;
+  // Only render actual items to keep vertical height compact and ensure signatures fit on Page 1
+  const emptyRowsCount = 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto">
       
-      {/* Print Specific CSS to enforce Full-A4 sizing and avoid clipping bank info */}
+      {/* Print Specific CSS to enforce Full-A4 sizing and ensure signatures fit on Page 1 */}
       <style jsx global>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 8mm 10mm;
+            margin: 6mm 10mm 6mm 10mm;
           }
           html, body {
             margin: 0 !important;
@@ -166,6 +165,10 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          .invoice-signatures {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
@@ -255,7 +258,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
           {/* Printable Invoice Container (Matching Reference Design) */}
           <div
             id="printable-invoice"
-            className="bg-white border border-[#E5E7EB] shadow-md rounded-xl p-5 sm:p-8 text-[#111827] text-xs leading-relaxed w-full max-w-[210mm] relative flex flex-col justify-between"
+            className="bg-white border border-[#E5E7EB] shadow-md rounded-xl p-4 sm:p-6 text-[#111827] text-xs leading-relaxed w-full max-w-[210mm] relative flex flex-col justify-between"
           >
             
             {/* Watermark for Cancelled */}
@@ -269,7 +272,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
 
             <div>
               {/* 1. TOP HEADER: INVOICE & SCHOOL CREST */}
-              <div className="flex items-start justify-between pb-4 mb-4 border-b border-[#E5E7EB]">
+              <div className="flex items-start justify-between pb-3 mb-3 border-b border-[#E5E7EB]">
                 <div>
                   <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111827] tracking-tight font-sans">
                     INVOICE
@@ -299,94 +302,94 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                 </div>
               </div>
 
-              {/* 2. METADATA SECTION: CUSTOMER (LEFT) PAIRED WITH INVOICE NO. (RIGHT) */}
-              <div className="grid grid-cols-2 gap-x-8 gap-y-2 pb-3.5 mb-3.5 text-xs">
-                {/* Column 1: Customer Details */}
-                <div className="space-y-1">
-                  <div className="flex">
-                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Customer Name</span>
-                    <span className="font-bold text-[#111827] flex-1">{invoice.customerName}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Address / Class</span>
-                    <span className="text-[#111827] flex-1">
-                      {invoice.studentClass || 'Roong Aroon International School'} (Class / Dept)
-                    </span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Tax ID / Student ID</span>
-                    <span className="text-[#111827] flex-1 font-mono">{invoice.studentId || '-'}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Email</span>
-                    <span className="text-[#111827] flex-1 truncate font-mono">
-                      {(invoice as any).email || (invoice.studentId ? `${invoice.studentId}@roong-aroon.ac.th` : '-')}
-                    </span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Contact Person</span>
-                    <span className="text-[#111827] flex-1">{invoice.parentName || invoice.customerName}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-28 text-[#6B7280] shrink-0 font-medium">Phone</span>
-                    <span className="text-[#111827] flex-1 font-mono">{invoice.phone || '-'}</span>
-                  </div>
-                </div>
-
-                {/* Column 2: Document Metadata & Dates (Directly on the Right!) */}
-                <div className="space-y-1 text-right">
-                  <div className="flex justify-end items-center">
-                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Invoice No.</span>
-                    <span className="font-extrabold text-[#111827] font-mono text-sm">#{invoice.invoiceNumber}</span>
-                  </div>
-                  <div className="flex justify-end">
-                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Issue Date</span>
-                    <span className="text-[#111827] font-medium">{enCreatedDate}</span>
-                  </div>
-                  <div className="flex justify-end">
-                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Due Date</span>
-                    <span className="font-bold text-[#B42318]">{enDueDate}</span>
-                  </div>
-                  <div className="flex justify-end">
-                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Payment Terms</span>
-                    <span className="text-[#111827]">7 Days upon receipt</span>
-                  </div>
-                  <div className="flex justify-end">
-                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Reference</span>
-                    <span className="text-[#111827]">School Supply & Welfare Requisition</span>
-                  </div>
-                </div>
-
-                {/* Issuer Info (Full Width Split across 2 columns) */}
-                <div className="col-span-2 pt-2 border-t border-[#E5E7EB] grid grid-cols-2 gap-x-8 text-[11px] text-[#4B5563]">
+              {/* 2. ISSUED BY SECTION (Placed ABOVE Customer Details per user request) */}
+              <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg p-2.5 px-3 mb-3 text-xs text-[#4B5563]">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-0.5">
                   <div className="space-y-0.5">
-                    <div className="flex">
-                      <span className="w-28 text-[#6B7280] shrink-0 font-medium">Issued By</span>
-                      <span className="font-semibold text-[#111827]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[#6B7280] font-medium text-[11px]">Issued By:</span>
+                      <span className="font-bold text-[#111827] text-xs">
                         Roong Aroon International School
                       </span>
                     </div>
-                    <div className="flex">
-                      <span className="w-28 text-[#6B7280] shrink-0 font-medium">Address</span>
-                      <span>392 Rim Klong Chak Phra Rd., Khlong Khwang, Phasi Charoen, Bangkok 10160</span>
-                    </div>
+                    <p className="text-[10.5px] text-[#6B7280] leading-snug">
+                      392 Rim Klong Chak Phra Rd., Khlong Khwang, Phasi Charoen, Bangkok 10160
+                    </p>
                   </div>
 
                   <div className="space-y-0.5 text-right">
-                    <div className="flex justify-end">
-                      <span className="mr-3 text-[#6B7280] shrink-0 font-medium">School Tax ID</span>
-                      <span className="font-mono font-medium">0105541008918</span>
+                    <div className="flex justify-end items-center gap-1.5">
+                      <span className="text-[#6B7280] font-medium text-[11px]">School Tax ID:</span>
+                      <span className="font-mono font-bold text-[#111827] text-xs">0105541008918</span>
                     </div>
-                    <div className="flex justify-end">
-                      <span className="mr-3 text-[#6B7280] shrink-0 font-medium">Tel / Email</span>
-                      <span>02-870-7512 / finance@roong-aroon.ac.th</span>
-                    </div>
+                    <p className="text-[10.5px] text-[#6B7280] font-mono leading-snug">
+                      Tel: 02-870-7512 | finance@roong-aroon.ac.th
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* 3. TABLE OF ITEMS */}
-              <div className="border border-[#E5E7EB] rounded-lg overflow-hidden mb-4">
+              {/* 3. METADATA SECTION: CUSTOMER (LEFT) PAIRED WITH INVOICE NO. (RIGHT) */}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-1 pb-2.5 mb-3 text-xs border-b border-[#E5E7EB]">
+                {/* Column 1: Customer Details */}
+                <div className="space-y-1">
+                  <div className="flex items-baseline">
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium text-[11px]">Customer Name</span>
+                    <span className="font-bold text-[#111827] flex-1 leading-snug text-xs">{invoice.customerName}</span>
+                  </div>
+                  <div className="flex items-baseline">
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium text-[11px]">Address / Class</span>
+                    <span className="text-[#111827] flex-1 leading-snug text-xs">
+                      {invoice.studentClass || 'Roong Aroon International School'} (Class / Dept)
+                    </span>
+                  </div>
+                  <div className="flex items-baseline">
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium text-[11px]">Tax ID / Student ID</span>
+                    <span className="text-[#111827] flex-1 font-mono leading-snug text-xs">{invoice.studentId || '-'}</span>
+                  </div>
+                  <div className="flex items-baseline">
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium text-[11px]">Email</span>
+                    <span className="text-[#111827] flex-1 font-mono text-[11px] leading-normal break-all">
+                      {(invoice as any).email || (invoice.studentId ? `${invoice.studentId}@roong-aroon.ac.th` : '-')}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline">
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium text-[11px]">Contact Person</span>
+                    <span className="text-[#111827] flex-1 leading-snug text-xs">{invoice.parentName || invoice.customerName}</span>
+                  </div>
+                  <div className="flex items-baseline">
+                    <span className="w-28 text-[#6B7280] shrink-0 font-medium text-[11px]">Phone</span>
+                    <span className="text-[#111827] flex-1 font-mono leading-snug text-xs">{invoice.phone || '-'}</span>
+                  </div>
+                </div>
+
+                {/* Column 2: Document Metadata & Dates (Paired on the Right!) */}
+                <div className="space-y-1 text-right">
+                  <div className="flex justify-end items-baseline">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium text-[11px]">Invoice No.</span>
+                    <span className="font-extrabold text-[#111827] font-mono text-sm">#{invoice.invoiceNumber}</span>
+                  </div>
+                  <div className="flex justify-end items-baseline">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium text-[11px]">Issue Date</span>
+                    <span className="text-[#111827] font-medium leading-snug text-xs">{enCreatedDate}</span>
+                  </div>
+                  <div className="flex justify-end items-baseline">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium text-[11px]">Due Date</span>
+                    <span className="font-bold text-[#B42318] leading-snug text-xs">{enDueDate}</span>
+                  </div>
+                  <div className="flex justify-end items-baseline">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium text-[11px]">Payment Terms</span>
+                    <span className="text-[#111827] leading-snug text-xs">7 Days upon receipt</span>
+                  </div>
+                  <div className="flex justify-end items-baseline">
+                    <span className="mr-3 text-[#6B7280] shrink-0 font-medium text-[11px]">Reference</span>
+                    <span className="text-[#111827] leading-snug text-xs">School Supply & Welfare Requisition</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. TABLE OF ITEMS */}
+              <div className="border border-[#E5E7EB] rounded-lg overflow-hidden mb-3">
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="border-b border-[#E5E7EB] text-[#111827] font-semibold text-[11px] bg-[#F9FAFB]">
@@ -400,35 +403,22 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                   <tbody className="divide-y divide-[#E5E7EB]">
                     {invoice.items.map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="py-2 px-3 text-center text-[#6B7280] font-mono">{idx + 1}</td>
-                        <td className="py-2 px-4">
+                        <td className="py-1.5 px-3 text-center text-[#6B7280] font-mono">{idx + 1}</td>
+                        <td className="py-1.5 px-4">
                           <span className="font-medium text-[#111827]">{item.itemName}</span>
                           {item.itemCode && (
                             <span className="text-[10px] text-[#6B7280] font-mono ml-2">[{item.itemCode}]</span>
                           )}
                         </td>
-                        <td className="py-2 px-3 text-center text-[#111827] font-mono">
+                        <td className="py-1.5 px-3 text-center text-[#111827] font-mono">
                           {item.quantity} {item.unit}
                         </td>
-                        <td className="py-2 px-4 text-right text-[#111827] font-mono">
+                        <td className="py-1.5 px-4 text-right text-[#111827] font-mono">
                           {item.unitPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                        <td className="py-2 px-4 text-right font-semibold text-[#111827] font-mono">
+                        <td className="py-1.5 px-4 text-right font-semibold text-[#111827] font-mono">
                           {item.totalPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                      </tr>
-                    ))}
-
-                    {/* Empty placeholder rows to maintain document proportionality */}
-                    {Array.from({ length: emptyRowsCount }).map((_, i) => (
-                      <tr key={`empty-${i}`} className="h-7">
-                        <td className="py-1 px-3 text-center text-[#9CA3AF] font-mono text-[10px]">
-                          {invoice.items.length + i + 1}
-                        </td>
-                        <td className="py-1 px-4"></td>
-                        <td className="py-1 px-3"></td>
-                        <td className="py-1 px-4"></td>
-                        <td className="py-1 px-4"></td>
                       </tr>
                     ))}
                   </tbody>
@@ -538,7 +528,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
               </div>
 
               {/* 6. DUAL SIGNATURES (Anchors the bottom of the page) */}
-              <div className="grid grid-cols-2 gap-8 text-center text-xs text-[#6B7280] pt-2">
+              <div className="invoice-signatures grid grid-cols-2 gap-8 text-center text-xs text-[#6B7280] pt-2">
                 <div className="space-y-1">
                   <div className="border-b border-[#D1D5DB] w-44 sm:w-56 mx-auto h-8"></div>
                   <p className="font-medium text-[#111827]">Received By / Customer Signature</p>

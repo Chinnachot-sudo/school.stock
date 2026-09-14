@@ -17,9 +17,10 @@ interface TopHeaderProps {
   onToggleSidebar?: () => void;
   onOpenMobileDrawer?: () => void;
   onOpenScanner?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
-export default function TopHeader({ onToggleSidebar, onOpenMobileDrawer, onOpenScanner }: TopHeaderProps) {
+export default function TopHeader({ onToggleSidebar, onOpenMobileDrawer, onOpenScanner, isSidebarCollapsed = false }: TopHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isSuperAdmin, isInventoryManager, signOut } = useAuth();
@@ -80,12 +81,14 @@ export default function TopHeader({ onToggleSidebar, onOpenMobileDrawer, onOpenS
     <header className="sticky top-0 z-30 bg-white border-b border-[#E5E7EB] h-16 px-4 lg:px-6 flex items-center justify-between gap-4">
       {/* Left: Hamburger Toggle + Search Bar */}
       <div className="flex items-center gap-3 flex-1 max-w-xl">
-        {/* 3-Line Hamburger Menu Button (Desktop & Mobile) */}
+        {/* 3-Line Hamburger Menu Button (Shows on mobile or when desktop sidebar is collapsed) */}
         <button
           type="button"
           onClick={onToggleSidebar || onOpenMobileDrawer}
-          className="p-1.5 rounded-lg text-[#0B6B4F] bg-emerald-50 hover:bg-emerald-100/80 border-2 border-[#0B6B4F] transition flex items-center justify-center shadow-xs cursor-pointer shrink-0 active:scale-95"
-          title="Toggle Navigation Menu"
+          className={`p-1.5 rounded-lg text-[#0B6B4F] bg-emerald-50 hover:bg-emerald-100/80 border-2 border-[#0B6B4F] transition items-center justify-center shadow-xs cursor-pointer shrink-0 active:scale-95 ${
+            isSidebarCollapsed ? 'flex' : 'flex lg:hidden'
+          }`}
+          title="Open Navigation Menu"
         >
           <Menu className="w-5 h-5 text-[#0B6B4F]" />
         </button>
