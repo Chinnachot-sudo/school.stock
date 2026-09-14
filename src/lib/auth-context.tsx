@@ -50,6 +50,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
+      // Auto-login mock Super Admin user for local offline development
+      setUser({
+        id: 'local-dev-user',
+        app_metadata: { provider: 'local' },
+        user_metadata: {
+          full_name: 'Chinnachot (Local Dev)',
+          avatar_url: ''
+        },
+        aud: 'authenticated',
+        confirmation_sent_at: '',
+        recovery_sent_at: '',
+        email_change_sent_at: '',
+        new_email: '',
+        invited_at: '',
+        action_link: '',
+        email: 'chinnachot@roong-aroon.ac.th',
+        phone: '',
+        created_at: new Date().toISOString(),
+        confirmed_at: new Date().toISOString(),
+        email_confirmed_at: new Date().toISOString(),
+        phone_confirmed_at: '',
+        last_sign_in_at: new Date().toISOString(),
+        role: 'authenticated',
+        updated_at: new Date().toISOString(),
+        identities: [],
+        factors: []
+      } as unknown as User);
       setLoading(false);
       return;
     }
@@ -78,7 +105,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     if (!supabase) {
-      alert('ระบบยังไม่ได้เชื่อมต่อ Supabase หรือยังไม่ได้ตั้งค่า Environment Variables');
+      setUser({
+        id: 'local-dev-user',
+        app_metadata: { provider: 'local' },
+        user_metadata: {
+          full_name: 'Chinnachot (Local Dev)',
+          avatar_url: ''
+        },
+        aud: 'authenticated',
+        confirmation_sent_at: '',
+        recovery_sent_at: '',
+        email_change_sent_at: '',
+        new_email: '',
+        invited_at: '',
+        action_link: '',
+        email: 'chinnachot@roong-aroon.ac.th',
+        phone: '',
+        created_at: new Date().toISOString(),
+        confirmed_at: new Date().toISOString(),
+        email_confirmed_at: new Date().toISOString(),
+        phone_confirmed_at: '',
+        last_sign_in_at: new Date().toISOString(),
+        role: 'authenticated',
+        updated_at: new Date().toISOString(),
+        identities: [],
+        factors: []
+      } as unknown as User);
       return;
     }
 
