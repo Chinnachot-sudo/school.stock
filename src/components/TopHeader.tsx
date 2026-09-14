@@ -61,13 +61,13 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
   };
 
   // Pre-login check
-  if (!user || pathname === '/login') {
+  if (pathname === '/login' || pathname === '/auth/callback') {
     return null;
   }
 
-  const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'เจ้าหน้าที่';
-  const userEmail = user.email || '';
-  const userAvatar = user.user_metadata?.avatar_url || '';
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'เจ้าหน้าที่';
+  const userEmail = user?.email || '';
+  const userAvatar = user?.user_metadata?.avatar_url || '';
 
   const roleDisplay = isSuperAdmin
     ? 'ผู้ดูแลระบบ'

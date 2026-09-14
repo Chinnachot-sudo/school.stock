@@ -43,40 +43,41 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {}
 });
 
+const MOCK_DEV_USER: User = {
+  id: 'local-dev-user',
+  app_metadata: { provider: 'local' },
+  user_metadata: {
+    full_name: 'Chinnachot (Local Dev)',
+    avatar_url: ''
+  },
+  aud: 'authenticated',
+  confirmation_sent_at: '',
+  recovery_sent_at: '',
+  email_change_sent_at: '',
+  new_email: '',
+  invited_at: '',
+  action_link: '',
+  email: 'chinnachot@roong-aroon.ac.th',
+  phone: '',
+  created_at: '2026-01-01T00:00:00.000Z',
+  confirmed_at: '2026-01-01T00:00:00.000Z',
+  email_confirmed_at: '2026-01-01T00:00:00.000Z',
+  phone_confirmed_at: '',
+  last_sign_in_at: '2026-01-01T00:00:00.000Z',
+  role: 'authenticated',
+  updated_at: '2026-01-01T00:00:00.000Z',
+  identities: [],
+  factors: []
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(!isSupabaseConfigured ? MOCK_DEV_USER : null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(isSupabaseConfigured);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
-      // Auto-login mock Super Admin user for local offline development
-      setUser({
-        id: 'local-dev-user',
-        app_metadata: { provider: 'local' },
-        user_metadata: {
-          full_name: 'Chinnachot (Local Dev)',
-          avatar_url: ''
-        },
-        aud: 'authenticated',
-        confirmation_sent_at: '',
-        recovery_sent_at: '',
-        email_change_sent_at: '',
-        new_email: '',
-        invited_at: '',
-        action_link: '',
-        email: 'chinnachot@roong-aroon.ac.th',
-        phone: '',
-        created_at: new Date().toISOString(),
-        confirmed_at: new Date().toISOString(),
-        email_confirmed_at: new Date().toISOString(),
-        phone_confirmed_at: '',
-        last_sign_in_at: new Date().toISOString(),
-        role: 'authenticated',
-        updated_at: new Date().toISOString(),
-        identities: [],
-        factors: []
-      } as unknown as User);
+      setUser(MOCK_DEV_USER);
       setLoading(false);
       return;
     }

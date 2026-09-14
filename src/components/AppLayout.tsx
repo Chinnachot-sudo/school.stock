@@ -16,7 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Pre-login screen: completely bare, no sidebar, no header, no bottom nav
-  if (!user || pathname === '/login') {
+  if (pathname === '/login' || pathname === '/auth/callback') {
     return <>{children}</>;
   }
 
@@ -24,7 +24,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex bg-[#F3F4F6] text-[#111827]">
       {/* 1. Desktop Left Sidebar (Sticky Full Height) */}
       <div className="hidden lg:block lg:sticky lg:top-0 lg:h-screen shrink-0 z-40">
-        <Sidebar />
+        <React.Suspense fallback={<div className="w-64 bg-white border-r border-[#E5E7EB] h-full" />}>
+          <Sidebar />
+        </React.Suspense>
       </div>
 
       {/* 2. Mobile Slide-Over Drawer */}
@@ -41,7 +43,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <X className="w-4 h-4" />
             </button>
-            <Sidebar onNavigate={() => setMobileDrawerOpen(false)} />
+            <React.Suspense fallback={<div className="w-full bg-white h-full" />}>
+              <Sidebar onNavigate={() => setMobileDrawerOpen(false)} />
+            </React.Suspense>
           </div>
         </div>
       )}
@@ -59,7 +63,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* 4. Mobile Bottom Navigation Bar (4 primary warehouse actions) */}
       <div className="lg:hidden">
-        <MobileBottomNav />
+        <React.Suspense fallback={null}>
+          <MobileBottomNav />
+        </React.Suspense>
       </div>
 
       {/* Global Scanner Modal */}

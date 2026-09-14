@@ -11,7 +11,7 @@ export default function MobileBottomNav() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
-  if (!user || pathname === '/login') {
+  if (pathname === '/login' || pathname === '/auth/callback') {
     return null;
   }
 

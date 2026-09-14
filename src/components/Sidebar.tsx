@@ -125,7 +125,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   ];
 
   // Pre-login check: Don't render sidebar
-  if (!user || pathname === '/login') {
+  if (pathname === '/login' || pathname === '/auth/callback') {
     return null;
   }
 
