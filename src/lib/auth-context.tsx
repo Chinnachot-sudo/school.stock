@@ -70,10 +70,12 @@ const MOCK_DEV_USER: User = {
   factors: []
 };
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(!isSupabaseConfigured ? MOCK_DEV_USER : null);
+  const [user, setUser] = useState<User | null>(isDev ? MOCK_DEV_USER : null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState<boolean>(isSupabaseConfigured);
+  const [loading, setLoading] = useState<boolean>(!isDev);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -86,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }: any) => {
       const currentSession = data?.session ?? null;
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      setUser(currentSession?.user ?? (isDev ? MOCK_DEV_USER : null));
       setLoading(false);
     });
 
@@ -95,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setSession(session ?? null);
-      setUser(session?.user ?? null);
+      setUser(session?.user ?? (isDev ? MOCK_DEV_USER : null));
       setLoading(false);
     });
 
