@@ -46,6 +46,25 @@ export function getUserRole(emailOrRole?: string | null): UserRole {
   return DEFAULT_ROLE_MAP[clean] || 'TEACHER';
 }
 
+export const STANDARD_UNITS = [
+  'Pcs',
+  'Book',
+  'Pen',
+  'Box',
+  'Pack',
+  'Roll',
+  'Ream',
+  'Sheet',
+  'Bottle',
+  'Unit',
+  'Set',
+  'Kg',
+  'Tube',
+  'Pair',
+  'Can',
+  'Meter'
+] as const;
+
 export interface Item {
   id: string;
   code: string; // Barcode or QR Code string (e.g. "SK-001", "8850029012345")
@@ -57,6 +76,7 @@ export interface Item {
   location: string; // e.g. "Cabinet A Fl.2", "Math Department Room"
   price?: number; // Selling price (THB) e.g. 25, 250
   cost?: number; // Cost price (THB) e.g. 18, 190
+  imageUrl?: string; // Item photo / equipment image URL (data URL or hosted image)
   isForSale?: boolean; // For school store / POS sale
   note?: string;
   isBorrowable?: boolean; // For equipment like projector, presenter clicker

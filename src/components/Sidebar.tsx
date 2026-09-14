@@ -144,23 +144,25 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   };
 
   return (
-    <aside className="w-64 bg-white border-r border-[#E5E7EB] flex flex-col h-full select-none">
+    <aside className="w-72 bg-white border-r border-[#E5E7EB] flex flex-col h-full select-none">
       {/* Brand Header */}
-      <div className="h-16 px-5 flex items-center gap-3 border-b border-[#E5E7EB] shrink-0">
-        <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-xs border border-[#E5E7EB] bg-[#E6F5EF] p-0.5">
-          <img
-            src="/images/romaneeya_leaf_logo.svg"
-            alt="Romaneeya Logo"
-            className="w-full h-full object-contain"
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <span className="text-sm font-bold text-[#111827] tracking-tight block leading-tight truncate">
-            Romaneeya
-          </span>
-          <span className="text-[10px] text-[#6B7280] block font-mono truncate">
-            Roong Aroon International School
-          </span>
+      <div className="h-16 px-4 flex items-center justify-between border-b border-[#E5E7EB] shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-xs border border-[#E5E7EB] bg-[#E6F5EF] p-0.5">
+            <img
+              src="/images/romaneeya_leaf_logo.svg"
+              alt="Romaneeya Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-sm font-extrabold text-[#0B6B4F] tracking-tight block leading-tight">
+              Romaneeya
+            </span>
+            <span className="text-[10px] text-[#6B7280] block font-medium leading-tight whitespace-nowrap">
+              Roong Aroon International School
+            </span>
+          </div>
         </div>
       </div>
 

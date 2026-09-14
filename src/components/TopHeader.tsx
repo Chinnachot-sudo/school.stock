@@ -14,11 +14,12 @@ import {
 import { useAuth } from '@/lib/auth-context';
 
 interface TopHeaderProps {
-  onOpenMobileDrawer: () => void;
+  onToggleSidebar?: () => void;
+  onOpenMobileDrawer?: () => void;
   onOpenScanner?: () => void;
 }
 
-export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHeaderProps) {
+export default function TopHeader({ onToggleSidebar, onOpenMobileDrawer, onOpenScanner }: TopHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isSuperAdmin, isInventoryManager, signOut } = useAuth();
@@ -38,7 +39,7 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
         }
       })
       .catch(() => {});
-  }, [user, pathname]);
+  }, [user]);
 
   // Keyboard shortcut for search
   useEffect(() => {
@@ -77,16 +78,16 @@ export default function TopHeader({ onOpenMobileDrawer, onOpenScanner }: TopHead
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-[#E5E7EB] h-16 px-4 lg:px-6 flex items-center justify-between gap-4">
-      {/* Left: Mobile Drawer Trigger + Search Bar */}
+      {/* Left: Hamburger Toggle + Search Bar */}
       <div className="flex items-center gap-3 flex-1 max-w-xl">
-        {/* Mobile Hamburger Button */}
+        {/* 3-Line Hamburger Menu Button (Desktop & Mobile) */}
         <button
           type="button"
-          onClick={onOpenMobileDrawer}
-          className="p-2 -ml-1.5 rounded-lg text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] lg:hidden transition"
-          title="Open Menu"
+          onClick={onToggleSidebar || onOpenMobileDrawer}
+          className="p-1.5 rounded-lg text-[#0B6B4F] bg-emerald-50 hover:bg-emerald-100/80 border-2 border-[#0B6B4F] transition flex items-center justify-center shadow-xs cursor-pointer shrink-0 active:scale-95"
+          title="Toggle Navigation Menu"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-5 h-5 text-[#0B6B4F]" />
         </button>
 
         {/* Global Search Bar (Donezo style) */}

@@ -32,6 +32,7 @@ export async function GET(
           location: data.location,
           price: data.price !== undefined && data.price !== null ? Number(data.price) : 0,
           cost: data.cost !== undefined && data.cost !== null ? Number(data.cost) : 0,
+          imageUrl: data.image_url || data.imageUrl || '',
           isForSale: Boolean(data.is_for_sale),
           note: data.note,
           isBorrowable: data.is_borrowable,
@@ -73,6 +74,9 @@ export async function PUT(
       if (body.location !== undefined) updateData.location = body.location.trim();
       if (body.price !== undefined) updateData.price = Number(body.price);
       if (body.cost !== undefined) updateData.cost = Number(body.cost);
+      if (body.imageUrl !== undefined || body.image_url !== undefined) {
+        updateData.image_url = body.imageUrl || body.image_url || '';
+      }
       if (body.isForSale !== undefined) updateData.is_for_sale = Boolean(body.isForSale);
       if (body.note !== undefined) updateData.note = body.note.trim();
       if (body.isBorrowable !== undefined) updateData.is_borrowable = Boolean(body.isBorrowable);
@@ -88,6 +92,7 @@ export async function PUT(
         delete updateData.price;
         delete updateData.cost;
         delete updateData.is_for_sale;
+        delete updateData.image_url;
         updateRes = await supabase
           .from('items')
           .update(updateData)
@@ -112,6 +117,7 @@ export async function PUT(
           location: data.location,
           price: data.price !== undefined ? Number(data.price) : body.price !== undefined ? Number(body.price) : 0,
           cost: data.cost !== undefined ? Number(data.cost) : body.cost !== undefined ? Number(body.cost) : 0,
+          imageUrl: data.image_url || body.imageUrl || '',
           isForSale: data.is_for_sale !== undefined ? Boolean(data.is_for_sale) : Boolean(body.isForSale),
           note: data.note,
           isBorrowable: data.is_borrowable,
@@ -137,6 +143,7 @@ export async function PUT(
       location: body.location !== undefined ? body.location.trim() : current.location,
       price: body.price !== undefined ? Number(body.price) : current.price,
       cost: body.cost !== undefined ? Number(body.cost) : current.cost,
+      imageUrl: body.imageUrl !== undefined ? body.imageUrl : (body.image_url !== undefined ? body.image_url : current.imageUrl),
       isForSale: body.isForSale !== undefined ? Boolean(body.isForSale) : current.isForSale,
       note: body.note !== undefined ? body.note.trim() : current.note,
       isBorrowable: body.isBorrowable !== undefined ? Boolean(body.isBorrowable) : current.isBorrowable,

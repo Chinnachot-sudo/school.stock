@@ -34,6 +34,7 @@ export async function GET(request: Request) {
         location: row.location || '',
         price: row.price !== undefined && row.price !== null ? Number(row.price) : 0,
         cost: row.cost !== undefined && row.cost !== null ? Number(row.cost) : 0,
+        imageUrl: row.image_url || '',
         isForSale: Boolean(row.is_for_sale),
         note: row.note || '',
         isBorrowable: row.is_borrowable,
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { code, name, categoryId, currentStock, minStock, unit, location, note, isBorrowable, price, cost, isForSale } = body;
+    const { code, name, categoryId, currentStock, minStock, unit, location, note, isBorrowable, price, cost, isForSale, imageUrl } = body;
 
     if (!code || !name || !unit) {
       return NextResponse.json({ error: 'Item code, name, and unit are required' }, { status: 400 });
@@ -153,6 +154,7 @@ export async function POST(request: Request) {
         location: (location || 'Central Storage').trim(),
         price: Number(price) || 0,
         cost: Number(cost) || 0,
+        image_url: imageUrl || body.image_url || null,
         is_for_sale: Boolean(isForSale),
         note: (note || '').trim(),
         is_borrowable: Boolean(isBorrowable),
@@ -170,12 +172,14 @@ export async function POST(request: Request) {
           errMsg.includes('schema cache') ||
           errMsg.includes('price') ||
           errMsg.includes('is_for_sale') ||
+          errMsg.includes('image_url') ||
           errCode === 'PGRST204' ||
           errCode === '42703'
         ) {
           delete newItemData.price;
           delete newItemData.cost;
           delete newItemData.is_for_sale;
+          delete newItemData.image_url;
           insertRes = await supabase.from('items').insert(newItemData).select().single();
         }
       }
@@ -207,6 +211,7 @@ export async function POST(request: Request) {
           location: data.location,
           price: data.price !== undefined ? Number(data.price) : Number(price) || 0,
           cost: data.cost !== undefined ? Number(data.cost) : Number(cost) || 0,
+          imageUrl: data.image_url || imageUrl || '',
           isForSale: data.is_for_sale !== undefined ? Boolean(data.is_for_sale) : Boolean(isForSale),
           note: data.note,
           isBorrowable: data.is_borrowable,
@@ -233,6 +238,7 @@ export async function POST(request: Request) {
       location: (location || 'Central Storage').trim(),
       price: Number(price) || 0,
       cost: Number(cost) || 0,
+      imageUrl: imageUrl || body.image_url || '',
       isForSale: Boolean(isForSale),
       note: (note || '').trim(),
       isBorrowable: Boolean(isBorrowable),

@@ -2,7 +2,9 @@
 
 import { Invoice, INVOICE_STATUS_LABELS, SCHOOL_BANK_INFO } from '@/types/inventory';
 import { thaiBahtText } from '@/lib/thai-baht';
-import { X, Printer, Copy, CheckCircle2, FileText, Download } from 'lucide-react';
+import { generateSchoolPromptPayPayload } from '@/lib/promptpay';
+import { QRCodeSVG } from 'qrcode.react';
+import { X, Printer, Copy, CheckCircle2, FileText, Download, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface InvoiceModalProps {
@@ -15,6 +17,7 @@ interface InvoiceModalProps {
 export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange }: InvoiceModalProps) {
   const [copied, setCopied] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   if (!isOpen || !invoice) return null;
 
@@ -28,6 +31,53 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
       navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    const element = document.getElementById('printable-invoice');
+    if (!element) return;
+
+    try {
+      setDownloadingPdf(true);
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      if (imgHeight <= pdfHeight) {
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      } else {
+        const ratio = pdfHeight / imgHeight;
+        const scaledWidth = imgWidth * ratio;
+        const scaledHeight = pdfHeight;
+        const xOffset = (pdfWidth - scaledWidth) / 2;
+        pdf.addImage(imgData, 'PNG', xOffset, 0, scaledWidth, scaledHeight);
+      }
+
+      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+    } catch (err: any) {
+      console.error('Error generating PDF:', err);
+      alert('Failed to generate PDF. Please use the Print button and choose Save as PDF.');
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -46,6 +96,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
     : '-';
 
   const statusInfo = INVOICE_STATUS_LABELS[invoice.status] || INVOICE_STATUS_LABELS.PENDING;
+  const promptPayPayload = generateSchoolPromptPayPayload(invoice.totalAmount);
 
   const handleMarkAsPaid = async () => {
     if (!confirm(`Confirm recording payment for Invoice #${invoice.invoiceNumber} in the amount of ฿${invoice.totalAmount.toLocaleString()}?`)) {
@@ -73,26 +124,27 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
     }
   };
 
-  // Ensure minimum rows so table looks proportional matching reference image
-  const minDisplayRows = Math.max(invoice.items.length, 5);
+  // Keep display rows proportional so it fits comfortably on 1 sheet of A4
+  const minDisplayRows = Math.max(invoice.items.length, 3);
   const emptyRowsCount = minDisplayRows - invoice.items.length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto">
       
-      {/* Print Specific CSS to enforce Full-A4 sizing and prevent tiny box distortion */}
+      {/* Print Specific CSS to enforce Full-A4 sizing and avoid clipping bank info */}
       <style jsx global>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm 12mm 15mm;
+            margin: 8mm 10mm;
           }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
             color: #111827 !important;
-            font-size: 11pt !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           body * {
             visibility: hidden !important;
@@ -102,18 +154,19 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
             visibility: visible !important;
           }
           #printable-invoice {
-            position: fixed !important;
+            position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            min-height: 100% !important;
+            max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
-            z-index: 9999999 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           .no-print {
             display: none !important;
@@ -124,7 +177,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
       <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[96vh] flex flex-col">
         
         {/* Top Control Bar (Screen Only) */}
-        <div className="no-print p-3 sm:p-4 bg-[#0B6B4F] text-white flex items-center justify-between gap-3 shrink-0">
+        <div className="no-print p-3 sm:p-4 bg-[#0B6B4F] text-white flex items-center justify-between gap-3 shrink-0 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center text-white">
               <FileText className="w-4 h-4" />
@@ -142,7 +195,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {invoice.status === 'PENDING' && (
               <button
                 onClick={handleMarkAsPaid}
@@ -163,6 +216,21 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
               <span className="hidden sm:inline">{copied ? 'Copied!' : 'Share'}</span>
             </button>
 
+            {/* Download PDF Button */}
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-medium text-xs px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 transition active:scale-95"
+              title="Download Invoice as PDF"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              <span>{downloadingPdf ? 'Generating...' : 'Download PDF'}</span>
+            </button>
+
             <button
               onClick={handlePrint}
               className="bg-white hover:bg-white/90 text-[#0B6B4F] font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 transition active:scale-95"
@@ -181,12 +249,12 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
         </div>
 
         {/* Modal Body / Scrollable Content */}
-        <div className="overflow-y-auto p-4 sm:p-8 bg-slate-100 flex-1 flex justify-center">
+        <div className="overflow-y-auto p-3 sm:p-6 bg-slate-100 flex-1 flex justify-center">
           
           {/* Printable Invoice Container (Matching Reference Design) */}
           <div
             id="printable-invoice"
-            className="bg-white border border-[#E5E7EB] shadow-md rounded-xl p-6 sm:p-10 text-[#111827] text-xs leading-relaxed w-full max-w-[210mm] relative flex flex-col justify-between"
+            className="bg-white border border-[#E5E7EB] shadow-md rounded-xl p-5 sm:p-8 text-[#111827] text-xs leading-relaxed w-full max-w-[210mm] relative flex flex-col justify-between"
           >
             
             {/* Watermark for Cancelled */}
@@ -199,39 +267,39 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
             )}
 
             <div>
-              {/* 1. TOP HEADER: INVOICE & LOGO */}
-              <div className="flex items-start justify-between pb-6 mb-6">
+              {/* 1. TOP HEADER: INVOICE & SCHOOL CREST */}
+              <div className="flex items-start justify-between pb-4 mb-4 border-b border-[#E5E7EB]">
                 <div>
-                  <h1 className="text-4xl sm:text-5xl font-extrabold text-[#111827] tracking-tight font-sans">
+                  <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111827] tracking-tight font-sans">
                     INVOICE
                   </h1>
-                  <h2 className="text-base sm:text-lg font-semibold text-[#6B7280] mt-0.5">
+                  <h2 className="text-xs sm:text-sm font-semibold text-[#6B7280] mt-0.5">
                     Official Payment Notice
                   </h2>
                 </div>
 
-                {/* Romaneeya Green Leaf Logo */}
+                {/* Roong Aroon International School Official Gold Crest & Names */}
                 <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0">
-                    <img
-                      src="/images/romaneeya_leaf_transparent.svg"
-                      alt="Romaneeya Logo"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <div className="hidden sm:block text-right">
-                    <span className="text-lg font-extrabold text-[#0B6B4F] tracking-tight block leading-tight">
-                      Romaneeya
-                    </span>
-                    <span className="text-[10px] text-[#6B7280] block font-mono">
+                  <div className="text-right">
+                    <span className="text-sm sm:text-base font-bold text-[#111827] tracking-tight block leading-tight">
                       Roong Aroon International School
                     </span>
+                    <span className="text-xs sm:text-sm font-medium text-[#4B5563] block mt-0.5">
+                      โรงเรียนนานาชาติรุ่งอรุณ
+                    </span>
+                  </div>
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0">
+                    <img
+                      src="/images/school_crest_gold.png"
+                      alt="Roong Aroon International School Crest"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                 </div>
               </div>
 
               {/* 2. METADATA SECTION: CUSTOMER, DOCUMENT & ISSUER DETAILS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 pb-6 mb-6 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 pb-4 mb-4 text-xs">
                 {/* Column 1: Customer Details */}
                 <div className="space-y-1.5">
                   <div className="flex">
@@ -289,12 +357,12 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                 </div>
 
                 {/* Issuer Info (Full Width / Split) */}
-                <div className="md:col-span-2 pt-3 border-t border-[#E5E7EB] grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] text-[#4B5563]">
-                  <div className="space-y-1">
+                <div className="md:col-span-2 pt-2.5 border-t border-[#E5E7EB] grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-[11px] text-[#4B5563]">
+                  <div className="space-y-0.5">
                     <div className="flex">
                       <span className="w-28 text-[#6B7280] shrink-0 font-medium">Issued By</span>
                       <span className="font-medium text-[#111827]">
-                        Roong Aroon International School • Romaneeya
+                        Roong Aroon International School
                       </span>
                     </div>
                     <div className="flex">
@@ -303,7 +371,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                     </div>
                   </div>
 
-                  <div className="space-y-1 md:text-right">
+                  <div className="space-y-0.5 md:text-right">
                     <div className="flex md:justify-end">
                       <span className="w-28 md:w-auto md:mr-3 text-[#6B7280] shrink-0 font-medium">School Tax ID</span>
                       <span className="font-mono">0105541008918</span>
@@ -317,158 +385,151 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
               </div>
 
               {/* 3. TABLE OF ITEMS */}
-              <div className="border border-[#E5E7EB] rounded-lg overflow-hidden mb-6">
+              <div className="border border-[#E5E7EB] rounded-lg overflow-hidden mb-4">
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="border-b border-[#E5E7EB] text-[#111827] font-semibold text-[11px] bg-[#F9FAFB]">
-                      <th className="py-2.5 px-3 text-center w-12">No.</th>
-                      <th className="py-2.5 px-4 text-left">Item Description</th>
-                      <th className="py-2.5 px-3 text-center w-20">Qty</th>
-                      <th className="py-2.5 px-4 text-right w-28">Unit Price</th>
-                      <th className="py-2.5 px-4 text-right w-32">Total Amount</th>
+                      <th className="py-2 px-3 text-center w-12">No.</th>
+                      <th className="py-2 px-4 text-left">Item Description</th>
+                      <th className="py-2 px-3 text-center w-20">Qty</th>
+                      <th className="py-2 px-4 text-right w-28">Unit Price</th>
+                      <th className="py-2 px-4 text-right w-32">Total Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
                     {invoice.items.map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="py-2.5 px-3 text-center text-[#6B7280] font-mono">{idx + 1}</td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 text-center text-[#6B7280] font-mono">{idx + 1}</td>
+                        <td className="py-2 px-4">
                           <span className="font-medium text-[#111827]">{item.itemName}</span>
                           {item.itemCode && (
                             <span className="text-[10px] text-[#6B7280] font-mono ml-2">[{item.itemCode}]</span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-center text-[#111827] font-mono">
+                        <td className="py-2 px-3 text-center text-[#111827] font-mono">
                           {item.quantity} {item.unit}
                         </td>
-                        <td className="py-2.5 px-4 text-right text-[#111827] font-mono">
+                        <td className="py-2 px-4 text-right text-[#111827] font-mono">
                           {item.unitPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                        <td className="py-2.5 px-4 text-right font-semibold text-[#111827] font-mono">
+                        <td className="py-2 px-4 text-right font-semibold text-[#111827] font-mono">
                           {item.totalPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     ))}
 
-                    {/* Empty placeholder rows to maintain document height */}
+                    {/* Empty placeholder rows to maintain document proportionality */}
                     {Array.from({ length: emptyRowsCount }).map((_, i) => (
-                      <tr key={`empty-${i}`} className="h-8">
-                        <td className="py-2 px-3 text-center text-[#9CA3AF] font-mono text-[10px]">
+                      <tr key={`empty-${i}`} className="h-7">
+                        <td className="py-1 px-3 text-center text-[#9CA3AF] font-mono text-[10px]">
                           {invoice.items.length + i + 1}
                         </td>
-                        <td className="py-2 px-4"></td>
-                        <td className="py-2 px-3"></td>
-                        <td className="py-2 px-4"></td>
-                        <td className="py-2 px-4"></td>
+                        <td className="py-1 px-4"></td>
+                        <td className="py-1 px-3"></td>
+                        <td className="py-1 px-4"></td>
+                        <td className="py-1 px-4"></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* 4. SUBTOTALS & NOTES ROW */}
-              <div className="border-t border-[#E5E7EB] pt-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                {/* Notes */}
+              {/* 4. PAYMENT METHODS & TOTALS SECTION (Side by side for guaranteed single-page A4 print fit) */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 pb-4 mb-4 border-b border-[#E5E7EB]">
+                {/* Left 7 cols: Payment Instructions & Crisp PromptPay QR */}
+                <div className="sm:col-span-7 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3 flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-[#111827] text-xs">Payment Instructions (การชำระเงิน)</h4>
+                    <div className="text-[11px] text-[#4B5563] space-y-0.5">
+                      <p><span className="text-[#6B7280]">Account Name:</span> <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong></p>
+                      <p><span className="text-[#6B7280]">Bank:</span> <span className="font-medium text-[#111827]">{SCHOOL_BANK_INFO.bankName} (ธนาคารกรุงเทพ)</span></p>
+                      <p><span className="text-[#6B7280]">Account No.:</span> <strong className="font-mono text-[#0B6B4F] text-xs">002203089172</strong></p>
+                      <p className="text-[10px] text-[#6B7280] font-mono">Ref 1: {SCHOOL_BANK_INFO.ref1} | Ref 3: {SCHOOL_BANK_INFO.ref3}</p>
+                    </div>
+                  </div>
+
+                  {/* Vector Crisp PromptPay QR */}
+                  <div className="shrink-0 text-center bg-white p-1.5 rounded-lg border border-[#E5E7EB] shadow-xs">
+                    <QRCodeSVG
+                      value={promptPayPayload}
+                      size={76}
+                      level="M"
+                      includeMargin={false}
+                    />
+                    <span className="text-[9px] text-[#0B6B4F] font-bold block mt-1 tracking-tight">
+                      PromptPay QR
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right 5 cols: Subtotals & Grand Total Box */}
+                <div className="sm:col-span-5 flex flex-col justify-between space-y-2">
+                  <div className="space-y-1 text-xs text-right">
+                    <div className="flex justify-between">
+                      <span className="text-[#6B7280]">Subtotal</span>
+                      <span className="font-mono font-medium text-[#111827]">
+                        ฿{invoice.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#6B7280]">Discount</span>
+                      <span className="font-mono text-[#6B7280]">
+                        {invoice.discount > 0 ? `-฿${invoice.discount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '฿0.00'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#6B7280]">VAT (7%)</span>
+                      <span className="font-mono text-[#6B7280]">0.00 (Exempt)</span>
+                    </div>
+                  </div>
+
+                  {/* Total Due Banner */}
+                  <div className="bg-[#0B6B4F] text-white rounded-xl p-2.5 px-3.5 flex items-center justify-between shadow-xs">
+                    <div>
+                      <span className="text-[10px] text-emerald-100 uppercase tracking-wider font-semibold block">Total Due</span>
+                      <span className="text-[10px] text-emerald-100/90 font-medium block">
+                        ({thaiBahtText(invoice.totalAmount)})
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xl sm:text-2xl font-extrabold font-mono tracking-tight block">
+                        ฿{invoice.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. NOTES & TERMS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pb-3 mb-3 border-b border-[#E5E7EB]">
                 <div>
-                  <span className="font-bold text-[#111827] block mb-1">Notes</span>
-                  <p className="text-[#6B7280] text-[11px] leading-relaxed">
+                  <span className="font-semibold text-[#111827] block mb-0.5 text-[11px]">Notes:</span>
+                  <p className="text-[#6B7280] text-[10px] leading-relaxed">
                     {invoice.note || 'Please process payment by the due date and submit the transfer receipt for official receipt issuance.'}
                   </p>
                 </div>
-
-                {/* Subtotals */}
-                <div className="space-y-1.5 md:text-right">
-                  <div className="flex md:justify-end">
-                    <span className="w-32 text-[#6B7280]">Subtotal</span>
-                    <span className="w-32 font-mono font-medium text-[#111827]">
-                      {invoice.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="flex md:justify-end">
-                    <span className="w-32 text-[#6B7280]">Discount</span>
-                    <span className="w-32 font-mono text-[#6B7280]">
-                      {invoice.discount > 0 ? `-${invoice.discount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-                    </span>
-                  </div>
-                  <div className="flex md:justify-end">
-                    <span className="w-32 text-[#6B7280]">VAT (7%)</span>
-                    <span className="w-32 font-mono text-[#6B7280]">
-                      0.00 (Exempt)
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 5. GRAND TOTAL BOX */}
-              <div className="border border-[#E5E7EB] rounded-lg p-4 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F9FAFB]/50">
                 <div>
-                  <span className="font-bold text-sm text-[#111827] block">
-                    Total Amount Due
-                  </span>
-                  <span className="text-xs text-[#0B6B4F] font-semibold mt-0.5 block">
-                    ({thaiBahtText(invoice.totalAmount)})
-                  </span>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-[#111827] font-mono tracking-tight block">
-                    ฿{invoice.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
+                  <span className="font-semibold text-[#111827] block mb-0.5 text-[11px]">Terms & Conditions:</span>
+                  <p className="text-[#6B7280] text-[10px] leading-relaxed">
+                    This document is an official payment notice for educational supplies and student welfare.
+                  </p>
                 </div>
               </div>
 
-              {/* 6. DUAL SIGNATURES */}
-              <div className="grid grid-cols-2 gap-8 text-center text-xs text-[#6B7280] mb-8 pt-4">
-                <div className="space-y-1.5">
-                  <div className="border-b border-[#D1D5DB] w-48 sm:w-60 mx-auto h-12"></div>
+              {/* 6. DUAL SIGNATURES (Anchors the bottom of the page) */}
+              <div className="grid grid-cols-2 gap-8 text-center text-xs text-[#6B7280] pt-2">
+                <div className="space-y-1">
+                  <div className="border-b border-[#D1D5DB] w-44 sm:w-56 mx-auto h-8"></div>
                   <p className="font-medium text-[#111827]">Received By / Customer Signature</p>
                   <p className="text-[11px] text-[#6B7280]">({invoice.customerName})</p>
                   <p className="text-[10px] text-[#9CA3AF]">Date ..... / ..... / ..........</p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <div className="border-b border-[#D1D5DB] w-48 sm:w-60 mx-auto h-12"></div>
+                <div className="space-y-1">
+                  <div className="border-b border-[#D1D5DB] w-44 sm:w-56 mx-auto h-8"></div>
                   <p className="font-medium text-[#111827]">Authorized Signatory</p>
                   <p className="text-[11px] text-[#6B7280]">({invoice.creatorName || 'School Finance Officer'})</p>
                   <p className="text-[10px] text-[#9CA3AF]">Date ..... / ..... / ..........</p>
-                </div>
-              </div>
-
-              {/* 7. FOOTER: TERMS & PAYMENT METHODS */}
-              <div className="border-t border-[#E5E7EB] pt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-                {/* Terms */}
-                <div>
-                  <h4 className="font-bold text-[#111827] mb-1.5">Terms & Conditions</h4>
-                  <ul className="text-[11px] text-[#6B7280] space-y-1 list-disc list-inside">
-                    <li>This document is an official payment notice for educational supplies and student welfare.</li>
-                    <li>Upon payment completion, please submit transfer confirmation for official receipt issuance.</li>
-                    <li>For overdue payments or inquiries, please contact the School Finance Office.</li>
-                  </ul>
-                </div>
-
-                {/* Payment Instructions + Mini PromptPay QR */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-[#111827] mb-1">Payment Instructions</h4>
-                    <div className="text-[11px] text-[#4B5563] space-y-0.5">
-                      <p><span className="text-[#6B7280]">Account Name:</span> <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong></p>
-                      <p><span className="text-[#6B7280]">Account No.:</span> <strong className="font-mono text-[#0B6B4F]">002203089172</strong></p>
-                      <p><span className="text-[#6B7280]">Bank:</span> {SCHOOL_BANK_INFO.bankName}</p>
-                      <p className="text-[10px] text-[#6B7280] font-mono mt-1">Ref 1: {SCHOOL_BANK_INFO.ref1} | Ref 3: {SCHOOL_BANK_INFO.ref3}</p>
-                    </div>
-                  </div>
-
-                  {/* QR Image */}
-                  <div className="shrink-0 text-center bg-[#F9FAFB] p-1.5 rounded-lg border border-[#E5E7EB]">
-                    <img
-                      src={SCHOOL_BANK_INFO.qrImagePath}
-                      alt="Thai QR Payment"
-                      className="w-20 h-auto object-contain rounded"
-                    />
-                    <span className="text-[9px] text-[#0B6B4F] font-bold block mt-1">
-                      Thai QR
-                    </span>
-                  </div>
                 </div>
               </div>
 

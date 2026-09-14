@@ -13,7 +13,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setMobileDrawerOpen(prev => !prev);
+    } else {
+      setDesktopSidebarOpen(prev => !prev);
+    }
+  };
 
   // Pre-login screen: completely bare, no sidebar, no header, no bottom nav
   if (pathname === '/login' || pathname === '/auth/callback') {
@@ -22,12 +31,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-[#F3F4F6] text-[#111827]">
-      {/* 1. Desktop Left Sidebar (Sticky Full Height) */}
-      <div className="hidden lg:block lg:sticky lg:top-0 lg:h-screen shrink-0 z-40">
-        <React.Suspense fallback={<div className="w-64 bg-white border-r border-[#E5E7EB] h-full" />}>
+      {/* 1. Desktop Left Sidebar (Sticky Full Height, Collapsible) */}
+      <aside
+        className={`hidden lg:block lg:sticky lg:top-0 lg:h-screen shrink-0 z-40 transition-all duration-300 ease-in-out overflow-hidden ${
+          desktopSidebarOpen ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'
+        }`}
+      >
+        <React.Suspense fallback={<div className="w-72 bg-white border-r border-[#E5E7EB] h-full" />}>
           <Sidebar />
         </React.Suspense>
-      </div>
+      </aside>
 
       {/* 2. Mobile Slide-Over Drawer */}
       {mobileDrawerOpen && (
@@ -53,6 +66,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* 3. Main Content Column */}
       <div className="flex-1 flex flex-col min-w-0">
         <TopHeader
+          onToggleSidebar={handleToggleSidebar}
           onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
           onOpenScanner={() => setIsScannerOpen(true)}
         />

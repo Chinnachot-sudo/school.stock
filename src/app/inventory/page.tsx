@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Item, Category, Department } from '@/types/inventory';
+import { Item, Category, Department, STANDARD_UNITS } from '@/types/inventory';
 import QuickDeductModal from '@/components/QuickDeductModal';
 import QuickRestockModal from '@/components/QuickRestockModal';
 import CategoryManageModal from '@/components/CategoryManageModal';
@@ -21,7 +21,9 @@ import {
   Tag,
   RefreshCw,
   ChevronRight,
-  Filter
+  Filter,
+  Upload,
+  ImageIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -56,12 +58,61 @@ export default function InventoryPage() {
     location: '',
     price: 0,
     cost: 0,
+    imageUrl: '',
     isForSale: false,
     note: '',
     isBorrowable: false
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, WebP)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        if (isEdit) {
+          setEditingItem(prev => prev ? { ...prev, imageUrl: dataUrl } : null);
+        } else {
+          setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const fetchItems = async () => {
     try {
@@ -129,6 +180,7 @@ export default function InventoryPage() {
         location: '',
         price: 0,
         cost: 0,
+        imageUrl: '',
         isForSale: false,
         note: '',
         isBorrowable: false
@@ -368,9 +420,22 @@ export default function InventoryPage() {
                   return (
                     <tr key={item.id} className="hover:bg-[#F7F4EF]/70 transition">
                       
-                      {/* SKU (font-mono) */}
-                      <td className="py-2 px-3 font-mono text-xs text-[#6B6560] whitespace-nowrap">
-                        {item.code}
+                      {/* SKU & Photo Thumbnail */}
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2.5">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0 shadow-2xs"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center shrink-0">
+                              <Boxes className="w-4 h-4 text-slate-400" />
+                            </div>
+                          )}
+                          <span className="font-mono text-xs text-[#6B6560]">{item.code}</span>
+                        </div>
                       </td>
 
                       {/* Item Name & Details */}
@@ -613,14 +678,29 @@ export default function InventoryPage() {
                   <label className="block font-medium text-zinc-700 mb-1">
                     Unit *
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Ream, Box, Pcs"
-                    value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center"
-                  />
+                  <select
+                    value={(STANDARD_UNITS as readonly string[]).includes(formData.unit) ? formData.unit : 'Other'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, unit: val === 'Other' ? '' : val });
+                    }}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2 text-center font-medium focus:ring-1 focus:ring-zinc-400"
+                  >
+                    {STANDARD_UNITS.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                    <option value="Other">Other (Custom)...</option>
+                  </select>
+                  {!(STANDARD_UNITS as readonly string[]).includes(formData.unit) && (
+                    <input
+                      type="text"
+                      placeholder="Enter custom unit..."
+                      value={formData.unit}
+                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                      className="w-full mt-1.5 bg-white border border-zinc-300 rounded-lg p-1.5 text-center text-xs"
+                      required
+                    />
+                  )}
                 </div>
               </div>
 
@@ -635,6 +715,44 @@ export default function InventoryPage() {
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2"
                 />
+              </div>
+
+              {/* Item Photo / Equipment Image Upload */}
+              <div>
+                <label className="block font-medium text-zinc-700 mb-1">
+                  Item Photo / Equipment Image
+                </label>
+                {formData.imageUrl ? (
+                  <div className="flex items-center gap-3 p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Item preview"
+                      className="w-14 h-14 object-cover rounded-lg border border-zinc-200 shrink-0 shadow-2xs"
+                    />
+                    <div className="flex-1 text-xs">
+                      <p className="font-semibold text-zinc-800">Photo attached</p>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                        className="text-[11px] text-red-600 hover:text-red-700 font-medium mt-1 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remove Photo</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="border-2 border-dashed border-zinc-200 hover:border-[#0B6B4F] rounded-lg p-3 flex flex-col items-center justify-center gap-1 cursor-pointer bg-zinc-50/60 hover:bg-zinc-50 transition">
+                    <Upload className="w-5 h-5 text-zinc-400" />
+                    <span className="text-[11px] text-zinc-600 font-medium">Click to select photo (PNG, JPG, WebP)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageFileChange(e, false)}
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-2.5">
@@ -786,12 +904,29 @@ export default function InventoryPage() {
                 </div>
                 <div>
                   <label className="block font-medium text-[#1A1A1A] mb-1">Unit</label>
-                  <input
-                    type="text"
-                    value={editingItem.unit}
-                    onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
-                    className="w-full bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-2 text-center text-[#1A1A1A]"
-                  />
+                  <select
+                    value={(STANDARD_UNITS as readonly string[]).includes(editingItem.unit) ? editingItem.unit : 'Other'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditingItem({ ...editingItem, unit: val === 'Other' ? '' : val });
+                    }}
+                    className="w-full bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-2 text-center font-medium text-[#1A1A1A]"
+                  >
+                    {STANDARD_UNITS.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                    <option value="Other">Other (Custom)...</option>
+                  </select>
+                  {!(STANDARD_UNITS as readonly string[]).includes(editingItem.unit) && (
+                    <input
+                      type="text"
+                      placeholder="Enter custom unit..."
+                      value={editingItem.unit}
+                      onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
+                      className="w-full mt-1.5 bg-white border border-[#E5E0D8] rounded-lg p-1.5 text-center text-xs text-[#1A1A1A]"
+                      required
+                    />
+                  )}
                 </div>
               </div>
 
@@ -803,6 +938,44 @@ export default function InventoryPage() {
                   onChange={(e) => setEditingItem({ ...editingItem, location: e.target.value })}
                   className="w-full bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-2 text-[#1A1A1A]"
                 />
+              </div>
+
+              {/* Item Photo / Equipment Image Upload */}
+              <div>
+                <label className="block font-medium text-[#1A1A1A] mb-1">
+                  Item Photo / Equipment Image
+                </label>
+                {editingItem.imageUrl ? (
+                  <div className="flex items-center gap-3 p-2.5 bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg">
+                    <img
+                      src={editingItem.imageUrl}
+                      alt="Item preview"
+                      className="w-14 h-14 object-cover rounded-lg border border-[#E5E0D8] shrink-0 shadow-2xs"
+                    />
+                    <div className="flex-1 text-xs">
+                      <p className="font-semibold text-[#1A1A1A]">Photo attached</p>
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem({ ...editingItem, imageUrl: '' })}
+                        className="text-[11px] text-red-600 hover:text-red-700 font-medium mt-1 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remove Photo</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="border-2 border-dashed border-[#E5E0D8] hover:border-[#0B6B4F] rounded-lg p-3 flex flex-col items-center justify-center gap-1 cursor-pointer bg-white hover:bg-[#F7F4EF] transition">
+                    <Upload className="w-5 h-5 text-[#6B6560]" />
+                    <span className="text-[11px] text-[#6B6560] font-medium">Click to select photo (PNG, JPG, WebP)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageFileChange(e, true)}
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="p-3 bg-[#F7F4EF] rounded-lg border border-[#E5E0D8] space-y-2.5">
