@@ -23,7 +23,9 @@ import {
   ChevronRight,
   Filter,
   Upload,
-  ImageIcon
+  ImageIcon,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -34,6 +36,9 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // View Mode: 'grid' (Card view with large photos) or 'table' (Enterprise data table)
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -338,7 +343,7 @@ export default function InventoryPage() {
           />
         </div>
 
-        {/* Categories & Filter Controls */}
+        {/* Categories, Filter Controls & View Switcher */}
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
           <select
             value={selectedCategory}
@@ -364,204 +369,426 @@ export default function InventoryPage() {
             <AlertTriangle className="w-3.5 h-3.5 text-[#B54708]" />
             <span>Low Stock ({lowStockCount})</span>
           </button>
+
+          {/* View Switcher: Cards vs Table */}
+          <div className="flex items-center bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-0.5 shrink-0 ml-auto sm:ml-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-[#0B6B4F] text-white shadow-2xs'
+                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
+              }`}
+              title="Card Grid View (Large Photos)"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Cards</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-[#0B6B4F] text-white shadow-2xs'
+                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
+              }`}
+              title="Table View"
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Table</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* HIGH DENSITY ENTERPRISE DATA TABLE */}
-      <div className="rounded-lg border border-[#E5E0D8] bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-[#F7F4EF] border-b border-[#E5E0D8] text-[#6B6560] font-medium text-[11px]">
-              <tr>
-                <th className="py-2 px-3 w-28">SKU / Code</th>
-                <th className="py-2 px-3 min-w-[200px]">Item Description</th>
-                <th className="py-2 px-3 hidden sm:table-cell w-36">Category</th>
-                <th className="py-2 px-3 hidden md:table-cell w-36">Location</th>
-                <th className="py-2 px-3 hidden lg:table-cell w-24 text-right">Price</th>
-                <th className="py-2 px-3 w-32">Status</th>
-                <th className="py-2 px-3 w-28 text-right">In Stock</th>
-                <th className="py-2 px-3 w-40 text-right">Actions</th>
-              </tr>
-            </thead>
+      {/* VIEW MODE: 1. CARD GRID VIEW (LARGE CLEAR PRODUCT PHOTOS) */}
+      {viewMode === 'grid' ? (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                <div key={n} className="bg-white rounded-2xl border border-[#E5E0D8] overflow-hidden p-3 space-y-3 animate-pulse">
+                  <div className="w-full h-48 bg-slate-100 rounded-xl" />
+                  <div className="h-4 bg-slate-200 rounded w-3/4" />
+                  <div className="h-3 bg-slate-100 rounded w-1/2" />
+                  <div className="h-8 bg-slate-100 rounded-xl" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-2xl border border-[#E5E0D8] bg-white p-14 text-center text-[#6B6560]">
+              <Boxes className="w-10 h-10 mx-auto text-[#6B6560]/40 mb-2" />
+              <p className="font-bold text-[#1A1A1A] text-sm">No inventory items found</p>
+              <p className="text-xs text-[#6B6560] mt-1">Try adjusting your search query or reset category filter</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filtered.map(item => {
+                const isLow = item.currentStock <= item.minStock;
+                const isOut = item.currentStock <= 0;
+                const cat = categories.find(c => c.id === item.categoryId);
 
-            {/* SKELETON LOADING STATE */}
-            {loading ? (
-              <tbody className="divide-y divide-[#E5E0D8]">
-                {[1, 2, 3, 4, 5, 6].map(n => (
-                  <tr key={n} className="animate-pulse">
-                    <td className="py-2 px-3"><div className="h-3.5 w-16 bg-[#E5E0D8] rounded"></div></td>
-                    <td className="py-2 px-3"><div className="h-3.5 w-44 bg-[#E5E0D8] rounded"></div></td>
-                    <td className="py-2 px-3 hidden sm:table-cell"><div className="h-3.5 w-24 bg-[#E5E0D8]/60 rounded"></div></td>
-                    <td className="py-2 px-3 hidden md:table-cell"><div className="h-3.5 w-20 bg-[#E5E0D8]/60 rounded"></div></td>
-                    <td className="py-2 px-3 hidden lg:table-cell text-right"><div className="h-3.5 w-12 bg-[#E5E0D8] rounded ml-auto"></div></td>
-                    <td className="py-2 px-3"><div className="h-4 w-16 bg-[#E5E0D8] rounded"></div></td>
-                    <td className="py-2 px-3 text-right"><div className="h-3.5 w-10 bg-[#E5E0D8] rounded ml-auto"></div></td>
-                    <td className="py-2 px-3 text-right"><div className="h-6 w-24 bg-[#E5E0D8] rounded ml-auto"></div></td>
-                  </tr>
-                ))}
-              </tbody>
-            ) : filtered.length === 0 ? (
-              <tbody>
-                <tr>
-                  <td colSpan={8} className="py-14 text-center text-[#6B6560]">
-                    <Boxes className="w-8 h-8 mx-auto text-[#6B6560]/40 mb-2" />
-                    <p className="font-medium text-[#1A1A1A] text-xs">No inventory items found</p>
-                    <p className="text-[11px] text-[#6B6560] mt-0.5">Try adjusting your search query or reset category filter</p>
-                  </td>
-                </tr>
-              </tbody>
-            ) : (
-              <tbody className="divide-y divide-[#E5E0D8]/70">
-                {filtered.map(item => {
-                  const isLow = item.currentStock <= item.minStock;
-                  const isOut = item.currentStock <= 0;
-                  const cat = categories.find(c => c.id === item.categoryId);
-
-                  return (
-                    <tr key={item.id} className="hover:bg-[#F7F4EF]/70 transition">
-                      
-                      {/* SKU & Photo Thumbnail */}
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2.5">
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0 shadow-2xs"
-                            />
-                          ) : (
-                            <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center shrink-0">
-                              <Boxes className="w-4 h-4 text-slate-400" />
-                            </div>
-                          )}
-                          <span className="font-mono text-xs text-[#6B6560]">{item.code}</span>
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white border border-[#E5E0D8] hover:border-[#0B6B4F] rounded-2xl overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md transition duration-200 group"
+                  >
+                    {/* 1. Large Photo Section */}
+                    <div className="relative w-full h-48 sm:h-52 bg-slate-50 border-b border-[#E5E0D8] flex items-center justify-center overflow-hidden p-3">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-contain group-hover:scale-105 transition duration-200"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                          <Boxes className="w-12 h-12 stroke-[1.25] text-slate-300 mb-1" />
+                          <span className="text-[10.5px] font-mono text-slate-400 font-medium">No Image</span>
                         </div>
-                      </td>
+                      )}
 
-                      {/* Item Name & Details */}
-                      <td className="py-2 px-3">
-                        <div className="font-medium text-[#1A1A1A] leading-tight">
-                          {item.name}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-[#6B6560] mt-0.5">
-                          {item.isForSale && (
-                            <span className="text-[#1F4D3A] font-mono">[POS Sale]</span>
-                          )}
-                          {item.isBorrowable && (
-                            <span className="text-[#1F4D3A] font-medium">Borrowable</span>
-                          )}
-                          {item.note && (
-                            <span className="truncate max-w-xs">• {item.note}</span>
-                          )}
-                        </div>
-                      </td>
+                      {/* Top-Left: SKU / Code Badge */}
+                      <span className="absolute top-2.5 left-2.5 font-mono text-[10px] font-bold bg-white/95 backdrop-blur-xs text-slate-700 px-2 py-0.5 rounded-lg shadow-2xs border border-slate-200/80">
+                        {item.code}
+                      </span>
 
-                      {/* Category */}
-                      <td className="py-2 px-3 hidden sm:table-cell text-[#6B6560] whitespace-nowrap text-[11px]">
+                      {/* Top-Right: Stock Status Badge */}
+                      {isOut ? (
+                        <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-lg shadow-2xs">
+                          Out of Stock
+                        </span>
+                      ) : isLow ? (
+                        <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-2xs">
+                          Low Stock
+                        </span>
+                      ) : (
+                        <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-[#0B6B4F] text-white px-2 py-0.5 rounded-lg shadow-2xs">
+                          In Stock
+                        </span>
+                      )}
+
+                      {/* Bottom-Left: Category Tag on Photo */}
+                      <span className="absolute bottom-2 left-2 text-[10px] font-medium bg-slate-900/75 text-white px-2 py-0.5 rounded-md backdrop-blur-xs">
                         {cat?.name || 'General'}
-                      </td>
+                      </span>
+                    </div>
 
-                      {/* Location */}
-                      <td className="py-2 px-3 hidden md:table-cell text-[#6B6560] whitespace-nowrap text-[11px]">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-[#6B6560] shrink-0" />
+                    {/* 2. Card Content */}
+                    <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h3 className="font-bold text-sm text-[#111827] leading-snug line-clamp-2 group-hover:text-[#0B6B4F] transition min-h-[38px]">
+                          {item.name}
+                        </h3>
+
+                        <div className="flex items-center gap-1.5 text-[11px] text-[#6B6560] mt-1">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="truncate">{item.location || 'Main Storage'}</span>
-                        </span>
-                      </td>
-
-                      {/* Price / Cost (font-mono) */}
-                      <td className="py-2 px-3 hidden lg:table-cell text-right whitespace-nowrap font-mono text-xs text-[#1A1A1A]">
-                        {item.price ? `฿${item.price.toFixed(2)}` : '-'}
-                      </td>
-
-                      {/* Muted Status Badge with thin border & dot */}
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        {isOut ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEE4E2] text-[#B42318] border border-[#B42318]/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#B42318]"></span>
-                            <span>Out of Stock</span>
-                          </span>
-                        ) : isLow ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEF0C7] text-[#B54708] border border-[#B54708]/30">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#B54708]"></span>
-                            <span>Low Stock</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A]/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#027A48]"></span>
-                            <span>In Stock</span>
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Current Stock (font-mono) */}
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
-                        <span className={`font-mono text-xs font-bold ${isLow ? 'text-[#B54708]' : 'text-[#1A1A1A]'}`}>
-                          {item.currentStock}
-                        </span>
-                        <span className="text-[10px] text-[#6B6560] ml-1">
-                          {item.unit}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          {canRestock && (
-                            <button
-                              onClick={() => setSelectedItemForRestock(item)}
-                              className="px-2 py-1 bg-white hover:bg-[#F7F4EF] text-[#1F4D3A] rounded text-[10px] font-medium border border-[#E5E0D8] transition"
-                              title="Receive Stock"
-                            >
-                              +In
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => setSelectedItemForDeduct(item)}
-                            disabled={isOut}
-                            className="px-2 py-1 bg-[#C45C26] hover:bg-[#A84B1E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
-                            title="Issue Stock"
-                          >
-                            Issue
-                          </button>
-
-                          {canManageItems && (
-                            <button
-                              onClick={() => setEditingItem(item)}
-                              className="p-1 rounded text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] transition"
-                              title="Edit"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-
-                          {canDeleteItems && (
-                            <button
-                              onClick={() => handleDeleteItem(item.id, item.name)}
-                              className="p-1 rounded text-[#6B6560] hover:text-[#B42318] hover:bg-[#FEE4E2] transition"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
-                      </td>
 
+                        {(item.isForSale || item.isBorrowable) && (
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            {item.isForSale && (
+                              <span className="text-[9.5px] font-semibold text-[#0B6B4F] bg-emerald-50 px-1.5 py-0.5 rounded border border-[#0B6B4F]/20">
+                                POS Sale
+                              </span>
+                            )}
+                            {item.isBorrowable && (
+                              <span className="text-[9.5px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                Borrowable
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Price & Current Stock */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-medium uppercase tracking-wider">Price</span>
+                          <span className="font-mono text-xs font-bold text-slate-900">
+                            {item.price ? `฿${item.price.toFixed(2)}` : '-'}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block font-medium uppercase tracking-wider">Balance</span>
+                          <span className={`font-mono text-sm font-black ${isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-[#0B6B4F]'}`}>
+                            {item.currentStock} <span className="text-[10px] font-normal text-slate-500">{item.unit}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Action Buttons Footer */}
+                    <div className="p-2.5 bg-[#F9FAFB] border-t border-[#E5E7EB] flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1">
+                        {canRestock && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedItemForRestock(item)}
+                            className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-[#0B6B4F] rounded-lg text-[11px] font-bold border border-[#E5E0D8] hover:border-[#0B6B4F]/40 transition cursor-pointer shadow-2xs"
+                            title="Receive Stock"
+                          >
+                            +In
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedItemForDeduct(item)}
+                          disabled={isOut}
+                          className="px-2.5 py-1 bg-[#C45C26] hover:bg-[#A84B1E] disabled:opacity-40 text-white rounded-lg text-[11px] font-bold transition cursor-pointer shadow-2xs"
+                          title="Issue / Deduct Stock"
+                        >
+                          Issue
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {canPrintQr && (
+                          <Link
+                            href={`/print-qr?item=${encodeURIComponent(item.code)}`}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition"
+                            title="Print QR Label"
+                          >
+                            <QrCode className="w-3.5 h-3.5" />
+                          </Link>
+                        )}
+
+                        {canManageItems && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingItem(item)}
+                            className="p-1.5 rounded-lg text-[#6B6560] hover:text-[#1A1A1A] hover:bg-slate-200/70 transition cursor-pointer"
+                            title="Edit Item"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {canDeleteItems && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem(item.id, item.name)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#B42318] hover:bg-[#FEE4E2] transition cursor-pointer"
+                            title="Delete Item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Card View Bottom Counter */}
+          <div className="p-3 bg-white rounded-xl border border-[#E5E0D8] text-xs text-[#6B6560] flex items-center justify-between">
+            <span>Showing {filtered.length} of {items.length} items</span>
+            <span className="font-mono text-[#0B6B4F] font-semibold">School Inventory ERP</span>
+          </div>
+        </div>
+      ) : (
+        /* VIEW MODE: 2. HIGH DENSITY ENTERPRISE DATA TABLE */
+        <div className="rounded-lg border border-[#E5E0D8] bg-white overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#F7F4EF] border-b border-[#E5E0D8] text-[#6B6560] font-medium text-[11px]">
+                <tr>
+                  <th className="py-2.5 px-3 w-32">Photo & SKU</th>
+                  <th className="py-2.5 px-3 min-w-[200px]">Item Description</th>
+                  <th className="py-2.5 px-3 hidden sm:table-cell w-36">Category</th>
+                  <th className="py-2.5 px-3 hidden md:table-cell w-36">Location</th>
+                  <th className="py-2.5 px-3 hidden lg:table-cell w-24 text-right">Price</th>
+                  <th className="py-2.5 px-3 w-32">Status</th>
+                  <th className="py-2.5 px-3 w-28 text-right">In Stock</th>
+                  <th className="py-2.5 px-3 w-40 text-right">Actions</th>
+                </tr>
+              </thead>
+
+              {/* SKELETON LOADING STATE */}
+              {loading ? (
+                <tbody className="divide-y divide-[#E5E0D8]">
+                  {[1, 2, 3, 4, 5, 6].map(n => (
+                    <tr key={n} className="animate-pulse">
+                      <td className="py-2.5 px-3"><div className="h-12 w-24 bg-[#E5E0D8] rounded-xl"></div></td>
+                      <td className="py-2.5 px-3"><div className="h-3.5 w-44 bg-[#E5E0D8] rounded"></div></td>
+                      <td className="py-2.5 px-3 hidden sm:table-cell"><div className="h-3.5 w-24 bg-[#E5E0D8]/60 rounded"></div></td>
+                      <td className="py-2.5 px-3 hidden md:table-cell"><div className="h-3.5 w-20 bg-[#E5E0D8]/60 rounded"></div></td>
+                      <td className="py-2.5 px-3 hidden lg:table-cell text-right"><div className="h-3.5 w-12 bg-[#E5E0D8] rounded ml-auto"></div></td>
+                      <td className="py-2.5 px-3"><div className="h-4 w-16 bg-[#E5E0D8] rounded"></div></td>
+                      <td className="py-2.5 px-3 text-right"><div className="h-3.5 w-10 bg-[#E5E0D8] rounded ml-auto"></div></td>
+                      <td className="py-2.5 px-3 text-right"><div className="h-6 w-24 bg-[#E5E0D8] rounded ml-auto"></div></td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            )}
-          </table>
-        </div>
+                  ))}
+                </tbody>
+              ) : filtered.length === 0 ? (
+                <tbody>
+                  <tr>
+                    <td colSpan={8} className="py-14 text-center text-[#6B6560]">
+                      <Boxes className="w-8 h-8 mx-auto text-[#6B6560]/40 mb-2" />
+                      <p className="font-medium text-[#1A1A1A] text-xs">No inventory items found</p>
+                      <p className="text-[11px] text-[#6B6560] mt-0.5">Try adjusting your search query or reset category filter</p>
+                    </td>
+                  </tr>
+                </tbody>
+              ) : (
+                <tbody className="divide-y divide-[#E5E0D8]/70">
+                  {filtered.map(item => {
+                    const isLow = item.currentStock <= item.minStock;
+                    const isOut = item.currentStock <= 0;
+                    const cat = categories.find(c => c.id === item.categoryId);
 
-        {/* Footer info */}
-        <div className="p-2.5 bg-[#F7F4EF] border-t border-[#E5E0D8] text-[11px] text-[#6B6560] flex items-center justify-between">
-          <span>Showing {filtered.length} of {items.length} items</span>
-          <span className="font-mono text-[#6B6560]">School Inventory ERP</span>
+                    return (
+                      <tr key={item.id} className="hover:bg-[#F7F4EF]/70 transition">
+                        
+                        {/* SKU & Enlarged Photo Thumbnail */}
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-14 h-14 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 shadow-2xs p-1"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 flex flex-col items-center justify-center shrink-0">
+                                <Boxes className="w-5 h-5 text-slate-400 mb-0.5" />
+                                <span className="text-[8px] font-mono text-slate-400">No Img</span>
+                              </div>
+                            )}
+                            <span className="font-mono text-xs font-semibold text-[#111827]">{item.code}</span>
+                          </div>
+                        </td>
+
+                        {/* Item Name & Details */}
+                        <td className="py-2.5 px-3">
+                          <div className="font-semibold text-sm text-[#1A1A1A] leading-tight">
+                            {item.name}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-[#6B6560] mt-1">
+                            {item.isForSale && (
+                              <span className="text-[#0B6B4F] font-mono bg-emerald-50 px-1.5 py-0.5 rounded border border-[#0B6B4F]/20">[POS Sale]</span>
+                            )}
+                            {item.isBorrowable && (
+                              <span className="text-blue-700 font-medium bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">Borrowable</span>
+                            )}
+                            {item.note && (
+                              <span className="truncate max-w-xs">• {item.note}</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Category */}
+                        <td className="py-2.5 px-3 hidden sm:table-cell text-[#6B6560] whitespace-nowrap text-[11px]">
+                          {cat?.name || 'General'}
+                        </td>
+
+                        {/* Location */}
+                        <td className="py-2.5 px-3 hidden md:table-cell text-[#6B6560] whitespace-nowrap text-[11px]">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-[#6B6560] shrink-0" />
+                            <span className="truncate">{item.location || 'Main Storage'}</span>
+                          </span>
+                        </td>
+
+                        {/* Price / Cost (font-mono) */}
+                        <td className="py-2.5 px-3 hidden lg:table-cell text-right whitespace-nowrap font-mono text-xs text-[#1A1A1A]">
+                          {item.price ? `฿${item.price.toFixed(2)}` : '-'}
+                        </td>
+
+                        {/* Muted Status Badge with thin border & dot */}
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          {isOut ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEE4E2] text-[#B42318] border border-[#B42318]/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#B42318]"></span>
+                              <span>Out of Stock</span>
+                            </span>
+                          ) : isLow ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#FEF0C7] text-[#B54708] border border-[#B54708]/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#B54708]"></span>
+                              <span>Low Stock</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A]/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#027A48]"></span>
+                              <span>In Stock</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Current Stock (font-mono) */}
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                          <span className={`font-mono text-xs font-bold ${isLow ? 'text-[#B54708]' : 'text-[#1A1A1A]'}`}>
+                            {item.currentStock}
+                          </span>
+                          <span className="text-[10px] text-[#6B6560] ml-1">
+                            {item.unit}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
+                            {canRestock && (
+                              <button
+                                onClick={() => setSelectedItemForRestock(item)}
+                                className="px-2 py-1 bg-white hover:bg-[#F7F4EF] text-[#1F4D3A] rounded text-[10px] font-medium border border-[#E5E0D8] transition"
+                                title="Receive Stock"
+                              >
+                                +In
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setSelectedItemForDeduct(item)}
+                              disabled={isOut}
+                              className="px-2 py-1 bg-[#C45C26] hover:bg-[#A84B1E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
+                              title="Issue Stock"
+                            >
+                              Issue
+                            </button>
+
+                            {canManageItems && (
+                              <button
+                                onClick={() => setEditingItem(item)}
+                                className="p-1 rounded text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] transition"
+                                title="Edit"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {canDeleteItems && (
+                              <button
+                                onClick={() => handleDeleteItem(item.id, item.name)}
+                                className="p-1 rounded text-[#6B6560] hover:text-[#B42318] hover:bg-[#FEE4E2] transition"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              )}
+            </table>
+          </div>
+
+          {/* Footer info */}
+          <div className="p-2.5 bg-[#F7F4EF] border-t border-[#E5E0D8] text-[11px] text-[#6B6560] flex items-center justify-between">
+            <span>Showing {filtered.length} of {items.length} items</span>
+            <span className="font-mono text-[#6B6560]">School Inventory ERP</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ADD ITEM MODAL */}
       {isAddModalOpen && (

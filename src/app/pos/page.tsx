@@ -497,7 +497,7 @@ export default function PosPage() {
               <p className="text-xs mt-1">Try changing your search query or category filter</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredItems.map(item => {
                 const isOut = item.currentStock <= 0;
                 const price = item.price !== undefined && item.price > 0 ? item.price : 20;
@@ -507,36 +507,57 @@ export default function PosPage() {
                     key={item.id}
                     onClick={() => addToCart(item)}
                     disabled={isOut}
-                    className="bg-white border border-slate-200 hover:border-blue-400 disabled:opacity-50 disabled:hover:border-slate-200 p-3 rounded-2xl text-left flex flex-col justify-between transition shadow-2xs hover:shadow-md active:scale-98 group"
+                    className="bg-white border border-slate-200 hover:border-[#0B6B4F] disabled:opacity-50 disabled:hover:border-slate-200 rounded-2xl overflow-hidden text-left flex flex-col justify-between transition shadow-2xs hover:shadow-md active:scale-98 group cursor-pointer"
                   >
-                    <div>
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className="font-mono text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded truncate">
-                          {item.code}
-                        </span>
-                        {isOut ? (
-                          <span className="text-[9px] font-bold bg-red-100 text-red-700 px-1.5 rounded">
-                            Out of Stock
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-medium text-slate-500">
-                            {item.currentStock} {item.unit} left
-                          </span>
-                        )}
-                      </div>
+                    {/* 1. Large Product Photo Container */}
+                    <div className="w-full h-36 sm:h-40 bg-slate-50 relative flex items-center justify-center p-2.5 border-b border-slate-100 overflow-hidden">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-contain group-hover:scale-105 transition duration-200"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                          <Store className="w-9 h-9 stroke-[1.25] text-slate-300 mb-1" />
+                          <span className="text-[10px] font-mono text-slate-400 font-semibold">{item.code}</span>
+                        </div>
+                      )}
 
-                      <h3 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2 group-hover:text-blue-600 transition">
-                        {item.name}
-                      </h3>
+                      {/* Top-Left SKU Badge */}
+                      <span className="absolute top-2 left-2 font-mono text-[9px] font-bold text-slate-600 bg-white/95 backdrop-blur-xs px-1.5 py-0.5 rounded shadow-2xs border border-slate-200/70 truncate max-w-[90px]">
+                        {item.code}
+                      </span>
+
+                      {/* Top-Right Stock Badge */}
+                      {isOut ? (
+                        <span className="absolute top-2 right-2 text-[9px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded shadow-2xs">
+                          Out of Stock
+                        </span>
+                      ) : (
+                        <span className="absolute top-2 right-2 text-[9px] font-semibold bg-white/95 backdrop-blur-xs text-slate-700 px-1.5 py-0.5 rounded shadow-2xs border border-slate-200/70">
+                          {item.currentStock} {item.unit}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-sm font-extrabold text-blue-700">
-                        ฿{price.toFixed(2)}
-                      </span>
-                      <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs group-hover:bg-blue-600 group-hover:text-white transition">
-                        +
-                      </span>
+                    {/* 2. Product Name & Price Bar */}
+                    <div className="p-3 flex flex-col justify-between flex-1">
+                      <h3 className="font-bold text-xs sm:text-[13px] text-slate-900 leading-snug line-clamp-2 group-hover:text-[#0B6B4F] transition min-h-[34px]">
+                        {item.name}
+                      </h3>
+
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[9.5px] text-slate-400 block font-medium uppercase tracking-wider">Price</span>
+                          <span className="text-sm sm:text-base font-extrabold text-[#0B6B4F] font-mono leading-none">
+                            ฿{price.toFixed(2)}
+                          </span>
+                        </div>
+                        <span className="w-7 h-7 rounded-xl bg-emerald-50 text-[#0B6B4F] border border-[#0B6B4F]/20 flex items-center justify-center font-bold text-sm group-hover:bg-[#0B6B4F] group-hover:text-white transition shadow-2xs">
+                          +
+                        </span>
+                      </div>
                     </div>
                   </button>
                 );
@@ -734,46 +755,62 @@ export default function PosPage() {
                 </div>
               ) : (
                 cart.map(ci => (
-                  <div key={ci.item.id} className="py-2.5 flex items-center justify-between gap-2 text-xs">
+                  <div key={ci.item.id} className="py-2.5 flex items-center justify-between gap-2.5 text-xs">
+                    {/* Item Thumbnail */}
+                    <div className="w-11 h-11 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 flex items-center justify-center p-0.5">
+                      {ci.item.imageUrl ? (
+                        <img
+                          src={ci.item.imageUrl}
+                          alt={ci.item.name}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <Store className="w-5 h-5 text-slate-300" />
+                      )}
+                    </div>
+
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-slate-900 truncate leading-snug">
                         {ci.item.name}
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        @{ci.unitPrice.toFixed(2)} / {ci.item.unit}
+                        ฿{ci.unitPrice.toFixed(2)} / {ci.item.unit}
                       </p>
+                      {/* Quantity Stepper */}
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(ci.item.id, -1)}
+                          className="w-5 h-5 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold transition"
+                        >
+                          <Minus className="w-2.5 h-2.5" />
+                        </button>
+                        <span className="w-6 text-center font-bold text-slate-800 text-xs font-mono">
+                          {ci.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(ci.item.id, 1)}
+                          className="w-5 h-5 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold transition"
+                        >
+                          <Plus className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Stepper */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Price & Delete Trash Icon */}
+                    <div className="text-right shrink-0 flex flex-col items-end justify-between self-stretch">
                       <button
-                        onClick={() => updateQuantity(ci.item.id, -1)}
-                        className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold"
+                        type="button"
+                        onClick={() => removeFromCart(ci.item.id)}
+                        className="p-1 text-slate-300 hover:text-red-500 rounded transition cursor-pointer"
+                        title="Remove item"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                      <span className="w-7 text-center font-bold text-slate-800 text-xs">
-                        {ci.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(ci.item.id, 1)}
-                        className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    {/* Price & Delete */}
-                    <div className="text-right shrink-0 min-w-[65px]">
-                      <span className="font-bold text-slate-900 block">
+                      <span className="font-bold text-slate-900 text-xs font-mono">
                         ฿{(ci.unitPrice * ci.quantity).toFixed(2)}
                       </span>
-                      <button
-                        onClick={() => removeFromCart(ci.item.id)}
-                        className="text-[10px] text-slate-400 hover:text-red-500"
-                      >
-                        Remove
-                      </button>
                     </div>
                   </div>
                 ))
