@@ -23,11 +23,7 @@ import {
   ChevronRight,
   Filter,
   Upload,
-  ImageIcon,
-  Sparkles,
-  Camera,
-  Palette,
-  Loader2
+  ImageIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -69,157 +65,6 @@ export default function InventoryPage() {
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Image Creation Hub states
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [showPromptDrawer, setShowPromptDrawer] = useState(false);
-
-  // Generate Photo using AI (Pollinations AI)
-  const handleGenerateAiImage = async (isEdit: boolean) => {
-    const targetName = isEdit ? editingItem?.name : formData.name;
-    const targetCatId = isEdit ? editingItem?.categoryId : formData.categoryId;
-    const cat = categories.find(c => c.id === targetCatId);
-
-    if (!targetName?.trim() && !customPrompt.trim()) {
-      alert('กรุณาระบุชื่อสินค้า (Item Name) ก่อนสร้างรูปภาพด้วย AI');
-      return;
-    }
-
-    try {
-      setIsGeneratingAi(true);
-      const res = await fetch('/api/items/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          itemName: targetName || '',
-          category: cat?.name || '',
-          customPrompt: customPrompt.trim()
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to generate image');
-      }
-
-      if (isEdit) {
-        setEditingItem(prev => prev ? { ...prev, imageUrl: data.imageUrl } : null);
-      } else {
-        setFormData(prev => ({ ...prev, imageUrl: data.imageUrl }));
-      }
-      showToast('✨ สร้างรูปภาพสินค้าด้วย AI สำเร็จ!');
-      setCustomPrompt('');
-      setShowPromptDrawer(false);
-    } catch (err: any) {
-      console.error('Error generating AI image:', err);
-      alert('ไม่สามารถสร้างรูปภาพ AI ได้: ' + (err.message || 'เกิดข้อผิดพลาด'));
-    } finally {
-      setIsGeneratingAi(false);
-    }
-  };
-
-  // Generate Graphic Badge using HTML5 Canvas
-  const handleGenerateGraphicBadge = (isEdit: boolean) => {
-    const targetName = isEdit ? editingItem?.name : formData.name;
-    const targetCode = isEdit ? editingItem?.code : formData.code;
-    const targetCatId = isEdit ? editingItem?.categoryId : formData.categoryId;
-    const cat = categories.find(c => c.id === targetCatId);
-
-    const displayName = (targetName?.trim() || 'PRODUCT ITEM').toUpperCase();
-    const displayCode = targetCode?.trim() || 'SKU-001';
-    const displayCat = (cat?.name || 'STORE ITEM').toUpperCase();
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Background Gradient (Deep Forest Emerald -> Rich Pine)
-    const gradient = ctx.createLinearGradient(0, 0, 512, 512);
-    gradient.addColorStop(0, '#0B3B2B');
-    gradient.addColorStop(0.5, '#134E39');
-    gradient.addColorStop(1, '#0B6B4F');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 512, 512);
-
-    // Decorative geometric accents
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.beginPath();
-    ctx.arc(430, 80, 160, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(80, 440, 120, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Inner card border
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(24, 24, 464, 464);
-
-    // Category Pill
-    ctx.fillStyle = '#EAB308';
-    if (typeof ctx.roundRect === 'function') {
-      ctx.beginPath();
-      ctx.roundRect(40, 48, 160, 36, 18);
-      ctx.fill();
-    } else {
-      ctx.fillRect(40, 48, 160, 36);
-    }
-
-    ctx.fillStyle = '#18181B';
-    ctx.font = 'bold 15px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(displayCat.slice(0, 18), 120, 72);
-
-    // Center emblem circle
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.beginPath();
-    ctx.arc(256, 210, 80, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 72px sans-serif';
-    ctx.textAlign = 'center';
-    const initialLetter = displayName.charAt(0) || 'P';
-    ctx.fillText(initialLetter, 256, 235);
-
-    // Item Title
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 28px sans-serif';
-    ctx.textAlign = 'center';
-    const truncatedTitle = displayName.length > 22 ? displayName.slice(0, 20) + '...' : displayName;
-    ctx.fillText(truncatedTitle, 256, 335);
-
-    // SKU Barcode simulation pill
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-    if (typeof ctx.roundRect === 'function') {
-      ctx.beginPath();
-      ctx.roundRect(100, 375, 312, 54, 12);
-      ctx.fill();
-    } else {
-      ctx.fillRect(100, 375, 312, 54);
-    }
-
-    ctx.fillStyle = '#A7F3D0';
-    ctx.font = 'bold 20px monospace';
-    ctx.fillText(`[ ${displayCode} ]`, 256, 408);
-
-    // School footer
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
-    ctx.font = '13px sans-serif';
-    ctx.fillText('Roong Aroon International School', 256, 462);
-
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-    if (isEdit) {
-      setEditingItem(prev => prev ? { ...prev, imageUrl: dataUrl } : null);
-    } else {
-      setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
-    }
-    showToast('🎨 สร้างป้ายสินค้าสำเร็จ!');
-  };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
     const file = e.target.files?.[0];
@@ -876,142 +721,41 @@ export default function InventoryPage() {
                 />
               </div>
 
-              {/* Item Photo / Equipment Image Creation Hub */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block font-medium text-zinc-700">
-                    รูปภาพสินค้า / Item Photo
-                  </label>
-                  {formData.imageUrl && (
-                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> แนบรูปภาพแล้ว
-                    </span>
-                  )}
-                </div>
-
+              {/* Item Photo / Equipment Image Upload */}
+              <div>
+                <label className="block font-medium text-zinc-700 mb-1">
+                  Item Photo / Equipment Image
+                </label>
                 {formData.imageUrl ? (
-                  <div className="flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl">
-                    <div className="w-[80px] h-[80px] rounded-xl bg-white border border-zinc-200 flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-2xs">
-                      <img
-                        src={formData.imageUrl}
-                        alt="Preview"
-                        className="w-[80px] h-[80px] object-contain rounded-lg"
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1.5 text-xs">
-                      <p className="font-bold text-zinc-900">รูปภาพขนาด 80×80px (พร้อมใช้งาน)</p>
-                      <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleGenerateAiImage(false)}
-                          disabled={isGeneratingAi}
-                          className="px-2.5 py-1 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
-                        >
-                          {isGeneratingAi ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3 h-3" />
-                          )}
-                          <span>วาดใหม่ด้วย AI</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
-                          className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          <span>ลบรูป</span>
-                        </button>
-                      </div>
+                  <div className="flex items-center gap-3 p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Item preview"
+                      className="w-16 h-16 object-contain rounded-lg border border-zinc-200 shrink-0 shadow-2xs bg-white p-1"
+                    />
+                    <div className="flex-1 text-xs">
+                      <p className="font-semibold text-zinc-800">Photo attached</p>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                        className="text-[11px] text-red-600 hover:text-red-700 font-medium mt-1 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remove Photo</span>
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {/* 4 Photo Creation Options Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {/* 1. AI Image Generator */}
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateAiImage(false)}
-                        disabled={isGeneratingAi}
-                        className="p-2.5 bg-violet-50/70 hover:bg-violet-50 text-violet-800 border border-violet-200 hover:border-violet-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98 disabled:opacity-60"
-                        title="สร้างรูปสินค้าด้วยระบบ AI จากชื่อสินค้า"
-                      >
-                        {isGeneratingAi ? (
-                          <Loader2 className="w-5 h-5 text-violet-600 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-5 h-5 text-violet-600 group-hover:scale-110 transition" />
-                        )}
-                        <span className="font-bold text-[11px]">สร้างรูปด้วย AI</span>
-                        <span className="text-[9.5px] text-violet-500/80">Flux Model</span>
-                      </button>
-
-                      {/* 2. Direct Camera Snap */}
-                      <label className="p-2.5 bg-sky-50/70 hover:bg-sky-50 text-sky-800 border border-sky-200 hover:border-sky-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98">
-                        <Camera className="w-5 h-5 text-sky-600 group-hover:scale-110 transition" />
-                        <span className="font-bold text-[11px]">ถ่ายรูปสด</span>
-                        <span className="text-[9.5px] text-sky-500/80">เปิดกล้องถ่าย</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={(e) => handleImageFileChange(e, false)}
-                        />
-                      </label>
-
-                      {/* 3. Graphic Badge Generator */}
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateGraphicBadge(false)}
-                        className="p-2.5 bg-emerald-50/70 hover:bg-emerald-50 text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98"
-                        title="สร้างป้ายกราฟิกสินค้าอัตโนมัติพร้อมชื่อและรหัส"
-                      >
-                        <Palette className="w-5 h-5 text-[#0B6B4F] group-hover:scale-110 transition" />
-                        <span className="font-bold text-[11px]">ป้ายกราฟิก</span>
-                        <span className="text-[9.5px] text-emerald-600/80">Auto Badge</span>
-                      </button>
-
-                      {/* 4. File Upload */}
-                      <label className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98">
-                        <Upload className="w-5 h-5 text-slate-500 group-hover:scale-110 transition" />
-                        <span className="font-bold text-[11px]">เลือกไฟล์รูป</span>
-                        <span className="text-[9.5px] text-slate-400">จากอุปกรณ์</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleImageFileChange(e, false)}
-                        />
-                      </label>
-                    </div>
-
-                    {/* AI Prompt Customizer Toggle */}
-                    <div className="pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setShowPromptDrawer(!showPromptDrawer)}
-                        className="text-[10.5px] text-violet-600 hover:text-violet-800 font-medium underline flex items-center gap-1"
-                      >
-                        <span>{showPromptDrawer ? '− ซ่อนคำสั่ง AI Prompt' : '+ กำหนดคำสั่งรูป AI เอง (Custom Prompt)'}</span>
-                      </button>
-
-                      {showPromptDrawer && (
-                        <div className="mt-1.5 p-2 bg-violet-50/50 border border-violet-100 rounded-lg space-y-1.5 animate-in fade-in">
-                          <input
-                            type="text"
-                            placeholder="ระบุลักษณะรูปสินค้า เช่น กล่องสีเขียวพร้อมดินสอ 12 แท่ง..."
-                            value={customPrompt}
-                            onChange={(e) => setCustomPrompt(e.target.value)}
-                            className="w-full bg-white border border-violet-200 rounded-lg p-2 text-xs text-zinc-900 focus:outline-none focus:border-violet-500"
-                          />
-                          <p className="text-[9.5px] text-zinc-500">
-                            * หากไม่ระบุ ระบบจะใช้ชื่อสินค้า ({formData.name || '...'}) มาสร้างรูปให้อัตโนมัติ
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <label className="border-2 border-dashed border-zinc-200 hover:border-[#0B6B4F] rounded-lg p-3.5 flex flex-col items-center justify-center gap-1 cursor-pointer bg-zinc-50/60 hover:bg-zinc-50 transition">
+                    <Upload className="w-5 h-5 text-zinc-400" />
+                    <span className="text-[11px] text-zinc-600 font-medium">Click to select photo (PNG, JPG, WebP)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageFileChange(e, false)}
+                    />
+                  </label>
                 )}
               </div>
 
@@ -1200,142 +944,41 @@ export default function InventoryPage() {
                 />
               </div>
 
-              {/* Item Photo / Equipment Image Creation Hub */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block font-medium text-[#1A1A1A]">
-                    รูปภาพสินค้า / Item Photo
-                  </label>
-                  {editingItem.imageUrl && (
-                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> แนบรูปภาพแล้ว
-                    </span>
-                  )}
-                </div>
-
+              {/* Item Photo / Equipment Image Upload */}
+              <div>
+                <label className="block font-medium text-[#1A1A1A] mb-1">
+                  Item Photo / Equipment Image
+                </label>
                 {editingItem.imageUrl ? (
-                  <div className="flex items-center gap-3 p-3 bg-[#F7F4EF] border border-[#E5E0D8] rounded-xl">
-                    <div className="w-[80px] h-[80px] rounded-xl bg-white border border-[#E5E0D8] flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-2xs">
-                      <img
-                        src={editingItem.imageUrl}
-                        alt="Preview"
-                        className="w-[80px] h-[80px] object-contain rounded-lg"
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1.5 text-xs">
-                      <p className="font-bold text-[#1A1A1A]">รูปภาพขนาด 80×80px (พร้อมใช้งาน)</p>
-                      <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleGenerateAiImage(true)}
-                          disabled={isGeneratingAi}
-                          className="px-2.5 py-1 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
-                        >
-                          {isGeneratingAi ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3 h-3" />
-                          )}
-                          <span>วาดใหม่ด้วย AI</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingItem(prev => prev ? { ...prev, imageUrl: '' } : null)}
-                          className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          <span>ลบรูป</span>
-                        </button>
-                      </div>
+                  <div className="flex items-center gap-3 p-2.5 bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg">
+                    <img
+                      src={editingItem.imageUrl}
+                      alt="Item preview"
+                      className="w-16 h-16 object-contain rounded-lg border border-[#E5E0D8] shrink-0 shadow-2xs bg-white p-1"
+                    />
+                    <div className="flex-1 text-xs">
+                      <p className="font-semibold text-[#1A1A1A]">Photo attached</p>
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem({ ...editingItem, imageUrl: '' })}
+                        className="text-[11px] text-red-600 hover:text-red-700 font-medium mt-1 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remove Photo</span>
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {/* 4 Photo Creation Options Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {/* 1. AI Image Generator */}
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateAiImage(true)}
-                        disabled={isGeneratingAi}
-                        className="p-2.5 bg-violet-50/70 hover:bg-violet-50 text-violet-800 border border-violet-200 hover:border-violet-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98 disabled:opacity-60"
-                        title="สร้างรูปสินค้าด้วยระบบ AI จากชื่อสินค้า"
-                      >
-                        {isGeneratingAi ? (
-                          <Loader2 className="w-5 h-5 text-violet-600 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-5 h-5 text-violet-600 group-hover:scale-110 transition" />
-                        )}
-                        <span className="font-bold text-[11px]">สร้างรูปด้วย AI</span>
-                        <span className="text-[9.5px] text-violet-500/80">Flux Model</span>
-                      </button>
-
-                      {/* 2. Direct Camera Snap */}
-                      <label className="p-2.5 bg-sky-50/70 hover:bg-sky-50 text-sky-800 border border-sky-200 hover:border-sky-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98">
-                        <Camera className="w-5 h-5 text-sky-600 group-hover:scale-110 transition" />
-                        <span className="font-bold text-[11px]">ถ่ายรูปสด</span>
-                        <span className="text-[9.5px] text-sky-500/80">เปิดกล้องถ่าย</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={(e) => handleImageFileChange(e, true)}
-                        />
-                      </label>
-
-                      {/* 3. Graphic Badge Generator */}
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateGraphicBadge(true)}
-                        className="p-2.5 bg-emerald-50/70 hover:bg-emerald-50 text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98"
-                        title="สร้างป้ายกราฟิกสินค้าอัตโนมัติพร้อมชื่อและรหัส"
-                      >
-                        <Palette className="w-5 h-5 text-[#0B6B4F] group-hover:scale-110 transition" />
-                        <span className="font-bold text-[11px]">ป้ายกราฟิก</span>
-                        <span className="text-[9.5px] text-emerald-600/80">Auto Badge</span>
-                      </button>
-
-                      {/* 4. File Upload */}
-                      <label className="p-2.5 bg-white hover:bg-[#F7F4EF] text-slate-700 border border-[#E5E0D8] hover:border-[#0B6B4F]/30 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98">
-                        <Upload className="w-5 h-5 text-slate-500 group-hover:scale-110 transition" />
-                        <span className="font-bold text-[11px]">เลือกไฟล์รูป</span>
-                        <span className="text-[9.5px] text-slate-400">จากอุปกรณ์</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleImageFileChange(e, true)}
-                        />
-                      </label>
-                    </div>
-
-                    {/* AI Prompt Customizer Toggle */}
-                    <div className="pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setShowPromptDrawer(!showPromptDrawer)}
-                        className="text-[10.5px] text-violet-600 hover:text-violet-800 font-medium underline flex items-center gap-1"
-                      >
-                        <span>{showPromptDrawer ? '− ซ่อนคำสั่ง AI Prompt' : '+ กำหนดคำสั่งรูป AI เอง (Custom Prompt)'}</span>
-                      </button>
-
-                      {showPromptDrawer && (
-                        <div className="mt-1.5 p-2 bg-violet-50/50 border border-violet-100 rounded-lg space-y-1.5 animate-in fade-in">
-                          <input
-                            type="text"
-                            placeholder="ระบุลักษณะรูปสินค้า เช่น กล่องสีเขียวพร้อมดินสอ 12 แท่ง..."
-                            value={customPrompt}
-                            onChange={(e) => setCustomPrompt(e.target.value)}
-                            className="w-full bg-white border border-violet-200 rounded-lg p-2 text-xs text-zinc-900 focus:outline-none focus:border-violet-500"
-                          />
-                          <p className="text-[9.5px] text-zinc-500">
-                            * หากไม่ระบุ ระบบจะใช้ชื่อสินค้า ({editingItem.name || '...'}) มาสร้างรูปให้อัตโนมัติ
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <label className="border-2 border-dashed border-[#E5E0D8] hover:border-[#0B6B4F] rounded-lg p-3.5 flex flex-col items-center justify-center gap-1 cursor-pointer bg-white hover:bg-[#F7F4EF] transition">
+                    <Upload className="w-5 h-5 text-[#6B6560]" />
+                    <span className="text-[11px] text-[#6B6560] font-medium">Click to select photo (PNG, JPG, WebP)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageFileChange(e, true)}
+                    />
+                  </label>
                 )}
               </div>
 
