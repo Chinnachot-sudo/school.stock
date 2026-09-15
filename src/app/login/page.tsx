@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
@@ -33,7 +33,7 @@ export default function LoginPage() {
       setIsSubmitting(true);
       setError(null);
       await signIn(username.trim(), password);
-      router.push('/');
+      window.location.href = '/';
     } catch (err: any) {
       setIsSubmitting(false);
       setError(err.message || 'Login failed. Please check your username and password.');
@@ -44,6 +44,20 @@ export default function LoginPage() {
     setUsername(u);
     setPassword(p);
     setError(null);
+  };
+
+  const handleQuickLogin = async (u: string, p: string) => {
+    setUsername(u);
+    setPassword(p);
+    setError(null);
+    try {
+      setIsSubmitting(true);
+      await signIn(u, p);
+      window.location.href = '/';
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setError(err.message || 'Login failed. Please check your username and password.');
+    }
   };
 
   if (loading) {
@@ -161,36 +175,56 @@ export default function LoginPage() {
             <span>Default System Accounts:</span>
           </div>
           <div className="space-y-1.5 text-[11px]">
-            <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+            <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200">
               <div>
                 <span className="font-bold text-slate-900">Super Admin:</span>
                 <span className="font-mono text-slate-600 ml-1.5">superadmin</span>
                 <span className="text-slate-400 mx-1">/</span>
                 <span className="font-mono text-slate-600">rais2026</span>
               </div>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('superadmin', 'rais2026')}
-                className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer"
-              >
-                Use
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill('superadmin', 'rais2026')}
+                  className="text-[10.5px] font-semibold text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Fill
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('superadmin', 'rais2026')}
+                  disabled={isSubmitting}
+                  className="text-[10.5px] font-bold text-white bg-[#0B6B4F] hover:bg-[#084D39] px-2.5 py-1 rounded-lg transition cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  1-Click Login
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+            <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200">
               <div>
                 <span className="font-bold text-slate-900">Admin:</span>
                 <span className="font-mono text-slate-600 ml-1.5">admin</span>
                 <span className="text-slate-400 mx-1">/</span>
                 <span className="font-mono text-slate-600">admin2026</span>
               </div>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('admin', 'admin2026')}
-                className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer"
-              >
-                Use
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill('admin', 'admin2026')}
+                  className="text-[10.5px] font-semibold text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Fill
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('admin', 'admin2026')}
+                  disabled={isSubmitting}
+                  className="text-[10.5px] font-bold text-white bg-[#0B6B4F] hover:bg-[#084D39] px-2.5 py-1 rounded-lg transition cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  1-Click Login
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
@@ -56,7 +56,7 @@ function formatUserObject(data: any): User {
       full_name: data.name || data.username || 'Staff User',
       username: data.username || ''
     },
-    role: data.role || 'TEACHER',
+    role: data.role || 'ADMIN',
     aud: 'authenticated',
     created_at: data.createdAt || new Date().toISOString()
   } as unknown as User;
@@ -68,14 +68,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check localStorage for persisted user session
+    // Check localStorage and cookie for persisted user session
     try {
+      let userData: any = null;
       const stored = localStorage.getItem('school_auth_user');
       if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.username) {
-          setUser(formatUserObject(parsed));
+        userData = JSON.parse(stored);
+      } else if (typeof document !== 'undefined') {
+        const match = document.cookie.match(/(?:^|; )school_user=([^;]+)/);
+        if (match) {
+          userData = JSON.parse(decodeURIComponent(match[1]));
         }
+      }
+
+      if (userData && userData.username) {
+        setUser(formatUserObject(userData));
       }
     } catch (err) {
       console.warn('Failed to parse cached auth user:', err);
@@ -119,7 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setSession(null);
-    localStorage.removeItem('school_auth_user');
+    try {
+      localStorage.removeItem('school_auth_user');
+      if (typeof document !== 'undefined') {
+        document.cookie = 'school_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      }
+    } catch {
+      // ignore
+    }
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
     }
