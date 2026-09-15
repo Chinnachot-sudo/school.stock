@@ -10,8 +10,7 @@ import {
   User,
   Eye,
   EyeOff,
-  ShieldCheck,
-  Building2
+  ShieldCheck
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -51,108 +50,51 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickLogin = async (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-    setError(null);
-    try {
-      setIsSubmitting(true);
-      await signIn(u, p);
-      window.location.href = '/';
-    } catch (err: any) {
-      setIsSubmitting(false);
-      setError(err.message || 'Login failed. Please check your credentials.');
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F0F4F2]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#0B6B4F]" />
+      <div className="min-h-screen flex items-center justify-center bg-[#0A1A14]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#10B981]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F4F2] flex items-center justify-center p-3 sm:p-6 lg:p-10 font-sans">
+    <div className="min-h-screen relative flex items-center justify-center p-3 sm:p-6 lg:p-10 font-sans overflow-hidden bg-[#0A1A14]">
+      {/* Ambient Nature Background (02content.jpg) with soft, non-distracting opacity */}
+      <div className="absolute inset-0 z-0 pointer-events-none select-none">
+        <img
+          src="/images/02content.jpg"
+          alt="Roong Aroon Ambience"
+          className="w-full h-full object-cover object-center opacity-25 filter blur-[2px] scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#06150F]/85 via-[#0A1A14]/75 to-[#0D241C]/80" />
+      </div>
+
       {/* 2-Column Main Login Card */}
-      <div className="w-full max-w-5xl bg-white rounded-[28px] sm:rounded-[32px] border border-slate-200/90 shadow-2xl shadow-emerald-950/10 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px]">
+      <div className="relative z-10 w-full max-w-5xl bg-white rounded-[28px] sm:rounded-[32px] border border-white/25 shadow-2xl shadow-black/40 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
         
-        {/* ================= LEFT COLUMN: Visual Banner with DSC00918.jpg ================= */}
-        <div className="relative hidden lg:flex lg:col-span-6 flex-col justify-between p-8 xl:p-10 bg-slate-900 overflow-hidden select-none">
-          {/* Background School Architecture Photo */}
+        {/* ================= LEFT COLUMN: Pure Clean Architectural Photo DSC00918.jpg ================= */}
+        <div className="relative hidden lg:block lg:col-span-6 overflow-hidden select-none bg-slate-900">
           <img
             src="/images/DSC00918.jpg"
             alt="Roong Aroon International School Architecture"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="w-full h-full object-cover"
           />
-          {/* Aesthetic Cinematic Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/35 to-slate-900/50" />
-
-          {/* Top Brand Emblem */}
-          <div className="relative z-10 flex items-center gap-3 bg-black/25 backdrop-blur-md p-2.5 pr-4 rounded-2xl border border-white/20 w-fit">
-            <div className="w-11 h-11 rounded-xl bg-white/95 p-1 shadow-md flex items-center justify-center shrink-0">
-              <img
-                src="/images/school_logo.png"
-                alt="Roong Aroon Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <span className="text-white font-black text-xs tracking-wider uppercase block">
-                Roong Aroon
-              </span>
-              <span className="text-emerald-300 text-[10.5px] font-medium block">
-                International School
-              </span>
-            </div>
-          </div>
-
-          {/* Bottom Architectural Info Card */}
-          <div className="relative z-10 bg-black/45 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-white shadow-xl space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 font-bold text-[10px] tracking-wider uppercase">
-                <Building2 className="w-3 h-3" />
-                School ERP Portal
-              </span>
-              <span className="text-[11px] text-slate-300 font-mono">v2.0</span>
-            </div>
-            <h2 className="text-xl font-black text-white leading-tight">
-              โรงเรียนนานาชาติรุ่งอรุณ
-            </h2>
-            <p className="text-xs text-slate-200 font-normal leading-relaxed">
-              ระบบสารสนเทศบริหารจัดการพัสดุ สินค้าคงคลัง และห้องสหกรณ์โรงเรียน
-              เพื่อสนับสนุนการเรียนรู้อย่างเต็มศักยภาพ
-            </p>
-          </div>
         </div>
 
-        {/* Mobile Header Banner (when on small screens) */}
-        <div className="lg:hidden relative h-48 w-full overflow-hidden select-none">
+        {/* Mobile Header Banner (small screens only) */}
+        <div className="lg:hidden relative h-52 w-full overflow-hidden select-none bg-slate-900">
           <img
             src="/images/DSC00918.jpg"
             alt="Roong Aroon Architecture"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-slate-900/50" />
-          <div className="absolute inset-0 p-5 flex flex-col justify-between text-white">
-            <div className="flex items-center gap-2.5 bg-black/30 backdrop-blur-md p-2 rounded-xl border border-white/20 w-fit">
-              <div className="w-8 h-8 rounded-lg bg-white p-0.5 flex items-center justify-center">
-                <img src="/images/school_logo.png" alt="Logo" className="w-full h-full object-contain" />
-              </div>
-              <div>
-                <span className="font-bold text-xs leading-none block">Roong Aroon International School</span>
-                <span className="text-[10px] text-emerald-300">โรงเรียนนานาชาติรุ่งอรุณ</span>
-              </div>
-            </div>
-            <span className="text-xs font-semibold text-white/95">Inventory & POS Management Portal</span>
-          </div>
         </div>
 
-        {/* ================= RIGHT COLUMN: Modern Clean Login Form ================= */}
+        {/* ================= RIGHT COLUMN: Clean Login Form ================= */}
         <div className="lg:col-span-6 p-7 sm:p-10 lg:p-12 flex flex-col justify-between bg-white">
-          {/* Top bar with language / academic year tag */}
-          <div className="flex items-center justify-between mb-6">
+          {/* Top Bar */}
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#0B6B4F]">
                 <ShieldCheck className="w-4 h-4" />
@@ -160,12 +102,6 @@ export default function LoginPage() {
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Staff Authentication
               </span>
-            </div>
-
-            {/* Region / Status Tag (matching IND 🇮🇳 badge in mockup) */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-[11px] font-bold text-slate-700">
-              <span>TH</span>
-              <span>🇹🇭</span>
             </div>
           </div>
 
@@ -201,7 +137,7 @@ export default function LoginPage() {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="superadmin or admin"
+                    placeholder="Enter your username or email"
                     required
                     autoComplete="username"
                     className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0B6B4F] focus:ring-2 focus:ring-[#0B6B4F]/20 focus:bg-white transition"
@@ -258,7 +194,7 @@ export default function LoginPage() {
 
               {showForgotNotice && (
                 <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[11px] animate-in fade-in">
-                  กรุณาติดต่อผู้ดูแลระบบ (Super Admin) เพื่อรีเซ็ตรหัสผ่านของคุณ
+                  กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่านของคุณ
                 </div>
               )}
 
@@ -279,38 +215,7 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* "or" Divider */}
-            <div className="relative flex items-center justify-center">
-              <div className="border-t border-slate-200 w-full" />
-              <span className="bg-white px-3 text-[11px] font-medium text-slate-400 uppercase tracking-wider">
-                or
-              </span>
-            </div>
-
-            {/* Quick 1-Click Role Login Pills (matching third-party buttons in mockup) */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('superadmin', 'rais2026')}
-                disabled={isSubmitting}
-                className="w-full py-2.5 px-3 rounded-xl border border-slate-200 hover:border-[#0B6B4F] hover:bg-emerald-50/40 text-slate-700 hover:text-[#0B6B4F] transition flex items-center justify-center gap-1.5 text-xs font-bold shadow-2xs group cursor-pointer disabled:opacity-50"
-              >
-                <ShieldCheck className="w-4 h-4 text-[#0B6B4F] group-hover:scale-110 transition" />
-                <span>Super Admin</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin', 'admin2026')}
-                disabled={isSubmitting}
-                className="w-full py-2.5 px-3 rounded-xl border border-slate-200 hover:border-[#0B6B4F] hover:bg-emerald-50/40 text-slate-700 hover:text-[#0B6B4F] transition flex items-center justify-center gap-1.5 text-xs font-bold shadow-2xs group cursor-pointer disabled:opacity-50"
-              >
-                <User className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition" />
-                <span>Admin Login</span>
-              </button>
-            </div>
-
-            {/* Helper text under buttons */}
+            {/* Helper text */}
             <div className="text-center pt-2">
               <p className="text-xs text-slate-500">
                 Don&apos;t have an account?{' '}
