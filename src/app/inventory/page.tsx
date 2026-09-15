@@ -24,8 +24,10 @@ import {
   Filter,
   Upload,
   ImageIcon,
-  LayoutGrid,
-  List
+  Sparkles,
+  Camera,
+  Palette,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -36,9 +38,6 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // View Mode: 'grid' (Card view with large photos) or 'table' (Enterprise data table)
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,6 +69,157 @@ export default function InventoryPage() {
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Image Creation Hub states
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [showPromptDrawer, setShowPromptDrawer] = useState(false);
+
+  // Generate Photo using AI (Pollinations AI)
+  const handleGenerateAiImage = async (isEdit: boolean) => {
+    const targetName = isEdit ? editingItem?.name : formData.name;
+    const targetCatId = isEdit ? editingItem?.categoryId : formData.categoryId;
+    const cat = categories.find(c => c.id === targetCatId);
+
+    if (!targetName?.trim() && !customPrompt.trim()) {
+      alert('กรุณาระบุชื่อสินค้า (Item Name) ก่อนสร้างรูปภาพด้วย AI');
+      return;
+    }
+
+    try {
+      setIsGeneratingAi(true);
+      const res = await fetch('/api/items/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemName: targetName || '',
+          category: cat?.name || '',
+          customPrompt: customPrompt.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate image');
+      }
+
+      if (isEdit) {
+        setEditingItem(prev => prev ? { ...prev, imageUrl: data.imageUrl } : null);
+      } else {
+        setFormData(prev => ({ ...prev, imageUrl: data.imageUrl }));
+      }
+      showToast('✨ สร้างรูปภาพสินค้าด้วย AI สำเร็จ!');
+      setCustomPrompt('');
+      setShowPromptDrawer(false);
+    } catch (err: any) {
+      console.error('Error generating AI image:', err);
+      alert('ไม่สามารถสร้างรูปภาพ AI ได้: ' + (err.message || 'เกิดข้อผิดพลาด'));
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
+  // Generate Graphic Badge using HTML5 Canvas
+  const handleGenerateGraphicBadge = (isEdit: boolean) => {
+    const targetName = isEdit ? editingItem?.name : formData.name;
+    const targetCode = isEdit ? editingItem?.code : formData.code;
+    const targetCatId = isEdit ? editingItem?.categoryId : formData.categoryId;
+    const cat = categories.find(c => c.id === targetCatId);
+
+    const displayName = (targetName?.trim() || 'PRODUCT ITEM').toUpperCase();
+    const displayCode = targetCode?.trim() || 'SKU-001';
+    const displayCat = (cat?.name || 'STORE ITEM').toUpperCase();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Background Gradient (Deep Forest Emerald -> Rich Pine)
+    const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+    gradient.addColorStop(0, '#0B3B2B');
+    gradient.addColorStop(0.5, '#134E39');
+    gradient.addColorStop(1, '#0B6B4F');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Decorative geometric accents
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.beginPath();
+    ctx.arc(430, 80, 160, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(80, 440, 120, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner card border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(24, 24, 464, 464);
+
+    // Category Pill
+    ctx.fillStyle = '#EAB308';
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(40, 48, 160, 36, 18);
+      ctx.fill();
+    } else {
+      ctx.fillRect(40, 48, 160, 36);
+    }
+
+    ctx.fillStyle = '#18181B';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(displayCat.slice(0, 18), 120, 72);
+
+    // Center emblem circle
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.beginPath();
+    ctx.arc(256, 210, 80, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 72px sans-serif';
+    ctx.textAlign = 'center';
+    const initialLetter = displayName.charAt(0) || 'P';
+    ctx.fillText(initialLetter, 256, 235);
+
+    // Item Title
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.textAlign = 'center';
+    const truncatedTitle = displayName.length > 22 ? displayName.slice(0, 20) + '...' : displayName;
+    ctx.fillText(truncatedTitle, 256, 335);
+
+    // SKU Barcode simulation pill
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(100, 375, 312, 54, 12);
+      ctx.fill();
+    } else {
+      ctx.fillRect(100, 375, 312, 54);
+    }
+
+    ctx.fillStyle = '#A7F3D0';
+    ctx.font = 'bold 20px monospace';
+    ctx.fillText(`[ ${displayCode} ]`, 256, 408);
+
+    // School footer
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.font = '13px sans-serif';
+    ctx.fillText('Roong Aroon International School', 256, 462);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    if (isEdit) {
+      setEditingItem(prev => prev ? { ...prev, imageUrl: dataUrl } : null);
+    } else {
+      setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
+    }
+    showToast('🎨 สร้างป้ายสินค้าสำเร็จ!');
+  };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
     const file = e.target.files?.[0];
@@ -370,235 +520,16 @@ export default function InventoryPage() {
             <span>Low Stock ({lowStockCount})</span>
           </button>
 
-          {/* View Switcher: Cards vs Table */}
-          <div className="flex items-center bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-0.5 shrink-0 ml-auto sm:ml-0">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-[#0B6B4F] text-white shadow-2xs'
-                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
-              }`}
-              title="Card Grid View (Large Photos)"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Cards</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-[#0B6B4F] text-white shadow-2xs'
-                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
-              }`}
-              title="Table View"
-            >
-              <List className="w-3.5 h-3.5" />
-              <span>Table</span>
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* VIEW MODE: 1. CARD GRID VIEW (LARGE CLEAR PRODUCT PHOTOS) */}
-      {viewMode === 'grid' ? (
-        <div className="space-y-4">
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                <div key={n} className="bg-white rounded-2xl border border-[#E5E0D8] overflow-hidden p-3 space-y-3 animate-pulse">
-                  <div className="w-full h-48 bg-slate-100 rounded-xl" />
-                  <div className="h-4 bg-slate-200 rounded w-3/4" />
-                  <div className="h-3 bg-slate-100 rounded w-1/2" />
-                  <div className="h-8 bg-slate-100 rounded-xl" />
-                </div>
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="rounded-2xl border border-[#E5E0D8] bg-white p-14 text-center text-[#6B6560]">
-              <Boxes className="w-10 h-10 mx-auto text-[#6B6560]/40 mb-2" />
-              <p className="font-bold text-[#1A1A1A] text-sm">No inventory items found</p>
-              <p className="text-xs text-[#6B6560] mt-1">Try adjusting your search query or reset category filter</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filtered.map(item => {
-                const isLow = item.currentStock <= item.minStock;
-                const isOut = item.currentStock <= 0;
-                const cat = categories.find(c => c.id === item.categoryId);
-
-                return (
-                  <div
-                    key={item.id}
-                    className="bg-white border border-[#E5E0D8] hover:border-[#0B6B4F] rounded-2xl overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md transition duration-200 group"
-                  >
-                    {/* 1. Large Photo Section */}
-                    <div className="relative w-full h-48 sm:h-52 bg-slate-50 border-b border-[#E5E0D8] flex items-center justify-center overflow-hidden p-3">
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-full h-full object-contain group-hover:scale-105 transition duration-200"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                          <Boxes className="w-12 h-12 stroke-[1.25] text-slate-300 mb-1" />
-                          <span className="text-[10.5px] font-mono text-slate-400 font-medium">No Image</span>
-                        </div>
-                      )}
-
-                      {/* Top-Left: SKU / Code Badge */}
-                      <span className="absolute top-2.5 left-2.5 font-mono text-[10px] font-bold bg-white/95 backdrop-blur-xs text-slate-700 px-2 py-0.5 rounded-lg shadow-2xs border border-slate-200/80">
-                        {item.code}
-                      </span>
-
-                      {/* Top-Right: Stock Status Badge */}
-                      {isOut ? (
-                        <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-lg shadow-2xs">
-                          Out of Stock
-                        </span>
-                      ) : isLow ? (
-                        <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-2xs">
-                          Low Stock
-                        </span>
-                      ) : (
-                        <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-[#0B6B4F] text-white px-2 py-0.5 rounded-lg shadow-2xs">
-                          In Stock
-                        </span>
-                      )}
-
-                      {/* Bottom-Left: Category Tag on Photo */}
-                      <span className="absolute bottom-2 left-2 text-[10px] font-medium bg-slate-900/75 text-white px-2 py-0.5 rounded-md backdrop-blur-xs">
-                        {cat?.name || 'General'}
-                      </span>
-                    </div>
-
-                    {/* 2. Card Content */}
-                    <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
-                      <div>
-                        <h3 className="font-bold text-sm text-[#111827] leading-snug line-clamp-2 group-hover:text-[#0B6B4F] transition min-h-[38px]">
-                          {item.name}
-                        </h3>
-
-                        <div className="flex items-center gap-1.5 text-[11px] text-[#6B6560] mt-1">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{item.location || 'Main Storage'}</span>
-                        </div>
-
-                        {(item.isForSale || item.isBorrowable) && (
-                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            {item.isForSale && (
-                              <span className="text-[9.5px] font-semibold text-[#0B6B4F] bg-emerald-50 px-1.5 py-0.5 rounded border border-[#0B6B4F]/20">
-                                POS Sale
-                              </span>
-                            )}
-                            {item.isBorrowable && (
-                              <span className="text-[9.5px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                Borrowable
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Price & Current Stock */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-slate-400 block font-medium uppercase tracking-wider">Price</span>
-                          <span className="font-mono text-xs font-bold text-slate-900">
-                            {item.price ? `฿${item.price.toFixed(2)}` : '-'}
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 block font-medium uppercase tracking-wider">Balance</span>
-                          <span className={`font-mono text-sm font-black ${isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-[#0B6B4F]'}`}>
-                            {item.currentStock} <span className="text-[10px] font-normal text-slate-500">{item.unit}</span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 3. Action Buttons Footer */}
-                    <div className="p-2.5 bg-[#F9FAFB] border-t border-[#E5E7EB] flex items-center justify-between gap-1.5">
-                      <div className="flex items-center gap-1">
-                        {canRestock && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedItemForRestock(item)}
-                            className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-[#0B6B4F] rounded-lg text-[11px] font-bold border border-[#E5E0D8] hover:border-[#0B6B4F]/40 transition cursor-pointer shadow-2xs"
-                            title="Receive Stock"
-                          >
-                            +In
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedItemForDeduct(item)}
-                          disabled={isOut}
-                          className="px-2.5 py-1 bg-[#C45C26] hover:bg-[#A84B1E] disabled:opacity-40 text-white rounded-lg text-[11px] font-bold transition cursor-pointer shadow-2xs"
-                          title="Issue / Deduct Stock"
-                        >
-                          Issue
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        {canPrintQr && (
-                          <Link
-                            href={`/print-qr?item=${encodeURIComponent(item.code)}`}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition"
-                            title="Print QR Label"
-                          >
-                            <QrCode className="w-3.5 h-3.5" />
-                          </Link>
-                        )}
-
-                        {canManageItems && (
-                          <button
-                            type="button"
-                            onClick={() => setEditingItem(item)}
-                            className="p-1.5 rounded-lg text-[#6B6560] hover:text-[#1A1A1A] hover:bg-slate-200/70 transition cursor-pointer"
-                            title="Edit Item"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
-                        {canDeleteItems && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteItem(item.id, item.name)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#B42318] hover:bg-[#FEE4E2] transition cursor-pointer"
-                            title="Delete Item"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Card View Bottom Counter */}
-          <div className="p-3 bg-white rounded-xl border border-[#E5E0D8] text-xs text-[#6B6560] flex items-center justify-between">
-            <span>Showing {filtered.length} of {items.length} items</span>
-            <span className="font-mono text-[#0B6B4F] font-semibold">School Inventory ERP</span>
-          </div>
-        </div>
-      ) : (
-        /* VIEW MODE: 2. HIGH DENSITY ENTERPRISE DATA TABLE */
+      {/* ENTERPRISE DATA TABLE */}
         <div className="rounded-lg border border-[#E5E0D8] bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-[#F7F4EF] border-b border-[#E5E0D8] text-[#6B6560] font-medium text-[11px]">
                 <tr>
-                  <th className="py-2.5 px-3 w-32">Photo & SKU</th>
+                  <th className="py-2.5 px-3 w-40">Photo & SKU</th>
                   <th className="py-2.5 px-3 min-w-[200px]">Item Description</th>
                   <th className="py-2.5 px-3 hidden sm:table-cell w-36">Category</th>
                   <th className="py-2.5 px-3 hidden md:table-cell w-36">Location</th>
@@ -614,7 +545,7 @@ export default function InventoryPage() {
                 <tbody className="divide-y divide-[#E5E0D8]">
                   {[1, 2, 3, 4, 5, 6].map(n => (
                     <tr key={n} className="animate-pulse">
-                      <td className="py-2.5 px-3"><div className="h-12 w-24 bg-[#E5E0D8] rounded-xl"></div></td>
+                      <td className="py-2.5 px-3"><div className="h-[80px] w-28 bg-[#E5E0D8] rounded-xl"></div></td>
                       <td className="py-2.5 px-3"><div className="h-3.5 w-44 bg-[#E5E0D8] rounded"></div></td>
                       <td className="py-2.5 px-3 hidden sm:table-cell"><div className="h-3.5 w-24 bg-[#E5E0D8]/60 rounded"></div></td>
                       <td className="py-2.5 px-3 hidden md:table-cell"><div className="h-3.5 w-20 bg-[#E5E0D8]/60 rounded"></div></td>
@@ -645,22 +576,24 @@ export default function InventoryPage() {
                     return (
                       <tr key={item.id} className="hover:bg-[#F7F4EF]/70 transition">
                         
-                        {/* SKU & Enlarged Photo Thumbnail */}
+                        {/* SKU & 80x80px Photo Thumbnail */}
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             {item.imageUrl ? (
-                              <img
-                                src={item.imageUrl}
-                                alt={item.name}
-                                className="w-14 h-14 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 shadow-2xs p-1"
-                              />
+                              <div className="w-[80px] h-[80px] rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center p-1 shrink-0 shadow-2xs">
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.name}
+                                  className="w-[80px] h-[80px] object-contain rounded-lg"
+                                />
+                              </div>
                             ) : (
-                              <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 flex flex-col items-center justify-center shrink-0">
-                                <Boxes className="w-5 h-5 text-slate-400 mb-0.5" />
-                                <span className="text-[8px] font-mono text-slate-400">No Img</span>
+                              <div className="w-[80px] h-[80px] rounded-xl bg-slate-100 border border-slate-200 text-slate-400 flex flex-col items-center justify-center shrink-0">
+                                <Boxes className="w-6 h-6 text-slate-400 mb-1" />
+                                <span className="text-[9px] font-mono text-slate-400 font-medium">No Image</span>
                               </div>
                             )}
-                            <span className="font-mono text-xs font-semibold text-[#111827]">{item.code}</span>
+                            <span className="font-mono text-xs font-bold text-[#111827]">{item.code}</span>
                           </div>
                         </td>
 
@@ -788,7 +721,6 @@ export default function InventoryPage() {
             <span className="font-mono text-[#6B6560]">School Inventory ERP</span>
           </div>
         </div>
-      )}
 
       {/* ADD ITEM MODAL */}
       {isAddModalOpen && (
@@ -944,41 +876,142 @@ export default function InventoryPage() {
                 />
               </div>
 
-              {/* Item Photo / Equipment Image Upload */}
-              <div>
-                <label className="block font-medium text-zinc-700 mb-1">
-                  Item Photo / Equipment Image
-                </label>
+              {/* Item Photo / Equipment Image Creation Hub */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-medium text-zinc-700">
+                    รูปภาพสินค้า / Item Photo
+                  </label>
+                  {formData.imageUrl && (
+                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> แนบรูปภาพแล้ว
+                    </span>
+                  )}
+                </div>
+
                 {formData.imageUrl ? (
-                  <div className="flex items-center gap-3 p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg">
-                    <img
-                      src={formData.imageUrl}
-                      alt="Item preview"
-                      className="w-14 h-14 object-cover rounded-lg border border-zinc-200 shrink-0 shadow-2xs"
-                    />
-                    <div className="flex-1 text-xs">
-                      <p className="font-semibold text-zinc-800">Photo attached</p>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, imageUrl: '' })}
-                        className="text-[11px] text-red-600 hover:text-red-700 font-medium mt-1 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Remove Photo</span>
-                      </button>
+                  <div className="flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl">
+                    <div className="w-[80px] h-[80px] rounded-xl bg-white border border-zinc-200 flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-2xs">
+                      <img
+                        src={formData.imageUrl}
+                        alt="Preview"
+                        className="w-[80px] h-[80px] object-contain rounded-lg"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1.5 text-xs">
+                      <p className="font-bold text-zinc-900">รูปภาพขนาด 80×80px (พร้อมใช้งาน)</p>
+                      <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateAiImage(false)}
+                          disabled={isGeneratingAi}
+                          className="px-2.5 py-1 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                        >
+                          {isGeneratingAi ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3 h-3" />
+                          )}
+                          <span>วาดใหม่ด้วย AI</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                          className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>ลบรูป</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <label className="border-2 border-dashed border-zinc-200 hover:border-[#0B6B4F] rounded-lg p-3 flex flex-col items-center justify-center gap-1 cursor-pointer bg-zinc-50/60 hover:bg-zinc-50 transition">
-                    <Upload className="w-5 h-5 text-zinc-400" />
-                    <span className="text-[11px] text-zinc-600 font-medium">Click to select photo (PNG, JPG, WebP)</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleImageFileChange(e, false)}
-                    />
-                  </label>
+                  <div className="space-y-2">
+                    {/* 4 Photo Creation Options Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {/* 1. AI Image Generator */}
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateAiImage(false)}
+                        disabled={isGeneratingAi}
+                        className="p-2.5 bg-violet-50/70 hover:bg-violet-50 text-violet-800 border border-violet-200 hover:border-violet-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98 disabled:opacity-60"
+                        title="สร้างรูปสินค้าด้วยระบบ AI จากชื่อสินค้า"
+                      >
+                        {isGeneratingAi ? (
+                          <Loader2 className="w-5 h-5 text-violet-600 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-5 h-5 text-violet-600 group-hover:scale-110 transition" />
+                        )}
+                        <span className="font-bold text-[11px]">สร้างรูปด้วย AI</span>
+                        <span className="text-[9.5px] text-violet-500/80">Flux Model</span>
+                      </button>
+
+                      {/* 2. Direct Camera Snap */}
+                      <label className="p-2.5 bg-sky-50/70 hover:bg-sky-50 text-sky-800 border border-sky-200 hover:border-sky-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98">
+                        <Camera className="w-5 h-5 text-sky-600 group-hover:scale-110 transition" />
+                        <span className="font-bold text-[11px]">ถ่ายรูปสด</span>
+                        <span className="text-[9.5px] text-sky-500/80">เปิดกล้องถ่าย</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => handleImageFileChange(e, false)}
+                        />
+                      </label>
+
+                      {/* 3. Graphic Badge Generator */}
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateGraphicBadge(false)}
+                        className="p-2.5 bg-emerald-50/70 hover:bg-emerald-50 text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98"
+                        title="สร้างป้ายกราฟิกสินค้าอัตโนมัติพร้อมชื่อและรหัส"
+                      >
+                        <Palette className="w-5 h-5 text-[#0B6B4F] group-hover:scale-110 transition" />
+                        <span className="font-bold text-[11px]">ป้ายกราฟิก</span>
+                        <span className="text-[9.5px] text-emerald-600/80">Auto Badge</span>
+                      </button>
+
+                      {/* 4. File Upload */}
+                      <label className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98">
+                        <Upload className="w-5 h-5 text-slate-500 group-hover:scale-110 transition" />
+                        <span className="font-bold text-[11px]">เลือกไฟล์รูป</span>
+                        <span className="text-[9.5px] text-slate-400">จากอุปกรณ์</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageFileChange(e, false)}
+                        />
+                      </label>
+                    </div>
+
+                    {/* AI Prompt Customizer Toggle */}
+                    <div className="pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowPromptDrawer(!showPromptDrawer)}
+                        className="text-[10.5px] text-violet-600 hover:text-violet-800 font-medium underline flex items-center gap-1"
+                      >
+                        <span>{showPromptDrawer ? '− ซ่อนคำสั่ง AI Prompt' : '+ กำหนดคำสั่งรูป AI เอง (Custom Prompt)'}</span>
+                      </button>
+
+                      {showPromptDrawer && (
+                        <div className="mt-1.5 p-2 bg-violet-50/50 border border-violet-100 rounded-lg space-y-1.5 animate-in fade-in">
+                          <input
+                            type="text"
+                            placeholder="ระบุลักษณะรูปสินค้า เช่น กล่องสีเขียวพร้อมดินสอ 12 แท่ง..."
+                            value={customPrompt}
+                            onChange={(e) => setCustomPrompt(e.target.value)}
+                            className="w-full bg-white border border-violet-200 rounded-lg p-2 text-xs text-zinc-900 focus:outline-none focus:border-violet-500"
+                          />
+                          <p className="text-[9.5px] text-zinc-500">
+                            * หากไม่ระบุ ระบบจะใช้ชื่อสินค้า ({formData.name || '...'}) มาสร้างรูปให้อัตโนมัติ
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -1167,41 +1200,142 @@ export default function InventoryPage() {
                 />
               </div>
 
-              {/* Item Photo / Equipment Image Upload */}
-              <div>
-                <label className="block font-medium text-[#1A1A1A] mb-1">
-                  Item Photo / Equipment Image
-                </label>
+              {/* Item Photo / Equipment Image Creation Hub */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-medium text-[#1A1A1A]">
+                    รูปภาพสินค้า / Item Photo
+                  </label>
+                  {editingItem.imageUrl && (
+                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> แนบรูปภาพแล้ว
+                    </span>
+                  )}
+                </div>
+
                 {editingItem.imageUrl ? (
-                  <div className="flex items-center gap-3 p-2.5 bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg">
-                    <img
-                      src={editingItem.imageUrl}
-                      alt="Item preview"
-                      className="w-14 h-14 object-cover rounded-lg border border-[#E5E0D8] shrink-0 shadow-2xs"
-                    />
-                    <div className="flex-1 text-xs">
-                      <p className="font-semibold text-[#1A1A1A]">Photo attached</p>
-                      <button
-                        type="button"
-                        onClick={() => setEditingItem({ ...editingItem, imageUrl: '' })}
-                        className="text-[11px] text-red-600 hover:text-red-700 font-medium mt-1 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Remove Photo</span>
-                      </button>
+                  <div className="flex items-center gap-3 p-3 bg-[#F7F4EF] border border-[#E5E0D8] rounded-xl">
+                    <div className="w-[80px] h-[80px] rounded-xl bg-white border border-[#E5E0D8] flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-2xs">
+                      <img
+                        src={editingItem.imageUrl}
+                        alt="Preview"
+                        className="w-[80px] h-[80px] object-contain rounded-lg"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1.5 text-xs">
+                      <p className="font-bold text-[#1A1A1A]">รูปภาพขนาด 80×80px (พร้อมใช้งาน)</p>
+                      <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateAiImage(true)}
+                          disabled={isGeneratingAi}
+                          className="px-2.5 py-1 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                        >
+                          {isGeneratingAi ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3 h-3" />
+                          )}
+                          <span>วาดใหม่ด้วย AI</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingItem(prev => prev ? { ...prev, imageUrl: '' } : null)}
+                          className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>ลบรูป</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <label className="border-2 border-dashed border-[#E5E0D8] hover:border-[#0B6B4F] rounded-lg p-3 flex flex-col items-center justify-center gap-1 cursor-pointer bg-white hover:bg-[#F7F4EF] transition">
-                    <Upload className="w-5 h-5 text-[#6B6560]" />
-                    <span className="text-[11px] text-[#6B6560] font-medium">Click to select photo (PNG, JPG, WebP)</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleImageFileChange(e, true)}
-                    />
-                  </label>
+                  <div className="space-y-2">
+                    {/* 4 Photo Creation Options Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {/* 1. AI Image Generator */}
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateAiImage(true)}
+                        disabled={isGeneratingAi}
+                        className="p-2.5 bg-violet-50/70 hover:bg-violet-50 text-violet-800 border border-violet-200 hover:border-violet-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98 disabled:opacity-60"
+                        title="สร้างรูปสินค้าด้วยระบบ AI จากชื่อสินค้า"
+                      >
+                        {isGeneratingAi ? (
+                          <Loader2 className="w-5 h-5 text-violet-600 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-5 h-5 text-violet-600 group-hover:scale-110 transition" />
+                        )}
+                        <span className="font-bold text-[11px]">สร้างรูปด้วย AI</span>
+                        <span className="text-[9.5px] text-violet-500/80">Flux Model</span>
+                      </button>
+
+                      {/* 2. Direct Camera Snap */}
+                      <label className="p-2.5 bg-sky-50/70 hover:bg-sky-50 text-sky-800 border border-sky-200 hover:border-sky-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98">
+                        <Camera className="w-5 h-5 text-sky-600 group-hover:scale-110 transition" />
+                        <span className="font-bold text-[11px]">ถ่ายรูปสด</span>
+                        <span className="text-[9.5px] text-sky-500/80">เปิดกล้องถ่าย</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => handleImageFileChange(e, true)}
+                        />
+                      </label>
+
+                      {/* 3. Graphic Badge Generator */}
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateGraphicBadge(true)}
+                        className="p-2.5 bg-emerald-50/70 hover:bg-emerald-50 text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98"
+                        title="สร้างป้ายกราฟิกสินค้าอัตโนมัติพร้อมชื่อและรหัส"
+                      >
+                        <Palette className="w-5 h-5 text-[#0B6B4F] group-hover:scale-110 transition" />
+                        <span className="font-bold text-[11px]">ป้ายกราฟิก</span>
+                        <span className="text-[9.5px] text-emerald-600/80">Auto Badge</span>
+                      </button>
+
+                      {/* 4. File Upload */}
+                      <label className="p-2.5 bg-white hover:bg-[#F7F4EF] text-slate-700 border border-[#E5E0D8] hover:border-[#0B6B4F]/30 rounded-xl flex flex-col items-center justify-center gap-1 transition group cursor-pointer shadow-2xs active:scale-98">
+                        <Upload className="w-5 h-5 text-slate-500 group-hover:scale-110 transition" />
+                        <span className="font-bold text-[11px]">เลือกไฟล์รูป</span>
+                        <span className="text-[9.5px] text-slate-400">จากอุปกรณ์</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageFileChange(e, true)}
+                        />
+                      </label>
+                    </div>
+
+                    {/* AI Prompt Customizer Toggle */}
+                    <div className="pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowPromptDrawer(!showPromptDrawer)}
+                        className="text-[10.5px] text-violet-600 hover:text-violet-800 font-medium underline flex items-center gap-1"
+                      >
+                        <span>{showPromptDrawer ? '− ซ่อนคำสั่ง AI Prompt' : '+ กำหนดคำสั่งรูป AI เอง (Custom Prompt)'}</span>
+                      </button>
+
+                      {showPromptDrawer && (
+                        <div className="mt-1.5 p-2 bg-violet-50/50 border border-violet-100 rounded-lg space-y-1.5 animate-in fade-in">
+                          <input
+                            type="text"
+                            placeholder="ระบุลักษณะรูปสินค้า เช่น กล่องสีเขียวพร้อมดินสอ 12 แท่ง..."
+                            value={customPrompt}
+                            onChange={(e) => setCustomPrompt(e.target.value)}
+                            className="w-full bg-white border border-violet-200 rounded-lg p-2 text-xs text-zinc-900 focus:outline-none focus:border-violet-500"
+                          />
+                          <p className="text-[9.5px] text-zinc-500">
+                            * หากไม่ระบุ ระบบจะใช้ชื่อสินค้า ({editingItem.name || '...'}) มาสร้างรูปให้อัตโนมัติ
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
 

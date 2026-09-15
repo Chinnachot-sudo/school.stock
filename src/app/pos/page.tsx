@@ -509,17 +509,19 @@ export default function PosPage() {
                     disabled={isOut}
                     className="bg-white border border-slate-200 hover:border-[#0B6B4F] disabled:opacity-50 disabled:hover:border-slate-200 rounded-2xl overflow-hidden text-left flex flex-col justify-between transition shadow-2xs hover:shadow-md active:scale-98 group cursor-pointer"
                   >
-                    {/* 1. Large Product Photo Container */}
-                    <div className="w-full h-36 sm:h-40 bg-slate-50 relative flex items-center justify-center p-2.5 border-b border-slate-100 overflow-hidden">
+                    {/* 1. 120x120px Product Photo Container */}
+                    <div className="w-full h-36 sm:h-40 bg-slate-50 relative flex items-center justify-center p-2 border-b border-slate-100 overflow-hidden">
                       {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-full h-full object-contain group-hover:scale-105 transition duration-200"
-                        />
+                        <div className="w-[120px] h-[120px] rounded-xl bg-white border border-slate-200/80 flex items-center justify-center p-1 shadow-2xs">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-[120px] h-[120px] object-contain group-hover:scale-105 transition duration-200"
+                          />
+                        </div>
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                          <Store className="w-9 h-9 stroke-[1.25] text-slate-300 mb-1" />
+                        <div className="w-[120px] h-[120px] rounded-xl bg-white/70 border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300">
+                          <Store className="w-8 h-8 stroke-[1.25] text-slate-300 mb-1" />
                           <span className="text-[10px] font-mono text-slate-400 font-semibold">{item.code}</span>
                         </div>
                       )}
