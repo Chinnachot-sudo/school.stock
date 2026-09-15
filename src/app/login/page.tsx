@@ -52,26 +52,26 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A1A14]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#10B981]" />
+      <div className="min-h-screen flex items-center justify-center bg-[#EEF4F1]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0B6B4F]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-3 sm:p-6 lg:p-10 font-sans overflow-hidden bg-[#0A1A14]">
-      {/* Ambient Nature Background (02content.jpg) with soft, non-distracting opacity */}
+    <div className="min-h-screen relative flex items-center justify-center p-3 sm:p-6 lg:p-10 font-sans overflow-hidden bg-[#EEF4F1]">
+      {/* Ambient Nature Background (02content.jpg) with bright, luminous light tone */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none">
         <img
           src="/images/02content.jpg"
           alt="Roong Aroon Ambience"
-          className="w-full h-full object-cover object-center opacity-25 filter blur-[2px] scale-105"
+          className="w-full h-full object-cover object-center opacity-40 filter blur-[1px] scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#06150F]/85 via-[#0A1A14]/75 to-[#0D241C]/80" />
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/85 via-[#F4F8F6]/75 to-teal-50/80 backdrop-blur-[0.5px]" />
       </div>
 
       {/* 2-Column Main Login Card */}
-      <div className="relative z-10 w-full max-w-5xl bg-white rounded-[28px] sm:rounded-[32px] border border-white/25 shadow-2xl shadow-black/40 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
+      <div className="relative z-10 w-full max-w-5xl bg-white rounded-[28px] sm:rounded-[32px] border border-emerald-900/10 shadow-2xl shadow-emerald-950/15 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
         
         {/* ================= LEFT COLUMN: Pure Clean Architectural Photo DSC00918.jpg ================= */}
         <div className="relative hidden lg:block lg:col-span-6 overflow-hidden select-none bg-slate-900">

@@ -1,4 +1,4 @@
-export type TransactionType = 'IN' | 'OUT' | 'ADJUST' | 'SALE' | 'VOID_SALE';
+export type TransactionType = 'IN' | 'OUT' | 'ADJUST' | 'SALE' | 'VOID_SALE' | 'RETURN_RESTOCK';
 
 export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'INVENTORY_MANAGER' | 'TEACHER';
 
@@ -202,7 +202,7 @@ export interface Transaction {
 
 // ERP Sales & Receipt Types
 export type CustomerType = 'STUDENT' | 'PARENT' | 'TEACHER' | 'GENERAL';
-export type PaymentMethod = 'CASH' | 'PROMPTPAY' | 'TRANSFER';
+export type PaymentMethod = 'CASH' | 'CARD' | 'PROMPTPAY' | 'TRANSFER';
 
 export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
   STUDENT: 'IB Student',
@@ -212,10 +212,41 @@ export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  CASH: 'Cash',
+  CASH: 'Cash (เงินสด)',
+  CARD: 'Credit / Debit Card (บัตรเครดิต/เดบิต)',
   PROMPTPAY: 'PromptPay QR',
-  TRANSFER: 'Bank Transfer'
+  TRANSFER: 'Bank Transfer (เงินโอน)'
 };
+
+// Return & Refund Types
+export type ReturnReason = 'DEFECTIVE' | 'WRONG_SIZE' | 'MIND_CHANGED' | 'DUPLICATE' | 'OTHER';
+
+export const RETURN_REASON_LABELS: Record<ReturnReason, string> = {
+  DEFECTIVE: 'Defective / Damaged (สินค้าชำรุด)',
+  WRONG_SIZE: 'Wrong Size / Spec (ขนาด/สเปกไม่ถูกต้อง)',
+  MIND_CHANGED: 'Customer Changed Mind (เปลี่ยนใจ)',
+  DUPLICATE: 'Duplicate Purchase (ซื้อซ้ำ)',
+  OTHER: 'Other Reason (เหตุผลอื่นๆ)'
+};
+
+export interface ReturnRecord {
+  id: string;
+  receiptId: string;
+  receiptNumber: string;
+  items: {
+    itemId: string;
+    itemCode: string;
+    itemName: string;
+    quantity: number;
+    unitPrice: number;
+    refundAmount: number;
+  }[];
+  totalRefund: number;
+  reason: ReturnReason;
+  reasonDetail?: string;
+  cashierName: string;
+  createdAt: string;
+}
 
 // Customer Database Record
 export interface Customer {
@@ -229,6 +260,8 @@ export interface Customer {
   parentName?: string; // e.g. "Mr. David Jenkins"
   phone?: string;
   email?: string;
+  points?: number; // Loyalty points (e.g. 150)
+  tier?: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
   note?: string;
   createdAt: string;
   updatedAt: string;
