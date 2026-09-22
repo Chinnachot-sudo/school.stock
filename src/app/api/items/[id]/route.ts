@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(
   request: Request,
@@ -104,25 +105,52 @@ export async function PUT(
       if (updateRes.error) throw updateRes.error;
       const data = updateRes.data;
 
+      const updatedItem = {
+        id: data.id,
+        code: data.code,
+        name: data.name,
+        categoryId: data.category_id,
+        currentStock: Number(data.current_stock) || 0,
+        minStock: Number(data.min_stock) || 5,
+        unit: data.unit,
+        location: data.location,
+        price: data.price !== undefined ? Number(data.price) : body.price !== undefined ? Number(body.price) : 0,
+        cost: data.cost !== undefined ? Number(data.cost) : body.cost !== undefined ? Number(body.cost) : 0,
+        imageUrl: data.image_url || body.imageUrl || '',
+        isForSale: data.is_for_sale !== undefined ? Boolean(data.is_for_sale) : Boolean(body.isForSale),
+        note: data.note,
+        isBorrowable: data.is_borrowable,
+        updatedAt: data.updated_at
+      };
+
+      // Also sync update to local DB
+      try {
+        const db = readDb();
+        const idx = db.items.findIndex(i => i.id === id);
+        if (idx !== -1) {
+          db.items[idx] = updatedItem;
+        } else {
+          db.items.push(updatedItem);
+        }
+        writeDb(db);
+      } catch (cacheErr) {
+        console.warn('Local cache sync warning on item update:', cacheErr);
+      }
+
+      // Record audit log
+      logAuditEvent({
+        category: 'INVENTORY',
+        action: 'UPDATE_ITEM',
+        details: `Updated item details: "${updatedItem.name}" (${updatedItem.code})`,
+        actorName: 'Inventory Admin',
+        targetId: updatedItem.id,
+        targetName: updatedItem.name,
+        metadata: body
+      }).catch(e => console.warn('Audit log error:', e));
+
       return NextResponse.json({
         success: true,
-        item: {
-          id: data.id,
-          code: data.code,
-          name: data.name,
-          categoryId: data.category_id,
-          currentStock: data.current_stock,
-          minStock: data.min_stock,
-          unit: data.unit,
-          location: data.location,
-          price: data.price !== undefined ? Number(data.price) : body.price !== undefined ? Number(body.price) : 0,
-          cost: data.cost !== undefined ? Number(data.cost) : body.cost !== undefined ? Number(body.cost) : 0,
-          imageUrl: data.image_url || body.imageUrl || '',
-          isForSale: data.is_for_sale !== undefined ? Boolean(data.is_for_sale) : Boolean(body.isForSale),
-          note: data.note,
-          isBorrowable: data.is_borrowable,
-          updatedAt: data.updated_at
-        }
+        item: updatedItem
       });
     }
 
@@ -151,6 +179,18 @@ export async function PUT(
     };
 
     writeDb(db);
+
+    // Record audit log
+    logAuditEvent({
+      category: 'INVENTORY',
+      action: 'UPDATE_ITEM',
+      details: `Updated item details: "${db.items[index].name}" (${db.items[index].code})`,
+      actorName: 'Inventory Admin',
+      targetId: db.items[index].id,
+      targetName: db.items[index].name,
+      metadata: body
+    }).catch(e => console.warn('Audit log error:', e));
+
     return NextResponse.json({ success: true, item: db.items[index] });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });
@@ -163,10 +203,36 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    let deletedName = id;
 
     if (isSupabaseConfigured && supabase) {
+      const { data: itemRow } = await supabase.from('items').select('name').eq('id', id).maybeSingle();
+      if (itemRow) deletedName = itemRow.name;
+
       const { error } = await supabase.from('items').delete().eq('id', id);
       if (error) throw error;
+
+      // Sync delete to local DB
+      try {
+        const db = readDb();
+        const idx = db.items.findIndex(i => i.id === id);
+        if (idx !== -1) {
+          db.items.splice(idx, 1);
+          writeDb(db);
+        }
+      } catch (cacheErr) {
+        console.warn('Local cache sync warning on item delete:', cacheErr);
+      }
+
+      logAuditEvent({
+        category: 'INVENTORY',
+        action: 'DELETE_ITEM',
+        details: `Deleted item "${deletedName}" from system`,
+        actorName: 'Inventory Admin',
+        targetId: id,
+        targetName: deletedName
+      }).catch(e => console.warn('Audit log error:', e));
+
       return NextResponse.json({ success: true });
     }
 
@@ -176,8 +242,18 @@ export async function DELETE(
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
+    deletedName = db.items[index].name;
     db.items.splice(index, 1);
     writeDb(db);
+
+    logAuditEvent({
+      category: 'INVENTORY',
+      action: 'DELETE_ITEM',
+      details: `Deleted item "${deletedName}" from system`,
+      actorName: 'Inventory Admin',
+      targetId: id,
+      targetName: deletedName
+    }).catch(e => console.warn('Audit log error:', e));
 
     return NextResponse.json({ success: true });
   } catch (error) {

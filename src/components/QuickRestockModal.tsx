@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Item, Department } from '@/types/inventory';
-import { X, Plus, PackagePlus, MapPin, Building2, AlertTriangle } from 'lucide-react';
+import { X, Plus, Minus, PackagePlus, MapPin, Building2, AlertTriangle } from 'lucide-react';
 
 interface QuickRestockModalProps {
   item: Item | null;
@@ -142,19 +142,33 @@ export default function QuickRestockModal({
               ))}
             </div>
 
-            <div className="relative">
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full text-center text-lg font-bold font-mono py-2 bg-white border border-[#E5E0D8] rounded-lg focus:outline-none focus:border-[#1F4D3A] text-[#1A1A1A]"
-              />
-              <span className="absolute right-3 top-2.5 text-xs text-[#6B6560] pointer-events-none">
-                {item.unit}
-              </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                disabled={quantity <= 1}
+                className="w-11 h-11 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] disabled:opacity-40 flex items-center justify-center font-medium text-[#1A1A1A] active:scale-95 transition"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <div className="flex-1 relative">
+                <input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full text-center text-lg font-bold font-mono py-2 bg-white border border-[#E5E0D8] rounded-lg focus:outline-none focus:border-[#1F4D3A] text-[#1A1A1A]"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuantity(prev => prev + 1)}
+                className="w-11 h-11 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] flex items-center justify-center font-medium text-[#1A1A1A] active:scale-95 transition"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
-            <p className="text-[11px] text-[#6B6560] mt-1">
+            <p className="text-[11px] text-[#6B6560] mt-1.5">
               New balance after restock: <strong className="font-mono text-[#027A48]">{item.currentStock + quantity} {item.unit}</strong>
             </p>
           </div>

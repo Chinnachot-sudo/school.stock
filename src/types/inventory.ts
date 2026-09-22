@@ -210,6 +210,21 @@ export interface Transaction {
   createdAt: string; // ISO 8601
 }
 
+export type AuditActionCategory = 'INVENTORY' | 'STOCK_OPERATION' | 'POS_SALE' | 'USER_MANAGEMENT' | 'SYSTEM';
+
+export interface AuditLog {
+  id: string;
+  category: AuditActionCategory;
+  action: string; // e.g. "RECEIVE_STOCK", "ISSUE_STOCK", "CREATE_ITEM", "UPDATE_ITEM", "DELETE_ITEM", "CREATE_USER", "POS_SALE"
+  details: string; // Human-readable description of what was done
+  actorName: string; // Who performed the action
+  actorEmail?: string;
+  targetId?: string; // Item ID, User ID, Receipt ID etc.
+  targetName?: string;
+  metadata?: Record<string, any>;
+  createdAt: string; // ISO 8601
+}
+
 // ERP Sales & Receipt Types
 export type CustomerType = 'STUDENT' | 'PARENT' | 'TEACHER' | 'GENERAL';
 export type PaymentMethod = 'CASH' | 'CARD' | 'PROMPTPAY' | 'TRANSFER' | 'WELFARE';

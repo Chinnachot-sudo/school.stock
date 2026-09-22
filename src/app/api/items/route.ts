@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Item } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(request: Request) {
   try {
@@ -197,26 +198,52 @@ export async function POST(request: Request) {
       }
 
       const data = insertRes.data;
+      const createdItem: Item = {
+        id: data.id,
+        code: data.code,
+        name: data.name,
+        categoryId: data.category_id,
+        currentStock: Number(data.current_stock) || 0,
+        minStock: Number(data.min_stock) || 5,
+        unit: data.unit,
+        location: data.location,
+        price: data.price !== undefined ? Number(data.price) : Number(price) || 0,
+        cost: data.cost !== undefined ? Number(data.cost) : Number(cost) || 0,
+        imageUrl: data.image_url || imageUrl || '',
+        isForSale: data.is_for_sale !== undefined ? Boolean(data.is_for_sale) : Boolean(isForSale),
+        note: data.note,
+        isBorrowable: data.is_borrowable,
+        updatedAt: data.updated_at
+      };
+
+      // Always sync to local DB cache
+      try {
+        const db = readDb();
+        const existingIdx = db.items.findIndex(i => i.id === createdItem.id || i.code.toLowerCase() === createdItem.code.toLowerCase());
+        if (existingIdx !== -1) {
+          db.items[existingIdx] = createdItem;
+        } else {
+          db.items.push(createdItem);
+        }
+        writeDb(db);
+      } catch (cacheErr) {
+        console.warn('Local cache sync warning in POST /api/items:', cacheErr);
+      }
+
+      // Record audit log
+      logAuditEvent({
+        category: 'INVENTORY',
+        action: 'CREATE_ITEM',
+        details: `Created new item: "${createdItem.name}" (${createdItem.code}) with initial stock ${createdItem.currentStock} ${createdItem.unit}`,
+        actorName: 'Inventory Admin',
+        targetId: createdItem.id,
+        targetName: createdItem.name,
+        metadata: { code: createdItem.code, stock: createdItem.currentStock, price: createdItem.price }
+      }).catch(e => console.warn('Audit log error:', e));
 
       return NextResponse.json({
         success: true,
-        item: {
-          id: data.id,
-          code: data.code,
-          name: data.name,
-          categoryId: data.category_id,
-          currentStock: data.current_stock,
-          minStock: data.min_stock,
-          unit: data.unit,
-          location: data.location,
-          price: data.price !== undefined ? Number(data.price) : Number(price) || 0,
-          cost: data.cost !== undefined ? Number(data.cost) : Number(cost) || 0,
-          imageUrl: data.image_url || imageUrl || '',
-          isForSale: data.is_for_sale !== undefined ? Boolean(data.is_for_sale) : Boolean(isForSale),
-          note: data.note,
-          isBorrowable: data.is_borrowable,
-          updatedAt: data.updated_at
-        }
+        item: createdItem
       });
     }
 
@@ -247,6 +274,17 @@ export async function POST(request: Request) {
 
     db.items.push(newItem);
     writeDb(db);
+
+    // Record audit log
+    logAuditEvent({
+      category: 'INVENTORY',
+      action: 'CREATE_ITEM',
+      details: `Created new item: "${newItem.name}" (${newItem.code}) with initial stock ${newItem.currentStock} ${newItem.unit}`,
+      actorName: 'Inventory Admin',
+      targetId: newItem.id,
+      targetName: newItem.name,
+      metadata: { code: newItem.code, stock: newItem.currentStock, price: newItem.price }
+    }).catch(e => console.warn('Audit log error:', e));
 
     return NextResponse.json({ success: true, item: newItem });
   } catch (error: any) {

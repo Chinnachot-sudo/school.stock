@@ -203,9 +203,6 @@ export default function QuickDeductModal({
                   }}
                   className="w-full text-center text-lg font-bold font-mono py-2 bg-white border border-[#E5E0D8] rounded-lg focus:outline-none focus:border-[#1F4D3A] text-[#1A1A1A]"
                 />
-                <span className="absolute right-3 top-2.5 text-xs text-[#6B6560] pointer-events-none">
-                  {item.unit}
-                </span>
               </div>
               <button
                 type="button"

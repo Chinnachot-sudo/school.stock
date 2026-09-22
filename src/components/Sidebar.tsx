@@ -120,9 +120,11 @@ export default function Sidebar({ onNavigate, onToggleSidebar }: SidebarProps) {
       label: 'Settings (Backend)',
       icon: Settings,
       subItems: [
-        ...(isInventoryManager ? [{ label: 'Users & Permissions', href: '/settings?tab=users', icon: ShieldCheck }] : []),
-        ...(isInventoryManager ? [{ label: 'Student & Customer DB', href: '/customers', icon: Users }] : []),
-        ...(isInventoryManager ? [{ label: 'Categories & Storage', href: '/settings?tab=master', icon: Database }] : []),
+        ...(isInventoryManager ? [
+          { label: 'Users & Permissions', href: '/settings?tab=users', icon: ShieldCheck },
+          { label: '↳ Student & Customer DB', href: '/customers', icon: Users },
+          { label: 'Categories & Storage', href: '/settings?tab=master', icon: Database }
+        ] : []),
         { label: 'System & Integrations', href: '/settings?tab=system', icon: Sliders },
         { label: 'School & General Info', href: '/settings?tab=general', icon: School },
       ],

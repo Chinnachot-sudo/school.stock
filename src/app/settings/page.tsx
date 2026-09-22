@@ -52,11 +52,26 @@ function SettingsContent() {
   const [modalLoading, setModalLoading] = useState(false);
 
   // Form states for Add User
+  const [addMode, setAddMode] = useState<'single' | 'batch'>('single');
   const [newName, setNewName] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('ADMIN');
+
+  // Batch Users State
+  interface BatchUserRow {
+    id: string;
+    name: string;
+    username: string;
+    password: string;
+    email: string;
+    role: UserRole;
+  }
+  const [batchRows, setBatchRows] = useState<BatchUserRow[]>([
+    { id: '1', name: '', username: '', password: '', email: '', role: 'ADMIN' },
+    { id: '2', name: '', username: '', password: '', email: '', role: 'ADMIN' }
+  ]);
 
   // Form states for Edit User
   const [editName, setEditName] = useState('');
@@ -87,54 +102,123 @@ function SettingsContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (activeTab === 'users') {
-      fetchUsers();
-    }
-  }, [activeTab]);
+    fetchUsers();
+  }, []);
 
   const handleOpenAddModal = () => {
+    setAddMode('single');
     setNewName('');
     setNewUsername('');
     setNewPassword('');
     setNewEmail('');
     setNewRole('ADMIN');
+    setBatchRows([
+      { id: '1', name: '', username: '', password: '', email: '', role: 'ADMIN' },
+      { id: '2', name: '', username: '', password: '', email: '', role: 'ADMIN' }
+    ]);
     setModalError(null);
     setIsAddModalOpen(true);
   };
 
+  const handleAddBatchRow = () => {
+    setBatchRows(prev => [
+      ...prev,
+      { id: String(Date.now()), name: '', username: '', password: '', email: '', role: 'ADMIN' }
+    ]);
+  };
+
+  const handleRemoveBatchRow = (id: string) => {
+    if (batchRows.length <= 1) return;
+    setBatchRows(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleUpdateBatchRow = (id: string, field: keyof BatchUserRow, value: any) => {
+    setBatchRows(prev =>
+      prev.map(r => (r.id === id ? { ...r, [field]: value } : r))
+    );
+  };
+
   const handleCreateUser = async (e: FormEvent) => {
     e.preventDefault();
-    if (!newUsername.trim() || !newPassword || !newName.trim()) {
-      setModalError('Full Name, Username, and Password are required.');
-      return;
-    }
 
-    try {
-      setModalLoading(true);
-      setModalError(null);
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newName.trim(),
-          username: newUsername.trim(),
-          password: newPassword,
-          email: newEmail.trim(),
-          role: newRole
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create user');
+    if (addMode === 'single') {
+      if (!newUsername.trim() || !newPassword || !newName.trim()) {
+        setModalError('Full Name, Username, and Password are required.');
+        return;
       }
 
-      setIsAddModalOpen(false);
-      await fetchUsers();
-    } catch (err: any) {
-      setModalError(err.message || 'Error creating user');
-    } finally {
-      setModalLoading(false);
+      try {
+        setModalLoading(true);
+        setModalError(null);
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newName.trim(),
+            username: newUsername.trim(),
+            password: newPassword,
+            email: newEmail.trim(),
+            role: newRole
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to create user');
+        }
+
+        setIsAddModalOpen(false);
+        await fetchUsers();
+      } catch (err: any) {
+        setModalError(err.message || 'Error creating user');
+      } finally {
+        setModalLoading(false);
+      }
+    } else {
+      // Batch mode validation
+      const validRows = batchRows.filter(r => r.name.trim() || r.username.trim());
+      if (validRows.length === 0) {
+        setModalError('Please fill in at least 1 user with Name, Username, and Password.');
+        return;
+      }
+
+      for (let i = 0; i < validRows.length; i++) {
+        const row = validRows[i];
+        if (!row.name.trim() || !row.username.trim() || !row.password) {
+          setModalError(`Row #${i + 1} (${row.name || 'User'}) is missing required fields (Name, Username, or Password).`);
+          return;
+        }
+      }
+
+      try {
+        setModalLoading(true);
+        setModalError(null);
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            users: validRows.map(r => ({
+              name: r.name.trim(),
+              username: r.username.trim(),
+              password: r.password,
+              email: r.email.trim(),
+              role: r.role
+            }))
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to create batch users');
+        }
+
+        setIsAddModalOpen(false);
+        await fetchUsers();
+      } catch (err: any) {
+        setModalError(err.message || 'Error creating batch users');
+      } finally {
+        setModalLoading(false);
+      }
     }
   };
 
@@ -626,19 +710,43 @@ function SettingsContent() {
       {/* ADD USER MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-200">
+          <div className={`bg-white rounded-3xl p-6 w-full shadow-2xl border border-slate-200 transition-all ${addMode === 'batch' ? 'max-w-4xl' : 'max-w-md'}`}>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-[#0B6B4F]" />
-                <h3 className="font-bold text-sm text-slate-900">Add New Staff User</h3>
+                <h3 className="font-bold text-sm text-slate-900">
+                  {addMode === 'single' ? 'Add New Staff User' : 'Batch Add Multiple Users (เพิ่มพร้อมกันหลายคน)'}
+                </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setAddMode('single')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition ${
+                      addMode === 'single' ? 'bg-white text-slate-900 shadow-2xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Single User
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAddMode('batch')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition ${
+                      addMode === 'batch' ? 'bg-[#0B6B4F] text-white shadow-2xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Batch / Multi-User
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {modalError && (
@@ -648,99 +756,222 @@ function SettingsContent() {
               </div>
             )}
 
-            <form onSubmit={handleCreateUser} className="mt-4 space-y-3.5 text-left text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. Somchai Sukjai"
-                  required
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            {addMode === 'single' ? (
+              <form onSubmit={handleCreateUser} className="mt-4 space-y-3.5 text-left text-xs">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Username <span className="text-red-500">*</span>
+                    Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    placeholder="e.g. somchai.s"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="e.g. Somchai Sukjai"
                     required
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900 font-mono"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Username <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                      placeholder="e.g. somchai.s"
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Initial Password <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="min. 4 chars"
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="e.g. somchai@roong-aroon.ac.th"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900"
                   />
                 </div>
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Initial Password <span className="text-red-500">*</span>
+                    System Role
                   </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="min. 4 chars"
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900 font-mono"
-                  />
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value as UserRole)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900"
+                  >
+                    <option value="ADMIN">Admin (Full inventory, POS cashier, deduct & restock)</option>
+                    <option value="TEACHER">Teacher / Staff (Borrow & request supplies)</option>
+                    {isSuperAdmin && (
+                      <option value="SUPER_ADMIN">Super Admin (System configuration & all privileges)</option>
+                    )}
+                  </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="e.g. somchai@roong-aroon.ac.th"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900"
-                />
-              </div>
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={modalLoading}
+                    className="px-5 py-2 bg-[#0B6B4F] hover:bg-[#084D39] text-white rounded-xl font-bold flex items-center gap-1.5 transition disabled:opacity-60"
+                  >
+                    {modalLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    <span>Create User</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleCreateUser} className="mt-4 space-y-4 text-left text-xs">
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between">
+                  <span>
+                    💡 สามารถกรอกข้อมูลทีละหลายคนในตารางด้านล่าง หรือกด <strong>+ เพิ่มผู้ใช้</strong> เพื่อสร้างพร้อมกันได้ทันที
+                  </span>
+                  <span className="font-semibold font-mono bg-white px-2 py-0.5 rounded border border-emerald-200">
+                    {batchRows.length} Users
+                  </span>
+                </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  System Role
-                </label>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0B6B4F] focus:bg-white text-slate-900"
-                >
-                  <option value="ADMIN">Admin (Full inventory, POS cashier, deduct & restock)</option>
-                  <option value="TEACHER">Teacher / Staff (Borrow & request supplies)</option>
-                  {isSuperAdmin && (
-                    <option value="SUPER_ADMIN">Super Admin (System configuration & all privileges)</option>
-                  )}
-                </select>
-              </div>
+                <div className="max-h-[50vh] overflow-y-auto border border-slate-200 rounded-2xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-[11px] font-semibold text-slate-700">
+                      <tr>
+                        <th className="py-2.5 px-3">#</th>
+                        <th className="py-2.5 px-3 min-w-[150px]">Full Name *</th>
+                        <th className="py-2.5 px-3 min-w-[130px]">Username *</th>
+                        <th className="py-2.5 px-3 min-w-[120px]">Password *</th>
+                        <th className="py-2.5 px-3 min-w-[150px]">Email</th>
+                        <th className="py-2.5 px-3 min-w-[130px]">Role</th>
+                        <th className="py-2.5 px-2 text-center w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {batchRows.map((row, idx) => (
+                        <tr key={row.id} className="hover:bg-slate-50/50">
+                          <td className="py-2 px-3 font-mono text-slate-400 text-center">{idx + 1}</td>
+                          <td className="py-2 px-2">
+                            <input
+                              type="text"
+                              value={row.name}
+                              onChange={(e) => handleUpdateBatchRow(row.id, 'name', e.target.value)}
+                              placeholder="Somchai S."
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                            />
+                          </td>
+                          <td className="py-2 px-2">
+                            <input
+                              type="text"
+                              value={row.username}
+                              onChange={(e) => handleUpdateBatchRow(row.id, 'username', e.target.value)}
+                              placeholder="somchai.s"
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                            />
+                          </td>
+                          <td className="py-2 px-2">
+                            <input
+                              type="password"
+                              value={row.password}
+                              onChange={(e) => handleUpdateBatchRow(row.id, 'password', e.target.value)}
+                              placeholder="••••"
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                            />
+                          </td>
+                          <td className="py-2 px-2">
+                            <input
+                              type="email"
+                              value={row.email}
+                              onChange={(e) => handleUpdateBatchRow(row.id, 'email', e.target.value)}
+                              placeholder="optional"
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                            />
+                          </td>
+                          <td className="py-2 px-2">
+                            <select
+                              value={row.role}
+                              onChange={(e) => handleUpdateBatchRow(row.id, 'role', e.target.value as UserRole)}
+                              className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                            >
+                              <option value="ADMIN">Admin</option>
+                              <option value="TEACHER">Teacher/Staff</option>
+                              {isSuperAdmin && <option value="SUPER_ADMIN">Super Admin</option>}
+                            </select>
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            {batchRows.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBatchRow(row.id)}
+                                className="p-1 text-slate-400 hover:text-red-500 rounded"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={modalLoading}
-                  className="px-5 py-2 bg-[#0B6B4F] hover:bg-[#084D39] text-white rounded-xl font-bold flex items-center gap-1.5 transition disabled:opacity-60"
-                >
-                  {modalLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  <span>Create User</span>
-                </button>
-              </div>
-            </form>
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={handleAddBatchRow}
+                    className="px-3 py-1.5 text-xs text-[#0B6B4F] bg-emerald-50 hover:bg-emerald-100 font-semibold rounded-xl border border-[#0B6B4F]/20 flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add Another User Row</span>
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddModalOpen(false)}
+                      className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={modalLoading}
+                      className="px-5 py-2 bg-[#0B6B4F] hover:bg-[#084D39] text-white rounded-xl font-bold flex items-center gap-1.5 transition disabled:opacity-60 cursor-pointer"
+                    >
+                      {modalLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <span>Create All ({batchRows.filter(r => r.name.trim()).length || batchRows.length} Users)</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

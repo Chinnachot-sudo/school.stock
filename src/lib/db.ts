@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Item, Category, Department, Transaction, Receipt, Customer, Invoice } from '@/types/inventory';
+import { Item, Category, Department, Transaction, Receipt, Customer, Invoice, AuditLog } from '@/types/inventory';
 
 interface DatabaseSchema {
   categories: Category[];
@@ -10,6 +10,7 @@ interface DatabaseSchema {
   receipts: Receipt[];
   invoices: Invoice[];
   customers: Customer[];
+  auditLogs?: AuditLog[];
 }
 
 const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -43,6 +44,7 @@ const INITIAL_DATA: DatabaseSchema = {
   ],
   receipts: [],
   invoices: [],
+  auditLogs: [],
   customers: [
     {
       id: 'cust-1',
@@ -288,6 +290,9 @@ export function readDb(): DatabaseSchema {
     }
     if (!Array.isArray(parsed.invoices)) {
       parsed.invoices = [];
+    }
+    if (!Array.isArray(parsed.auditLogs)) {
+      parsed.auditLogs = [];
     }
     if (!Array.isArray(parsed.customers)) {
       parsed.customers = INITIAL_DATA.customers;

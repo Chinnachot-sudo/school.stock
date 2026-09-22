@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Item, Receipt, ReceiptItem, Transaction } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(request: Request) {
   try {
@@ -359,6 +360,23 @@ export async function POST(request: Request) {
     } catch (localErr) {
       console.warn('Local db write skipped:', localErr);
     }
+
+    // Record audit log
+    logAuditEvent({
+      category: 'POS_SALE',
+      action: 'POS_SALE_CHECKOUT',
+      details: `POS Sale Receipt #${newReceipt.receiptNumber} (${newReceipt.paymentMethod}): Total ฿${newReceipt.totalAmount.toLocaleString()} to ${newReceipt.customerName}`,
+      actorName: newReceipt.cashierName || 'POS Cashier',
+      actorEmail: newReceipt.cashierEmail || undefined,
+      targetId: newReceipt.id,
+      targetName: `Receipt #${newReceipt.receiptNumber}`,
+      metadata: {
+        receiptNumber: newReceipt.receiptNumber,
+        paymentMethod: newReceipt.paymentMethod,
+        totalAmount: newReceipt.totalAmount,
+        itemCount: newReceipt.items.length
+      }
+    }).catch(e => console.warn('Audit log error:', e));
 
     return NextResponse.json({
       success: true,
