@@ -94,6 +94,9 @@ export interface Category {
 export interface Department {
   id: string;
   name: string;
+  allocatedBudget?: number; // งบประมาณจัดสรร
+  spentBudget?: number;     // งบประมาณที่ใช้ไปแล้ว
+  fiscalYear?: string;     // ปีการศึกษา / ปีงบประมาณ
 }
 
 // IB Curriculum Structure & Constants
@@ -193,6 +196,13 @@ export interface Transaction {
   quantity: number; // e.g. 2
   balanceAfter: number; // e.g. 38
   department: string; // e.g. "MYP Sciences" or "School Store / Co-op"
+  departmentId?: string;
+  issuedToUserId?: string;
+  issuedToName?: string;
+  unitCost?: number;
+  unitPrice?: number;
+  totalCost?: number;
+  budgetDeducted?: boolean;
   requesterName?: string;
   userName?: string;
   note?: string;
@@ -202,7 +212,7 @@ export interface Transaction {
 
 // ERP Sales & Receipt Types
 export type CustomerType = 'STUDENT' | 'PARENT' | 'TEACHER' | 'GENERAL';
-export type PaymentMethod = 'CASH' | 'CARD' | 'PROMPTPAY' | 'TRANSFER';
+export type PaymentMethod = 'CASH' | 'CARD' | 'PROMPTPAY' | 'TRANSFER' | 'WELFARE';
 
 export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
   STUDENT: 'IB Student',
@@ -215,7 +225,8 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   CASH: 'Cash (เงินสด)',
   CARD: 'Credit / Debit Card (บัตรเครดิต/เดบิต)',
   PROMPTPAY: 'PromptPay QR',
-  TRANSFER: 'Bank Transfer (เงินโอน)'
+  TRANSFER: 'Bank Transfer (เงินโอน)',
+  WELFARE: 'School Welfare Wallet (ตัดสวัสดิการโรงเรียน)'
 };
 
 // Return & Refund Types
@@ -261,6 +272,7 @@ export interface Customer {
   phone?: string;
   email?: string;
   points?: number; // Loyalty points (e.g. 150)
+  welfareBalance?: number; // School Welfare Wallet balance (e.g. 1500)
   tier?: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
   note?: string;
   createdAt: string;

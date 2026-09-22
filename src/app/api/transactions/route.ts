@@ -30,6 +30,12 @@ export async function GET(request: Request) {
         quantity: row.quantity,
         balanceAfter: row.balance_after,
         department: row.department,
+        departmentId: row.department_id,
+        issuedToUserId: row.issued_to_user_id,
+        issuedToName: row.issued_to_name,
+        unitCost: row.unit_cost,
+        totalCost: row.total_cost,
+        budgetDeducted: row.budget_deducted,
         requesterName: row.requester_name,
         note: row.note,
         createdAt: row.created_at
@@ -60,148 +66,175 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { itemId, type, quantity, department, requesterName, note } = body;
+    const {
+      itemId,
+      type,
+      quantity,
+      department,
+      departmentId,
+      requesterName,
+      issuedToUserId,
+      issuedToName,
+      unitCost,
+      note,
+      items: rawItems,
+      overrideBudget
+    } = body;
 
-    const qty = Number(quantity);
-    if (!itemId || !type || isNaN(qty) || qty <= 0) {
-      return NextResponse.json({ error: 'Incomplete information or invalid quantity' }, { status: 400 });
+    // Normalize items to array: [{ itemId, quantity, unitCost }]
+    let itemsToProcess: Array<{ itemId: string; quantity: number; unitCost?: number }> = [];
+
+    if (Array.isArray(rawItems) && rawItems.length > 0) {
+      itemsToProcess = rawItems.map(it => ({
+        itemId: String(it.itemId || it.id),
+        quantity: Number(it.quantity),
+        unitCost: it.unitCost !== undefined ? Number(it.unitCost) : undefined
+      }));
+    } else if (itemId && quantity) {
+      itemsToProcess = [{
+        itemId: String(itemId),
+        quantity: Number(quantity),
+        unitCost: unitCost !== undefined ? Number(unitCost) : undefined
+      }];
     }
 
-    // 1. Supabase Cloud DB
-    if (isSupabaseConfigured && supabase) {
-      // Find item
-      const { data: item, error: fetchErr } = await supabase
-        .from('items')
-        .select('*')
-        .or(`id.eq.${itemId},code.eq.${itemId}`)
-        .single();
+    if (itemsToProcess.length === 0 || !type) {
+      return NextResponse.json({ error: 'Incomplete information or no items provided' }, { status: 400 });
+    }
 
-      if (fetchErr || !item) {
-        return NextResponse.json({ error: 'Item not found in system' }, { status: 404 });
+    const db = readDb();
+
+    // 1. Validate all items exist and have enough stock if OUT
+    const itemRecords: Array<{ index: number; item: any; qty: number; unitCost: number }> = [];
+    let totalBatchCost = 0;
+
+    for (const entry of itemsToProcess) {
+      const { itemId: itId, quantity: qty } = entry;
+      if (isNaN(qty) || qty <= 0) {
+        return NextResponse.json({ error: `Invalid quantity for item: ${itId}` }, { status: 400 });
       }
 
-      let newStock = item.current_stock;
-      if (type === 'OUT') {
-        if (item.current_stock < qty) {
+      const itemIndex = db.items.findIndex(
+        i => i.id === itId || i.code.toLowerCase() === itId.toLowerCase()
+      );
+
+      if (itemIndex === -1) {
+        return NextResponse.json({ error: `Item ${itId} not found in system` }, { status: 404 });
+      }
+
+      const item = db.items[itemIndex];
+      if (type === 'OUT' && item.currentStock < qty) {
+        return NextResponse.json(
+          {
+            error: `Insufficient stock for "${item.name}"! Available: ${item.currentStock} ${item.unit}, Requested: ${qty} ${item.unit}`
+          },
+          { status: 400 }
+        );
+      }
+
+      const cost = entry.unitCost !== undefined ? entry.unitCost : (item.cost ?? item.price ?? 0);
+      totalBatchCost += qty * cost;
+
+      itemRecords.push({
+        index: itemIndex,
+        item,
+        qty,
+        unitCost: cost
+      });
+    }
+
+    // 2. Budget Check for OUT transactions if departmentId or department is specified
+    let targetDept: any = null;
+    let budgetDeducted = false;
+
+    if (type === 'OUT') {
+      if (departmentId) {
+        targetDept = (db.departments || []).find(d => d.id === departmentId);
+      } else if (department && department !== 'ALL') {
+        targetDept = (db.departments || []).find(
+          d => d.name.toLowerCase() === department.toLowerCase() || d.id === department
+        );
+      }
+
+      if (targetDept) {
+        const allocated = targetDept.allocatedBudget ?? 0;
+        const spent = targetDept.spentBudget ?? 0;
+        const remaining = allocated - spent;
+
+        if (totalBatchCost > remaining && !overrideBudget) {
           return NextResponse.json(
             {
-              error: `Insufficient stock! Available: ${item.current_stock} ${item.unit}, Requested: ${qty} ${item.unit}`
+              error: `Department budget exceeded! Available: ฿${remaining.toLocaleString()}, Requisition Total: ฿${totalBatchCost.toLocaleString()}`,
+              budgetExceeded: true,
+              allocatedBudget: allocated,
+              spentBudget: spent,
+              remainingBudget: remaining,
+              requiredBudget: totalBatchCost
             },
             { status: 400 }
           );
         }
+
+        // Deduct from budget
+        targetDept.spentBudget = spent + totalBatchCost;
+        budgetDeducted = true;
+      }
+    }
+
+    // 3. Apply stock updates and record transactions
+    const createdTxs: Transaction[] = [];
+    const now = new Date().toISOString();
+
+    for (const record of itemRecords) {
+      const { index, item, qty, unitCost: itemCost } = record;
+      let newStock = item.currentStock;
+
+      if (type === 'OUT') {
         newStock -= qty;
       } else if (type === 'IN') {
         newStock += qty;
       } else if (type === 'ADJUST') {
         newStock = qty;
-      } else {
-        return NextResponse.json({ error: 'Invalid transaction type' }, { status: 400 });
       }
 
-      // Update item stock
-      const { error: updateErr } = await supabase
-        .from('items')
-        .update({
-          current_stock: newStock,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', item.id);
+      item.currentStock = newStock;
+      item.updatedAt = now;
+      db.items[index] = item;
 
-      if (updateErr) throw updateErr;
-
-      // Log transaction
-      const newTxId = `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const { error: txErr } = await supabase.from('transactions').insert({
-        id: newTxId,
-        item_id: item.id,
-        item_name: item.name,
-        item_code: item.code,
-        type,
+      const newTx: Transaction = {
+        id: `tx-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        itemId: item.id,
+        itemName: item.name,
+        itemCode: item.code,
+        type: type as TransactionType,
         quantity: qty,
-        balance_after: newStock,
-        department: (department || 'General Academic Dept').trim(),
-        requester_name: (requesterName || '').trim(),
+        balanceAfter: newStock,
+        department: (targetDept ? targetDept.name : (department || 'General Academic Dept')).trim(),
+        departmentId: targetDept ? targetDept.id : departmentId,
+        issuedToUserId,
+        issuedToName: issuedToName || requesterName,
+        requesterName: (requesterName || issuedToName || '').trim(),
+        unitCost: itemCost,
+        totalCost: qty * itemCost,
+        budgetDeducted,
         note: (note || '').trim(),
-        created_at: new Date().toISOString()
-      });
+        createdAt: now
+      };
 
-      if (txErr) throw txErr;
-
-      return NextResponse.json({
-        success: true,
-        updatedItem: {
-          id: item.id,
-          code: item.code,
-          name: item.name,
-          categoryId: item.category_id,
-          currentStock: newStock,
-          minStock: item.min_stock,
-          unit: item.unit,
-          location: item.location,
-          note: item.note,
-          isBorrowable: item.is_borrowable
-        },
-        isLowStock: newStock <= item.min_stock
-      });
+      createdTxs.push(newTx);
+      db.transactions.push(newTx);
     }
 
-    // 2. Local JSON DB Fallback
-    const db = readDb();
-    const itemIndex = db.items.findIndex(
-      i => i.id === itemId || i.code.toLowerCase() === itemId.toString().toLowerCase()
-    );
-
-    if (itemIndex === -1) {
-      return NextResponse.json({ error: 'Item not found in system' }, { status: 404 });
-    }
-
-    const item = db.items[itemIndex];
-    let newStock = item.currentStock;
-
-    if (type === 'OUT') {
-      if (item.currentStock < qty) {
-        return NextResponse.json(
-          {
-            error: `Insufficient stock! Available: ${item.currentStock} ${item.unit}, Requested: ${qty} ${item.unit}`
-          },
-          { status: 400 }
-        );
-      }
-      newStock -= qty;
-    } else if (type === 'IN') {
-      newStock += qty;
-    } else if (type === 'ADJUST') {
-      newStock = qty;
-    } else {
-      return NextResponse.json({ error: 'Invalid transaction type' }, { status: 400 });
-    }
-
-    item.currentStock = newStock;
-    item.updatedAt = new Date().toISOString() as any;
-
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      itemId: item.id,
-      itemName: item.name,
-      itemCode: item.code,
-      type: type as TransactionType,
-      quantity: qty,
-      balanceAfter: newStock,
-      department: (department || 'General Academic Dept').trim(),
-      requesterName: (requesterName || '').trim(),
-      note: (note || '').trim(),
-      createdAt: new Date().toISOString()
-    };
-
-    db.transactions.push(newTx);
     writeDb(db);
 
     return NextResponse.json({
       success: true,
-      transaction: newTx,
-      updatedItem: item,
-      isLowStock: newStock <= item.minStock
+      count: createdTxs.length,
+      transactions: createdTxs,
+      transaction: createdTxs[0], // for backwards compatibility
+      totalCost: totalBatchCost,
+      department: targetDept,
+      remainingBudget: targetDept ? ((targetDept.allocatedBudget ?? 0) - (targetDept.spentBudget ?? 0)) : undefined
     });
   } catch (error) {
     console.error('Error processing transaction:', error);

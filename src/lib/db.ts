@@ -30,18 +30,16 @@ const INITIAL_DATA: DatabaseSchema = {
     { id: 'cat-equipment', name: 'Audio-Visual & Loans', icon: '📽️', description: 'Projectors, wireless microphones, adapters' }
   ],
   departments: [
-    { id: 'dept-store', name: 'School Store & Co-op' },
-    { id: 'dept-pyp', name: 'Primary Years Programme (PYP)' },
-    { id: 'dept-myp', name: 'Middle Years Programme (MYP)' },
-    { id: 'dept-dp', name: 'Diploma Programme (DP)' },
-    { id: 'dept-cp', name: 'Career-related Programme (CP)' },
-    { id: 'dept-sci', name: 'Science & Laboratory Department' },
-    { id: 'dept-art', name: 'Arts & Design Department' },
-    { id: 'dept-phe', name: 'Physical & Health Education (PHE)' },
-    { id: 'dept-it', name: 'IT & Educational Technology' },
-    { id: 'dept-lib', name: 'Library & Resource Center' },
-    { id: 'dept-admin', name: 'Administration & Admissions' },
-    { id: 'dept-facility', name: 'Facilities & Maintenance' }
+    { id: 'dept-sci', name: 'กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี', allocatedBudget: 150000, spentBudget: 42350, fiscalYear: '2026' },
+    { id: 'dept-math', name: 'กลุ่มสาระฯ คณิตศาสตร์', allocatedBudget: 120000, spentBudget: 18500, fiscalYear: '2026' },
+    { id: 'dept-thai', name: 'กลุ่มสาระฯ ภาษาไทย', allocatedBudget: 100000, spentBudget: 12000, fiscalYear: '2026' },
+    { id: 'dept-foreign', name: 'กลุ่มสาระฯ ภาษาต่างประเทศ', allocatedBudget: 110000, spentBudget: 24500, fiscalYear: '2026' },
+    { id: 'dept-social', name: 'กลุ่มสาระฯ สังคมศึกษา ศาสนาฯ', allocatedBudget: 95000, spentBudget: 15400, fiscalYear: '2026' },
+    { id: 'dept-art', name: 'กลุ่มสาระฯ ศิลปะ / การงาน', allocatedBudget: 140000, spentBudget: 51200, fiscalYear: '2026' },
+    { id: 'dept-pe', name: 'กลุ่มสาระฯ สุขศึกษาและพลศึกษา', allocatedBudget: 130000, spentBudget: 33000, fiscalYear: '2026' },
+    { id: 'dept-admin', name: 'งานธุรการและสารบรรณ', allocatedBudget: 200000, spentBudget: 89000, fiscalYear: '2026' },
+    { id: 'dept-academic', name: 'งานวิชาการและทะเบียน', allocatedBudget: 160000, spentBudget: 45000, fiscalYear: '2026' },
+    { id: 'dept-facility', name: 'งานพัสดุ อาคารสถานที่', allocatedBudget: 250000, spentBudget: 112000, fiscalYear: '2026' }
   ],
   receipts: [],
   invoices: [],
@@ -56,6 +54,7 @@ const INITIAL_DATA: DatabaseSchema = {
       parentName: 'Somsak Sukjai',
       phone: '081-234-5678',
       email: 'panyawut.k@roong-aroon.ac.th',
+      welfareBalance: 1500,
       note: 'Academic Scholarship Student',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -70,6 +69,7 @@ const INITIAL_DATA: DatabaseSchema = {
       parentName: 'Wipha Mongkolsilp',
       phone: '089-876-5432',
       email: 'pattawadee.m@roong-aroon.ac.th',
+      welfareBalance: 2000,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     },
@@ -83,6 +83,7 @@ const INITIAL_DATA: DatabaseSchema = {
       parentName: 'Kriangkrai Charoenphol',
       phone: '086-555-1234',
       email: 'thanathip.c@roong-aroon.ac.th',
+      welfareBalance: 1200,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     },
@@ -95,6 +96,7 @@ const INITIAL_DATA: DatabaseSchema = {
       studentId: 'STAFF-029',
       phone: '092-333-8899',
       email: 'sarah.j@roong-aroon.ac.th',
+      welfareBalance: 5000,
       note: 'MYP Individuals & Societies Teacher',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

@@ -34,43 +34,73 @@
   "departments": [
     {
       "id": "dept-sci",
-      "name": "กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี"
+      "name": "กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี",
+      "allocatedBudget": 150000,
+      "spentBudget": 42350,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-math",
-      "name": "กลุ่มสาระฯ คณิตศาสตร์"
+      "name": "กลุ่มสาระฯ คณิตศาสตร์",
+      "allocatedBudget": 120000,
+      "spentBudget": 18500,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-thai",
-      "name": "กลุ่มสาระฯ ภาษาไทย"
+      "name": "กลุ่มสาระฯ ภาษาไทย",
+      "allocatedBudget": 100000,
+      "spentBudget": 12000,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-foreign",
-      "name": "กลุ่มสาระฯ ภาษาต่างประเทศ"
+      "name": "กลุ่มสาระฯ ภาษาต่างประเทศ",
+      "allocatedBudget": 110000,
+      "spentBudget": 24500,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-social",
-      "name": "กลุ่มสาระฯ สังคมศึกษา ศาสนาฯ"
+      "name": "กลุ่มสาระฯ สังคมศึกษา ศาสนาฯ",
+      "allocatedBudget": 95000,
+      "spentBudget": 15400,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-art",
-      "name": "กลุ่มสาระฯ ศิลปะ / การงาน"
+      "name": "กลุ่มสาระฯ ศิลปะ / การงาน",
+      "allocatedBudget": 140000,
+      "spentBudget": 51200,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-pe",
-      "name": "กลุ่มสาระฯ สุขศึกษาและพลศึกษา"
+      "name": "กลุ่มสาระฯ สุขศึกษาและพลศึกษา",
+      "allocatedBudget": 130000,
+      "spentBudget": 33000,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-admin",
-      "name": "งานธุรการและสารบรรณ"
+      "name": "งานธุรการและสารบรรณ",
+      "allocatedBudget": 200000,
+      "spentBudget": 89000,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-academic",
-      "name": "งานวิชาการและทะเบียน"
+      "name": "งานวิชาการและทะเบียน",
+      "allocatedBudget": 160000,
+      "spentBudget": 45000,
+      "fiscalYear": "2026"
     },
     {
       "id": "dept-facility",
-      "name": "งานพัสดุ อาคารสถานที่"
+      "name": "งานพัสดุ อาคารสถานที่",
+      "allocatedBudget": 250000,
+      "spentBudget": 112000,
+      "fiscalYear": "2026"
     }
   ],
   "items": [
@@ -323,7 +353,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -351,7 +381,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -379,7 +409,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -408,7 +438,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -436,7 +466,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -465,7 +495,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -494,7 +524,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -522,7 +552,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -550,7 +580,7 @@
         {
           "itemId": "item-1789030842778",
           "itemCode": "๊UNI-M",
-          "itemName": "ชุดนักเรียนชาย ไซต์ M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
           "quantity": 1,
           "unitPrice": 150,
           "unit": "ตัว",
@@ -565,6 +595,34 @@
       "status": "PENDING",
       "createdAt": "2026-09-14T09:18:26.588Z",
       "updatedAt": "2026-09-14T09:18:26.588Z"
+    },
+    {
+      "id": "inv-1789464285834-315",
+      "invoiceNumber": "INV2609-0002",
+      "customerName": "Walk-in Customer / นักเรียน",
+      "customerType": "STUDENT",
+      "studentClass": "Grade 1 (PYP 1)",
+      "dueDate": "2026-09-22",
+      "items": [
+        {
+          "itemId": "item-1789030842778",
+          "itemCode": "STD-M",
+          "itemName": "ชุดนักเรียนชาย ไซส์ M",
+          "quantity": 1,
+          "unitPrice": 150,
+          "unit": "ตัว",
+          "totalPrice": 150
+        }
+      ],
+      "subtotal": 150,
+      "discount": 0,
+      "totalAmount": 150,
+      "creatorName": "Super Administrator",
+      "creatorEmail": "superadmin@roong-aroon.ac.th",
+      "note": "Issued invoice from School Store (POS)",
+      "status": "PENDING",
+      "createdAt": "2026-09-15T09:24:45.834Z",
+      "updatedAt": "2026-09-15T09:24:45.834Z"
     }
   ],
   "customers": [
@@ -580,7 +638,8 @@
       "email": "panyawut.k@roong-aroon.ac.th",
       "note": "Academic Scholarship Student",
       "createdAt": "2026-09-14T06:14:36.311Z",
-      "updatedAt": "2026-09-14T06:14:36.311Z"
+      "updatedAt": "2026-09-14T06:14:36.311Z",
+      "welfareBalance": 1500
     },
     {
       "id": "cust-2",
@@ -593,7 +652,8 @@
       "phone": "089-876-5432",
       "email": "pattawadee.m@roong-aroon.ac.th",
       "createdAt": "2026-09-14T06:14:36.311Z",
-      "updatedAt": "2026-09-14T06:14:36.311Z"
+      "updatedAt": "2026-09-14T06:14:36.311Z",
+      "welfareBalance": 2000
     },
     {
       "id": "cust-3",
@@ -606,7 +666,8 @@
       "phone": "086-555-1234",
       "email": "thanathip.c@roong-aroon.ac.th",
       "createdAt": "2026-09-14T06:14:36.311Z",
-      "updatedAt": "2026-09-14T06:14:36.311Z"
+      "updatedAt": "2026-09-14T06:14:36.311Z",
+      "welfareBalance": 1200
     },
     {
       "id": "cust-4",
@@ -619,7 +680,8 @@
       "email": "sarah.j@roong-aroon.ac.th",
       "note": "MYP Individuals & Societies Teacher",
       "createdAt": "2026-09-14T06:14:36.311Z",
-      "updatedAt": "2026-09-14T06:14:36.311Z"
+      "updatedAt": "2026-09-14T06:14:36.311Z",
+      "welfareBalance": 5000
     }
   ]
 }

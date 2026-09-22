@@ -38,7 +38,9 @@ export default function InventoryPage() {
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedLocation, setSelectedLocation] = useState<string>('ALL');
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -236,20 +238,42 @@ export default function InventoryPage() {
     }
   };
 
+  // Unique Locations
+  const locations = useMemo(() => {
+    return Array.from(new Set(items.map(i => i.location?.trim()).filter(Boolean))) as string[];
+  }, [items]);
+
   // Filter items
   const filtered = useMemo(() => {
     return items.filter(item => {
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.location.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        item.name.toLowerCase().includes(q) ||
+        item.code.toLowerCase().includes(q) ||
+        (item.location && item.location.toLowerCase().includes(q));
 
       const matchesCategory = selectedCategory === 'ALL' || item.categoryId === selectedCategory;
+      const matchesLocation = selectedLocation === 'ALL' || item.location === selectedLocation;
       const matchesLowStock = !lowStockOnly || item.currentStock <= item.minStock;
 
-      return matchesSearch && matchesCategory && matchesLowStock;
+      return matchesSearch && matchesCategory && matchesLocation && matchesLowStock;
     });
-  }, [items, searchQuery, selectedCategory, lowStockOnly]);
+  }, [items, searchQuery, selectedCategory, selectedLocation, lowStockOnly]);
+
+  const toggleSelectAll = () => {
+    if (selectedItemIds.length === filtered.length && filtered.length > 0) {
+      setSelectedItemIds([]);
+    } else {
+      setSelectedItemIds(filtered.map(i => i.id));
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedItemIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
 
   const lowStockCount = useMemo(() => {
     return items.filter(i => i.currentStock <= i.minStock).length;
@@ -310,7 +334,7 @@ export default function InventoryPage() {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#1F4D3A] hover:bg-[#183D2E] text-white text-xs font-medium transition active:scale-98"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Add Item</span>
+              <span>Add Item</span>
             </button>
           )}
 
@@ -353,6 +377,19 @@ export default function InventoryPage() {
             ))}
           </select>
 
+          <select
+            value={selectedLocation}
+            onChange={e => setSelectedLocation(e.target.value)}
+            className="px-2.5 py-1.5 bg-white border border-[#E5E0D8] rounded-lg text-xs font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
+          >
+            <option value="ALL">All Locations ({locations.length})</option>
+            {locations.map(loc => (
+              <option key={loc} value={loc}>
+                {loc}
+              </option>
+            ))}
+          </select>
+
           <button
             onClick={() => setLowStockOnly(!lowStockOnly)}
             className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -374,6 +411,15 @@ export default function InventoryPage() {
             <table className="w-full text-xs text-left">
               <thead className="bg-[#F7F4EF] border-b border-[#E5E0D8] text-[#6B6560] font-medium text-[11px]">
                 <tr>
+                  <th className="py-2.5 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedItemIds.length === filtered.length && filtered.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded border-[#E5E0D8] text-[#1F4D3A] focus:ring-[#1F4D3A] cursor-pointer"
+                      title="Select all items"
+                    />
+                  </th>
                   <th className="py-2.5 px-3 w-40">Photo & SKU</th>
                   <th className="py-2.5 px-3 min-w-[200px]">Item Description</th>
                   <th className="py-2.5 px-3 hidden sm:table-cell w-36">Category</th>
@@ -381,6 +427,7 @@ export default function InventoryPage() {
                   <th className="py-2.5 px-3 hidden lg:table-cell w-24 text-right">Price</th>
                   <th className="py-2.5 px-3 w-32">Status</th>
                   <th className="py-2.5 px-3 w-28 text-right">In Stock</th>
+                  <th className="py-2.5 px-3 w-28 text-right">Safety Threshold</th>
                   <th className="py-2.5 px-3 w-40 text-right">Actions</th>
                 </tr>
               </thead>
@@ -390,12 +437,14 @@ export default function InventoryPage() {
                 <tbody className="divide-y divide-[#E5E0D8]">
                   {[1, 2, 3, 4, 5, 6].map(n => (
                     <tr key={n} className="animate-pulse">
+                      <td className="py-2.5 px-3 text-center"><div className="h-4 w-4 bg-[#E5E0D8] rounded mx-auto"></div></td>
                       <td className="py-2.5 px-3"><div className="h-[80px] w-28 bg-[#E5E0D8] rounded-xl"></div></td>
                       <td className="py-2.5 px-3"><div className="h-3.5 w-44 bg-[#E5E0D8] rounded"></div></td>
                       <td className="py-2.5 px-3 hidden sm:table-cell"><div className="h-3.5 w-24 bg-[#E5E0D8]/60 rounded"></div></td>
                       <td className="py-2.5 px-3 hidden md:table-cell"><div className="h-3.5 w-20 bg-[#E5E0D8]/60 rounded"></div></td>
                       <td className="py-2.5 px-3 hidden lg:table-cell text-right"><div className="h-3.5 w-12 bg-[#E5E0D8] rounded ml-auto"></div></td>
                       <td className="py-2.5 px-3"><div className="h-4 w-16 bg-[#E5E0D8] rounded"></div></td>
+                      <td className="py-2.5 px-3 text-right"><div className="h-3.5 w-10 bg-[#E5E0D8] rounded ml-auto"></div></td>
                       <td className="py-2.5 px-3 text-right"><div className="h-3.5 w-10 bg-[#E5E0D8] rounded ml-auto"></div></td>
                       <td className="py-2.5 px-3 text-right"><div className="h-6 w-24 bg-[#E5E0D8] rounded ml-auto"></div></td>
                     </tr>
@@ -404,7 +453,7 @@ export default function InventoryPage() {
               ) : filtered.length === 0 ? (
                 <tbody>
                   <tr>
-                    <td colSpan={8} className="py-14 text-center text-[#6B6560]">
+                    <td colSpan={10} className="py-14 text-center text-[#6B6560]">
                       <Boxes className="w-8 h-8 mx-auto text-[#6B6560]/40 mb-2" />
                       <p className="font-medium text-[#1A1A1A] text-xs">No inventory items found</p>
                       <p className="text-[11px] text-[#6B6560] mt-0.5">Try adjusting your search query or reset category filter</p>
@@ -421,6 +470,16 @@ export default function InventoryPage() {
                     return (
                       <tr key={item.id} className="hover:bg-[#F7F4EF]/70 transition">
                         
+                        {/* Checkbox */}
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedItemIds.includes(item.id)}
+                            onChange={() => toggleSelectItem(item.id)}
+                            className="rounded border-[#E5E0D8] text-[#1F4D3A] focus:ring-[#1F4D3A] cursor-pointer"
+                          />
+                        </td>
+
                         {/* SKU & 80x80px Photo Thumbnail */}
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="flex items-center gap-3">
@@ -505,6 +564,13 @@ export default function InventoryPage() {
                           </span>
                           <span className="text-[10px] text-[#6B6560] ml-1">
                             {item.unit}
+                          </span>
+                        </td>
+
+                        {/* Safety Stock / Min Threshold */}
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                          <span className="font-mono text-xs text-[#6B6560]">
+                            {item.minStock} {item.unit}
                           </span>
                         </td>
 
@@ -1077,6 +1143,40 @@ export default function InventoryPage() {
         categories={categories}
         onUpdated={() => fetchItems()}
       />
+
+      {/* Floating Bulk Action Bar */}
+      {selectedItemIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#1F4D3A] text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#1F4D3A]/40 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-white text-[#1F4D3A] font-mono text-xs font-bold flex items-center justify-center">
+              {selectedItemIds.length}
+            </span>
+            <span className="text-xs font-medium">
+              Items Selected (เลือกแล้ว {selectedItemIds.length} รายการ)
+            </span>
+          </div>
+
+          <div className="h-4 w-px bg-white/20" />
+
+          {canPrintQr && (
+            <Link
+              href={`/print-qr?ids=${selectedItemIds.join(',')}`}
+              className="px-3.5 py-1.5 rounded-xl bg-white text-[#1F4D3A] font-bold text-xs hover:bg-[#F7F4EF] transition flex items-center gap-1.5 shadow-sm active:scale-95"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Print QR Labels</span>
+            </Link>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setSelectedItemIds([])}
+            className="text-xs text-white/75 hover:text-white underline cursor-pointer"
+          >
+            Deselect All
+          </button>
+        </div>
+      )}
 
     </div>
   );

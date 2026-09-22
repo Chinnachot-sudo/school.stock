@@ -25,7 +25,21 @@ export default function PrintQrPage() {
       .then(data => {
         const list = data.items || [];
         setItems(list);
-        setSelectedIds(list.map((i: Item) => i.id));
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const idsParam = urlParams.get('ids');
+          if (idsParam) {
+            const targetIds = idsParam.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            const matchedIds = list
+              .filter((i: Item) => targetIds.includes(i.id.toLowerCase()) || targetIds.includes(i.code.toLowerCase()))
+              .map((i: Item) => i.id);
+            setSelectedIds(matchedIds.length > 0 ? matchedIds : list.map((i: Item) => i.id));
+          } else {
+            setSelectedIds(list.map((i: Item) => i.id));
+          }
+        } else {
+          setSelectedIds(list.map((i: Item) => i.id));
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));

@@ -57,7 +57,8 @@ import {
   ChevronRight,
   SlidersHorizontal,
   Check,
-  Tag
+  Tag,
+  Wallet
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -134,6 +135,7 @@ export default function PosPage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [completedReceipt, setCompletedReceipt] = useState<Receipt | null>(null);
   const [completedInvoice, setCompletedInvoice] = useState<Invoice | null>(null);
+  const [reOrderTargetReceipt, setReOrderTargetReceipt] = useState<Receipt | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Return & Refund Modal
@@ -484,6 +486,17 @@ export default function PosPage() {
       setCheckoutError(`Tendered amount is less than total due (remaining: ฿${(totalAmount - cashReceived).toFixed(2)})`);
       return;
     }
+    if (paymentMethod === 'WELFARE') {
+      if (!selectedCustomer) {
+        setCheckoutError('Please select a student or staff member to use School Welfare Wallet.');
+        return;
+      }
+      const availableWelfare = selectedCustomer.welfareBalance ?? 1500;
+      if (availableWelfare < totalAmount) {
+        setCheckoutError(`Insufficient Welfare Wallet balance! Available: ฿${availableWelfare.toLocaleString('th-TH', { minimumFractionDigits: 2 })}, Due: ฿${totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`);
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     setCheckoutError(null);
@@ -536,6 +549,14 @@ export default function PosPage() {
       // Add to recent receipts list
       if (data.receipt) {
         setRecentReceipts(prev => [data.receipt, ...prev]);
+      }
+
+      // Deduct welfare balance if paid with welfare
+      if (selectedCustomer && paymentMethod === 'WELFARE') {
+        const currentBal = selectedCustomer.welfareBalance ?? 1500;
+        const newBal = Math.max(0, currentBal - totalAmount);
+        setSelectedCustomer(prev => prev ? { ...prev, welfareBalance: newBal } : null);
+        setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, welfareBalance: newBal } : c));
       }
 
       // Close checkout, reset cart, show receipt modal
@@ -849,8 +870,8 @@ export default function PosPage() {
                 <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
                   <span className="font-black text-slate-900">฿{r.totalAmount.toLocaleString()}</span>
                   <button
-                    onClick={() => handleDuplicateBill(r)}
-                    className="flex items-center gap-1 text-[#0B6B4F] hover:underline font-bold text-[10px]"
+                    onClick={() => setReOrderTargetReceipt(r)}
+                    className="flex items-center gap-1 text-[#0B6B4F] hover:underline font-bold text-[10px] cursor-pointer"
                     title="Duplicate items to cart"
                   >
                     <Copy className="w-3 h-3" /> Re-Order
@@ -1260,6 +1281,28 @@ export default function PosPage() {
                     </button>
                   </div>
                 )}
+
+                {/* School Welfare Wallet Badge */}
+                {selectedCustomer && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/90 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-[#0B6B4F] text-white flex items-center justify-center shadow-xs">
+                        <Wallet className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-emerald-950">
+                          School Welfare Wallet (สวัสดิการโรงเรียน)
+                        </div>
+                        <div className="text-[10px] text-emerald-700">
+                          Balance: <strong className="font-mono font-bold text-[#0B6B4F]">฿{(selectedCustomer.welfareBalance ?? 1500).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</strong>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-md bg-white border border-emerald-300 text-[#0B6B4F] text-[10px] font-bold font-mono">
+                      Welfare Ready
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Ordered Items List */}
@@ -1519,13 +1562,13 @@ export default function PosPage() {
                 </div>
               </div>
 
-              {/* Payment Methods Tabs (Cash, Card, QR, Transfer) */}
+              {/* Payment Methods Tabs (Cash, Card, QR, Transfer, Welfare) */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700">Payment Method (วิธีชำระเงิน)</label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   <button
                     onClick={() => setPaymentMethod('CASH')}
-                    className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
+                    className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
                       paymentMethod === 'CASH'
                         ? 'border-[#0B6B4F] bg-emerald-50 text-[#0B6B4F] ring-2 ring-[#0B6B4F]/20'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-700'
@@ -1537,7 +1580,7 @@ export default function PosPage() {
 
                   <button
                     onClick={() => setPaymentMethod('CARD')}
-                    className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
+                    className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
                       paymentMethod === 'CARD'
                         ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/20'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-700'
@@ -1549,7 +1592,7 @@ export default function PosPage() {
 
                   <button
                     onClick={() => setPaymentMethod('PROMPTPAY')}
-                    className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
+                    className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
                       paymentMethod === 'PROMPTPAY'
                         ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-600/20'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-700'
@@ -1561,7 +1604,7 @@ export default function PosPage() {
 
                   <button
                     onClick={() => setPaymentMethod('TRANSFER')}
-                    className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
+                    className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
                       paymentMethod === 'TRANSFER'
                         ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-600/20'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-700'
@@ -1569,6 +1612,18 @@ export default function PosPage() {
                   >
                     <Building2 className="w-5 h-5" />
                     <span>Bank (โอน)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setPaymentMethod('WELFARE')}
+                    className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
+                      paymentMethod === 'WELFARE'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-600/20'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <Wallet className="w-5 h-5 text-[#0B6B4F]" />
+                    <span>Welfare (สวัสดิการ)</span>
                   </button>
                 </div>
               </div>
@@ -1688,6 +1743,61 @@ export default function PosPage() {
                     <div>Bill Payment Ref1: <strong>{SCHOOL_BANK_INFO.ref1}</strong></div>
                     <div>Bill Payment Ref2: <strong>{SCHOOL_BANK_INFO.ref3}</strong></div>
                   </div>
+                </div>
+              )}
+
+              {/* SCHOOL WELFARE WALLET UI */}
+              {paymentMethod === 'WELFARE' && (
+                <div className="space-y-3 bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200">
+                  <div className="flex items-center gap-2 text-xs text-emerald-950 font-bold">
+                    <Wallet className="w-4 h-4 text-[#0B6B4F]" />
+                    <span>School Welfare Wallet (ตัดบัญชีสวัสดิการโรงเรียน)</span>
+                  </div>
+
+                  {selectedCustomer ? (
+                    <div className="space-y-2">
+                      <div className="bg-white p-3 rounded-xl border border-emerald-200 space-y-1.5 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Account Holder (เจ้าของบัญชี):</span>
+                          <span className="font-bold text-slate-800">{selectedCustomer.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Current Welfare Balance:</span>
+                          <span className="font-mono font-bold text-[#0B6B4F]">
+                            ฿{(selectedCustomer.welfareBalance ?? 1500).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t border-slate-100 pt-1">
+                          <span className="text-slate-600">Requisition / Purchase:</span>
+                          <span className="font-mono font-bold text-slate-900">
+                            -฿{totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t border-slate-100 pt-1">
+                          <span className="text-slate-600">Remaining Balance After:</span>
+                          <span className={`font-mono font-bold ${
+                            ((selectedCustomer.welfareBalance ?? 1500) - totalAmount) < 0 ? 'text-red-600' : 'text-[#0B6B4F]'
+                          }`}>
+                            ฿{((selectedCustomer.welfareBalance ?? 1500) - totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {((selectedCustomer.welfareBalance ?? 1500) < totalAmount) && (
+                        <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
+                          <span>Insufficient Welfare Balance! (ยอดเงินสวัสดิการไม่เพียงพอสำหรับบิลนี้)</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-white rounded-xl border border-dashed border-emerald-300 text-xs text-slate-600 text-center space-y-1">
+                      <p className="font-bold text-slate-800">No Customer Selected</p>
+                      <p className="text-[11px] text-slate-500">
+                        Please select a student or staff member in the cart panel to debit from their welfare wallet.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2053,6 +2163,68 @@ export default function PosPage() {
               {drafts.length === 0 && (
                 <div className="py-8 text-center text-slate-400 italic">No held draft orders.</div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Re-Order Confirmation Modal */}
+      {reOrderTargetReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95">
+            <div className="px-6 py-4 bg-[#0B6B4F] text-white flex items-center justify-between">
+              <h3 className="font-black text-base flex items-center gap-2">
+                <Copy className="w-5 h-5 text-emerald-200" />
+                <span>Confirm Re-Order (ยืนยันสั่งซื้อซ้ำ)</span>
+              </h3>
+              <button
+                onClick={() => setReOrderTargetReceipt(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <p className="text-slate-600 text-sm">
+                คุณต้องการโหลดรายการสินค้าจากใบเสร็จ <strong className="font-mono text-[#0B6B4F]">#{reOrderTargetReceipt.receiptNumber}</strong> เข้าสู่ตะกร้าขายเพื่อทำรายการใหม่หรือไม่?
+              </p>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Customer (ลูกค้า):</span>
+                  <span className="font-bold text-slate-800">{reOrderTargetReceipt.customerName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Items (รายการสินค้า):</span>
+                  <span className="font-bold text-slate-800">{reOrderTargetReceipt.items.length} items</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Total (ยอดรวมเดิม):</span>
+                  <span className="font-black font-mono text-[#0B6B4F]">฿{reOrderTargetReceipt.totalAmount.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReOrderTargetReceipt(null)}
+                  className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Cancel (ยกเลิก)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDuplicateBill(reOrderTargetReceipt);
+                    setReOrderTargetReceipt(null);
+                  }}
+                  className="w-1/2 py-2.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20 cursor-pointer"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>Confirm Re-Order</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
