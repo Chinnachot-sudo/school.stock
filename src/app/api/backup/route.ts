@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { readDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
-import { requirePermission } from '@/lib/auth-server';
+import { requireAnyPermission } from '@/lib/auth-server';
 import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(request: Request) {
   try {
-    const authCheck = await requirePermission(request, 'iam:settings:configure');
+    const authCheck = await requireAnyPermission(request, ['iam:settings:configure', 'report:export']);
     if (authCheck.errorResponse) {
       return authCheck.errorResponse;
     }

@@ -770,19 +770,16 @@ export function BackupMaintenanceView() {
             <p className="text-slate-600">
               Download complete tables including users, categories, departments, items, invoices, receipts, and audit history.
             </p>
-            <button
-              onClick={handleBackupDownload}
-              disabled={downloading}
-              className="px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{downloading ? 'Exporting & Downloading...' : 'Download Full JSON Snapshot'}</span>
-            </button>
-            {lastBackupInfo && (
-              <div className="p-2.5 bg-emerald-100/70 border border-emerald-300 rounded-lg text-[11px] text-emerald-800 font-mono">
-                ✓ {lastBackupInfo}
-              </div>
-            )}
+            <div className="pt-1">
+              <a
+                href="/api/backup"
+                download
+                className="px-4 py-2.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold inline-flex items-center gap-2 shadow-sm transition active:scale-95 cursor-pointer text-xs"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Full JSON Snapshot</span>
+              </a>
+            </div>
           </div>
 
           <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3 text-xs">
