@@ -716,13 +716,36 @@ export function NotificationsSettingsView() {
 // ============================================================================
 export function BackupMaintenanceView() {
   const [downloading, setDownloading] = useState(false);
+  const [lastBackupInfo, setLastBackupInfo] = useState<string | null>(null);
 
-  const handleBackupDownload = () => {
-    setDownloading(true);
-    setTimeout(() => {
+  const handleBackupDownload = async () => {
+    try {
+      setDownloading(true);
+      const res = await fetch('/api/backup');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to download backup');
+      }
+
+      const blob = await res.blob();
+      const filename = `backup_rais_inventory_${new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)}.json`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      setLastBackupInfo(`File saved to your Downloads: ${filename} (${(blob.size / 1024).toFixed(1)} KB)`);
+    } catch (err: any) {
+      alert('Error creating backup: ' + (err?.message || 'Network error'));
+    } finally {
       setDownloading(false);
-      alert('Database snapshot downloaded: backup_rais_inventory_20260924.json');
-    }, 1200);
+    }
   };
 
   return (
@@ -734,7 +757,7 @@ export function BackupMaintenanceView() {
             <span>Database Backup & Snapshot Archives</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Create on-demand full database backups and download JSON/CSV dumps of school stock
+            Create on-demand full database backups and download JSON dumps of school stock
           </p>
         </div>
 
@@ -745,28 +768,33 @@ export function BackupMaintenanceView() {
               <span>Full Database JSON Export</span>
             </div>
             <p className="text-slate-600">
-              Download complete tables including users, categories, products, receipts, and audit history.
+              Download complete tables including users, categories, departments, items, invoices, receipts, and audit history.
             </p>
             <button
               onClick={handleBackupDownload}
               disabled={downloading}
-              className="px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{downloading ? 'Exporting...' : 'Download Full JSON Snapshot'}</span>
+              <span>{downloading ? 'Exporting & Downloading...' : 'Download Full JSON Snapshot'}</span>
             </button>
+            {lastBackupInfo && (
+              <div className="p-2.5 bg-emerald-100/70 border border-emerald-300 rounded-lg text-[11px] text-emerald-800 font-mono">
+                ✓ {lastBackupInfo}
+              </div>
+            )}
           </div>
 
           <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3 text-xs">
             <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
               <HardDriveDownload className="w-4 h-4 text-blue-700" />
-              <span>Automated Daily Snapshot</span>
+              <span>Supabase Cloud Automated Backup</span>
             </div>
             <p className="text-slate-600">
-              Daily automated backups run every night at 02:00 AM ICT with 30-day retention.
+              Automated physical backups are maintained daily on Supabase Cloud infrastructure with point-in-time recovery.
             </p>
             <div className="text-[11px] font-mono text-blue-800 font-bold">
-              Last Backup: Today, 02:00:14 AM (Size: 4.8 MB, 0 errors)
+              Infrastructure Status: ACTIVE_HEALTHY (Tokyo, ap-northeast-1)
             </div>
           </div>
         </div>
