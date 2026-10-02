@@ -11,6 +11,8 @@ export interface LogAuditParams {
   targetId?: string;
   targetName?: string;
   metadata?: Record<string, any>;
+  before?: Record<string, any> | null;
+  after?: Record<string, any> | null;
 }
 
 export async function logAuditEvent(params: LogAuditParams): Promise<AuditLog> {
@@ -24,6 +26,8 @@ export async function logAuditEvent(params: LogAuditParams): Promise<AuditLog> {
     targetId: params.targetId,
     targetName: params.targetName,
     metadata: params.metadata,
+    before: params.before || undefined,
+    after: params.after || undefined,
     createdAt: new Date().toISOString()
   };
 
@@ -40,6 +44,8 @@ export async function logAuditEvent(params: LogAuditParams): Promise<AuditLog> {
         target_id: newLog.targetId || null,
         target_name: newLog.targetName || null,
         metadata: newLog.metadata ? JSON.stringify(newLog.metadata) : null,
+        before: newLog.before ? JSON.stringify(newLog.before) : null,
+        after: newLog.after ? JSON.stringify(newLog.after) : null,
         created_at: newLog.createdAt
       });
     } catch (sbErr) {

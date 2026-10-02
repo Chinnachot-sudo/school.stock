@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Category } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requireAuth, requirePermission } from '@/lib/auth-server';
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-uniform', name: 'Uniforms & Dress Code', icon: '👕', description: 'School uniforms, polo shirts, shorts, skirts, PE kit' },
@@ -16,8 +17,12 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-equipment', name: 'Audio-Visual & Loans', icon: '📽️', description: 'Projectors, wireless microphones, adapters' }
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const authCheck = await requireAuth(request);
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
     if (isSupabaseConfigured && supabase) {
       const [catRes, deptRes] = await Promise.all([
         supabase.from('categories').select('*').order('name'),
@@ -65,6 +70,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:create');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const body = await request.json();
     const { name, icon = '🏷️', description = '' } = body;
 

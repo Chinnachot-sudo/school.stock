@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Receipt,
   Invoice,
@@ -11,9 +12,15 @@ import {
   CUSTOMER_TYPE_LABELS
 } from '@/types/inventory';
 import { useAuth } from '@/lib/auth-context';
+import { features } from '@/config/navigation.config';
 import ReceiptModal from '@/components/ReceiptModal';
 import InvoiceModal from '@/components/InvoiceModal';
 import CreateInvoiceModal from '@/components/CreateInvoiceModal';
+import {
+  BillingNotesView,
+  AgingReportView,
+  CreditNoteView
+} from '@/components/finance/FinanceSubViews';
 import {
   DollarSign,
   TrendingUp,
@@ -35,16 +42,32 @@ import {
   Receipt as ReceiptIcon,
   CheckCircle,
   Clock,
-  Scissors
+  Scissors,
+  CreditCard
 } from 'lucide-react';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
 
-export default function FinancePage() {
-  const { isSuperAdmin, isInventoryManager } = useAuth();
+function FinanceContent() {
+  const { can } = useAuth();
+  const searchParams = useSearchParams();
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'RECEIPTS' | 'INVOICES'>('RECEIPTS');
+  const [activeTab, setActiveTab] = useState<'RECEIPTS' | 'INVOICES' | 'BILLING' | 'AGING' | 'CREDIT_NOTE'>('RECEIPTS');
+
+  const tabParam = (searchParams.get('tab') || 'receipts').toLowerCase();
+
+  useEffect(() => {
+    if (tabParam === 'invoices') setActiveTab('INVOICES');
+    else if (tabParam === 'billing') setActiveTab('BILLING');
+    else if (tabParam === 'aging') setActiveTab('AGING');
+    else if (tabParam === 'credit-note') setActiveTab('CREDIT_NOTE');
+    else setActiveTab('RECEIPTS');
+
+    if (searchParams.get('action') === 'new') {
+      setIsCreateInvoiceOpen(true);
+    }
+  }, [tabParam, searchParams]);
 
   // Receipts State
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -421,36 +444,62 @@ export default function FinancePage() {
       </div>
 
       {/* Primary Tab Switcher */}
-      <div className="flex items-center gap-2 p-1.5 bg-slate-200/70 rounded-2xl w-fit">
-        <button
-          onClick={() => setActiveTab('RECEIPTS')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition ${
+      <div className="flex items-center gap-1.5 p-1.5 bg-slate-200/70 rounded-2xl w-fit overflow-x-auto">
+        <Link
+          href="/finance?tab=receipts"
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition ${
             activeTab === 'RECEIPTS'
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <ReceiptIcon className="w-4 h-4 text-blue-600" />
-          <span>Official Receipts</span>
-          <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.2 rounded-full">
+          <CreditCard className="w-4 h-4 text-emerald-600" />
+          <span>Record Payment</span>
+          <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.2 rounded-full">
             {receipts.length}
           </span>
-        </button>
+        </Link>
 
-        <button
-          onClick={() => setActiveTab('INVOICES')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition ${
+        <Link
+          href="/finance?tab=invoices"
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition ${
             activeTab === 'INVOICES'
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <FileText className="w-4 h-4 text-amber-600" />
-          <span>Half-A4 Invoices</span>
-          <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded-full">
+          <FileText className="w-4 h-4 text-blue-600" />
+          <span>Invoices</span>
+          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded-full">
             {invoices.length}
           </span>
-        </button>
+        </Link>
+
+        {features.billingNote && (
+          <Link
+            href="/finance?tab=billing"
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'BILLING'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4 text-purple-600" />
+            <span>Billing Note</span>
+          </Link>
+        )}
+
+        <Link
+          href="/finance?tab=aging"
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+            activeTab === 'AGING'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Clock className="w-4 h-4 text-amber-600" />
+          <span>Outstanding / Aging</span>
+        </Link>
       </div>
 
       {/* TAB 1: RECEIPTS VIEW */}
@@ -600,7 +649,7 @@ export default function FinancePage() {
                               <span>Print</span>
                             </button>
 
-                            {!isVoid && (isSuperAdmin || isInventoryManager) && (
+                            {!isVoid && can('pos:receipt:void') && (
                               <button
                                 onClick={() => handleVoidReceipt(receipt)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
@@ -777,6 +826,21 @@ export default function FinancePage() {
         </div>
       )}
 
+      {/* TAB 3: BILLING NOTES VIEW */}
+      {activeTab === 'BILLING' && (
+        <BillingNotesView invoices={invoices} />
+      )}
+
+      {/* TAB 4: AGING REPORT VIEW */}
+      {activeTab === 'AGING' && (
+        <AgingReportView invoices={invoices} />
+      )}
+
+      {/* TAB 5: CREDIT NOTE VIEW */}
+      {activeTab === 'CREDIT_NOTE' && (
+        <CreditNoteView />
+      )}
+
       {/* Printable Receipt Modal */}
       <ReceiptModal
         receipt={selectedReceipt}
@@ -810,5 +874,13 @@ export default function FinancePage() {
       />
 
     </div>
+  );
+}
+
+export default function FinancePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-500 font-sans">Loading Invoicing & Receivables...</div>}>
+      <FinanceContent />
+    </Suspense>
   );
 }

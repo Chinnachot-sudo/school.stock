@@ -17,13 +17,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user && !isPublicPage) {
-      router.replace('/login');
-      const timer = setTimeout(() => {
-        setShowDirectButton(true);
-      }, 700);
-      return () => clearTimeout(timer);
+      window.location.replace('/login');
     }
-  }, [loading, user, isPublicPage, router]);
+  }, [loading, user, isPublicPage]);
 
   if (isPublicPage) {
     return <>{children}</>;
@@ -47,7 +43,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             Roong Aroon International School
           </span>
           <p className="text-[11px] font-semibold text-[#6B7280] tracking-wide mt-0.5">
-            โรงเรียนนานาชาติรุ่งอรุณ • ERP Portal
+            IB World School • ERP Enterprise Portal
           </p>
 
           <div className="w-full border-t border-[#F3F4F6] my-5" />

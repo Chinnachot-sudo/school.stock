@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Department } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requireAuth, requirePermission } from '@/lib/auth-server';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const authCheck = await requireAuth(request);
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const db = readDb();
     return NextResponse.json({
       departments: db.departments || []
@@ -20,6 +26,11 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'iam:settings:configure');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const body = await request.json();
     const { id, allocatedBudget, spentBudget, name } = body;
 

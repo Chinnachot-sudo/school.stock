@@ -24,7 +24,7 @@ import {
 import * as XLSX from 'xlsx';
 
 export default function CustomersPage() {
-  const { isSuperAdmin, isInventoryManager } = useAuth();
+  const { can } = useAuth();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -240,7 +240,7 @@ export default function CustomersPage() {
             <span>Export Excel</span>
           </button>
 
-          {(isSuperAdmin || isInventoryManager) && (
+          {can('customer:create') && (
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#1F4D3A] hover:bg-[#183D2E] text-white text-xs font-medium transition"
@@ -437,24 +437,26 @@ export default function CustomersPage() {
                       {/* Actions */}
                       <td className="py-2.5 px-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => setEditingCustomer({
-                              ...customer,
-                              nickname: customer.nickname || '',
-                              studentId: customer.studentId || '',
-                              parentName: customer.parentName || '',
-                              phone: customer.phone || '',
-                              email: customer.email || '',
-                              note: customer.note || '',
-                              grade: customer.grade || ''
-                            })}
-                            className="p-1.5 text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] rounded-lg transition"
-                            title="Edit"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
+                          {can('customer:update') && (
+                            <button
+                              onClick={() => setEditingCustomer({
+                                ...customer,
+                                nickname: customer.nickname || '',
+                                studentId: customer.studentId || '',
+                                parentName: customer.parentName || '',
+                                phone: customer.phone || '',
+                                email: customer.email || '',
+                                note: customer.note || '',
+                                grade: customer.grade || ''
+                              })}
+                              className="p-1.5 text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] rounded-lg transition"
+                              title="Edit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
-                          {(isSuperAdmin || isInventoryManager) && (
+                          {can('customer:delete') && (
                             <button
                               onClick={() => handleDelete(customer.id, customer.name)}
                               className="p-1.5 text-[#6B6560] hover:text-[#B42318] hover:bg-red-50 rounded-lg transition"

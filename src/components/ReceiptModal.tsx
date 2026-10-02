@@ -69,7 +69,7 @@ export default function ReceiptModal({ receipt, isOpen, onClose }: ReceiptModalP
                   Roong Aroon International School
                 </h3>
                 <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-0.5">
-                  โรงเรียนนานาชาติรุ่งอรุณ
+                  RAIS School Store & Uniform Center
                 </p>
               </div>
             </div>

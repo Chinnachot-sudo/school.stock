@@ -1,15 +1,85 @@
 export type TransactionType = 'IN' | 'OUT' | 'ADJUST' | 'SALE' | 'VOID_SALE' | 'RETURN_RESTOCK';
 
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'INVENTORY_MANAGER' | 'TEACHER';
+export type UserRole =
+  | 'super_admin'
+  | 'legacy_admin'
+  | 'admin'
+  | 'warehouse'
+  | 'cashier'
+  | 'accountant'
+  | 'teacher'
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'WAREHOUSE'
+  | 'CASHIER'
+  | 'ACCOUNTANT'
+  | 'INVENTORY_MANAGER'
+  | 'TEACHER';
+
+export type PermissionKey =
+  // Inventory
+  | 'inventory:item:read'
+  | 'inventory:item:create'
+  | 'inventory:item:update'
+  | 'inventory:item:delete'
+  | 'inventory:stock:restock'
+  | 'inventory:stock:issue'
+  | 'inventory:stock:adjust'
+  // POS & Receipts
+  | 'pos:shift:manage'
+  | 'pos:receipt:read'
+  | 'pos:receipt:create'
+  | 'pos:receipt:void'
+  | 'pos:receipt:refund'
+  // Customers
+  | 'customer:read'
+  | 'customer:create'
+  | 'customer:update'
+  | 'customer:delete'
+  // Invoicing & Payments
+  | 'invoice:create'
+  | 'invoice:read'
+  | 'invoice:update'
+  | 'payment:receive'
+  // Requests
+  | 'request:create'
+  | 'request:read:own'
+  | 'request:approve'
+  | 'request:approve:limited'
+  // Finance & Reports
+  | 'finance:cost:read'
+  | 'finance:profit:read'
+  | 'report:cost:read'
+  | 'label:print'
+  | 'report:read'
+  | 'report:export'
+  // IAM & Security
+  | 'iam:user:read'
+  | 'iam:user:create'
+  | 'iam:user:update'
+  | 'iam:user:disable'
+  | 'iam:user:delete'
+  | 'iam:role:assign'
+  | 'iam:settings:configure'
+  | 'audit:log:read';
 
 export interface AppUser {
   id: string;
   username: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  nickname?: string;
   email?: string;
   role: UserRole;
+  roles?: string[];
+  permissions?: PermissionKey[] | string[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface UserWithPermissions extends AppUser {
+  permissions: PermissionKey[];
 }
 
 export interface UserRoleRecord {
@@ -18,32 +88,22 @@ export interface UserRoleRecord {
   name?: string;
 }
 
-export const ROLE_LABELS: Record<UserRole, string> = {
+export const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  legacy_admin: 'Legacy Admin',
+  teacher: 'Teacher / Staff',
   SUPER_ADMIN: 'Super Admin',
   ADMIN: 'Admin',
   INVENTORY_MANAGER: 'Admin',
   TEACHER: 'Teacher / Staff'
 };
 
-// Whitelist mapping for school accounts fallback
-export const DEFAULT_ROLE_MAP: Record<string, UserRole> = {
-  'chinnachot@roong-aroon.ac.th': 'SUPER_ADMIN',
-  'superadmin': 'SUPER_ADMIN',
-  'admin': 'ADMIN',
-  'chinnachot': 'SUPER_ADMIN',
-  'artima@roong-aroon.ac.th': 'ADMIN',
-  'pakapol@roong-aroon.ac.th': 'ADMIN',
-  'manusnan@roong-aroon.ac.th': 'ADMIN',
-  'pattawadee.k@roong-aroon.ac.th': 'ADMIN'
-};
-
 export function getUserRole(emailOrRole?: string | null): UserRole {
-  if (!emailOrRole) return 'TEACHER';
+  if (!emailOrRole) return 'teacher';
   const clean = emailOrRole.toLowerCase().trim();
-  if (clean === 'super_admin' || clean === 'superadmin') return 'SUPER_ADMIN';
-  if (clean === 'admin' || clean === 'inventory_manager') return 'ADMIN';
-  if (clean === 'teacher' || clean === 'staff') return 'TEACHER';
-  return DEFAULT_ROLE_MAP[clean] || 'TEACHER';
+  if (clean === 'super_admin' || clean === 'superadmin') return 'super_admin';
+  if (clean === 'admin' || clean === 'legacy_admin' || clean === 'inventory_manager') return 'legacy_admin';
+  return 'teacher';
 }
 
 export const STANDARD_UNITS = [
@@ -94,9 +154,9 @@ export interface Category {
 export interface Department {
   id: string;
   name: string;
-  allocatedBudget?: number; // งบประมาณจัดสรร
-  spentBudget?: number;     // งบประมาณที่ใช้ไปแล้ว
-  fiscalYear?: string;     // ปีการศึกษา / ปีงบประมาณ
+  allocatedBudget?: number; // Allocated budget
+  spentBudget?: number;     // Spent budget
+  fiscalYear?: string;     // Academic / Fiscal year
 }
 
 // IB Curriculum Structure & Constants
@@ -222,6 +282,8 @@ export interface AuditLog {
   targetId?: string; // Item ID, User ID, Receipt ID etc.
   targetName?: string;
   metadata?: Record<string, any>;
+  before?: Record<string, any> | null;
+  after?: Record<string, any> | null;
   createdAt: string; // ISO 8601
 }
 
@@ -237,22 +299,22 @@ export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  CASH: 'Cash (เงินสด)',
-  CARD: 'Credit / Debit Card (บัตรเครดิต/เดบิต)',
+  CASH: 'Cash',
+  CARD: 'Credit / Debit Card',
   PROMPTPAY: 'PromptPay QR',
-  TRANSFER: 'Bank Transfer (เงินโอน)',
-  WELFARE: 'School Welfare Wallet (ตัดสวัสดิการโรงเรียน)'
+  TRANSFER: 'Bank Transfer',
+  WELFARE: 'School Welfare Wallet'
 };
 
 // Return & Refund Types
 export type ReturnReason = 'DEFECTIVE' | 'WRONG_SIZE' | 'MIND_CHANGED' | 'DUPLICATE' | 'OTHER';
 
 export const RETURN_REASON_LABELS: Record<ReturnReason, string> = {
-  DEFECTIVE: 'Defective / Damaged (สินค้าชำรุด)',
-  WRONG_SIZE: 'Wrong Size / Spec (ขนาด/สเปกไม่ถูกต้อง)',
-  MIND_CHANGED: 'Customer Changed Mind (เปลี่ยนใจ)',
-  DUPLICATE: 'Duplicate Purchase (ซื้อซ้ำ)',
-  OTHER: 'Other Reason (เหตุผลอื่นๆ)'
+  DEFECTIVE: 'Defective / Damaged',
+  WRONG_SIZE: 'Wrong Size / Spec',
+  MIND_CHANGED: 'Customer Changed Mind',
+  DUPLICATE: 'Duplicate Purchase',
+  OTHER: 'Other Reason'
 };
 
 export interface ReturnRecord {
@@ -274,6 +336,26 @@ export interface ReturnRecord {
   createdAt: string;
 }
 
+export type GuardianRelationship =
+  | 'Father'
+  | 'Mother'
+  | 'Stepmother'
+  | 'Stepfather'
+  | 'Legal Guardian'
+  | 'Grandmother'
+  | 'Grandfather'
+  | 'Sister'
+  | 'Brother'
+  | 'Other';
+
+export interface FamilyMember {
+  id: string;
+  name: string;
+  relationship: GuardianRelationship;
+  phone?: string;
+  email?: string;
+}
+
 // Customer Database Record
 export interface Customer {
   id: string;
@@ -283,9 +365,10 @@ export interface Customer {
   programme: IBProgramme;
   grade: string; // e.g. "Grade 7 (MYP 2)"
   studentId?: string; // e.g. "RAIS-2024-042"
-  parentName?: string; // e.g. "Mr. David Jenkins"
+  parentName?: string; // e.g. "Smith Amornsaensuk (Father), Man Chi Mo (Mother)"
   phone?: string;
   email?: string;
+  guardians?: FamilyMember[];
   points?: number; // Loyalty points (e.g. 150)
   welfareBalance?: number; // School Welfare Wallet balance (e.g. 1500)
   tier?: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';

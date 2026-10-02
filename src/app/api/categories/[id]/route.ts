@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:create');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
     const body = await request.json();
     const { name, icon, description } = body;
@@ -54,6 +60,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:delete');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
 
     // 1. Supabase Cloud DB

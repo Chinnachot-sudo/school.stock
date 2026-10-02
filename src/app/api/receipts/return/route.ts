@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { ReturnRecord, ReturnReason, RETURN_REASON_LABELS } from '@/types/inventory';
+import { requireAnyPermission } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
   try {
+    const authCheck = await requireAnyPermission(request, ['pos:receipt:refund', 'pos:receipt:void']);
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const body = await request.json();
     const {
       receiptId,
@@ -14,14 +20,16 @@ export async function POST(request: Request) {
       cashierName = 'Store Cashier'
     } = body;
 
-    if (!receiptId) {
-      return NextResponse.json({ error: 'Receipt ID or Number is required' }, { status: 400 });
+    const cleanReceiptId = String(receiptId).trim().replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!cleanReceiptId) {
+      return NextResponse.json({ error: 'Valid Receipt ID or Number is required' }, { status: 400 });
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Please select at least 1 item to return' }, { status: 400 });
     }
 
+    const verifiedCashierName = authCheck.user.name || authCheck.user.username || 'Store Cashier';
     const totalRefund = items.reduce((sum: number, it: any) => sum + (Number(it.refundAmount) || (Number(it.unitPrice) * Number(it.quantity))), 0);
     const returnId = `ret-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const reasonLabel = RETURN_REASON_LABELS[reason as ReturnReason] || reason;
@@ -31,11 +39,29 @@ export async function POST(request: Request) {
       const { data: receipt } = await supabase
         .from('receipts')
         .select('*')
-        .or(`id.eq.${receiptId},receipt_number.eq.${receiptId}`)
+        .or(`id.eq.${cleanReceiptId},receipt_number.eq.${cleanReceiptId}`)
         .maybeSingle();
 
       if (!receipt) {
         return NextResponse.json({ error: 'Original receipt not found' }, { status: 404 });
+      }
+
+      if (receipt.status === 'VOIDED') {
+        return NextResponse.json({ error: 'Cannot return items from a voided receipt' }, { status: 400 });
+      }
+
+      const originalItems = typeof receipt.items === 'string' ? JSON.parse(receipt.items) : (receipt.items || []);
+
+      // Validate returned items against original receipt
+      for (const it of items) {
+        const orig = originalItems.find((oi: any) => oi.itemId === it.itemId || oi.itemCode === it.itemCode);
+        if (!orig) {
+          return NextResponse.json({ error: `Item "${it.itemName || it.itemId}" was not on receipt #${receipt.receipt_number}` }, { status: 400 });
+        }
+        const returnQty = Number(it.quantity) || 1;
+        if (returnQty > (orig.quantity || 0)) {
+          return NextResponse.json({ error: `Return quantity (${returnQty}) exceeds purchased quantity (${orig.quantity}) for "${orig.itemName}"` }, { status: 400 });
+        }
       }
 
       // Restock items in Supabase
@@ -79,7 +105,7 @@ export async function POST(request: Request) {
         totalRefund,
         reason,
         reasonDetail,
-        cashierName,
+        cashierName: verifiedCashierName,
         createdAt: new Date().toISOString()
       };
 

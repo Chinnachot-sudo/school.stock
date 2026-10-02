@@ -1,7 +1,9 @@
--- =========================================================
--- สคริปต์สร้างและอัปเดตฐานข้อมูลสำหรับระบบ ERP โรงเรียนรุ่งอรุณ (Supabase SQL)
--- วิธีใช้: คัดลอกข้อความทั้งหมดไปวางในเมนู "SQL Editor" บน Supabase แล้วกด "RUN"
--- =========================================================
+-- ==============================================================================
+-- [DEPRECATED] REFERENCE ONLY - DO NOT MODIFY DIRECTLY
+-- All future database schema changes must be added as new migration files under:
+-- supabase/migrations/ (e.g. supabase/migrations/0001_baseline.sql)
+-- ==============================================================================
+-- สคริปต์สร้างและอัปเดตฐานข้อมูลสำหรับระบบ ERP โรงเรียนรุ่งอรุณ (Supabase SQL - Reference)
 
 -- 1. ตารางหมวดหมู่สินค้า (Categories)
 CREATE TABLE IF NOT EXISTS categories (
@@ -100,33 +102,98 @@ CREATE TABLE IF NOT EXISTS receipts (
 );
 
 -- =========================================================
--- ปิด Row Level Security (RLS) เพื่อให้ระบบ API สามารถ เพิ่ม/แก้ไข/ลบ ข้อมูลได้ทันที
+-- 7. ระบบจัดการสิทธิ์ 3-Tier RBAC/PBAC & Row-Level Security (RLS)
 -- =========================================================
-ALTER TABLE categories DISABLE ROW LEVEL SECURITY;
-ALTER TABLE departments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE items DISABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
-ALTER TABLE customers DISABLE ROW LEVEL SECURITY;
-ALTER TABLE receipts DISABLE ROW LEVEL SECURITY;
+CREATE SCHEMA IF NOT EXISTS private;
 
--- หรือในกรณีที่เปิด RLS ไว้ ให้สร้าง Policy อนุญาตให้ทุกสิทธิ์เข้าถึงได้ (Public Access)
-DROP POLICY IF EXISTS "public_categories_all" ON categories;
-CREATE POLICY "public_categories_all" ON categories FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE TABLE IF NOT EXISTS permissions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  module TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-DROP POLICY IF EXISTS "public_departments_all" ON departments;
-CREATE POLICY "public_departments_all" ON departments FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE TABLE IF NOT EXISTS roles (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  is_system BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-DROP POLICY IF EXISTS "public_items_all" ON items;
-CREATE POLICY "public_items_all" ON items FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission_id TEXT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (role_id, permission_id)
+);
 
-DROP POLICY IF EXISTS "public_transactions_all" ON transactions;
-CREATE POLICY "public_transactions_all" ON transactions FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE TABLE IF NOT EXISTS user_roles (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id TEXT NOT NULL,
+  role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT uq_user_role UNIQUE (user_id, role_id)
+);
 
-DROP POLICY IF EXISTS "public_customers_all" ON customers;
-CREATE POLICY "public_customers_all" ON customers FOR ALL TO public USING (true) WITH CHECK (true);
+-- ฟังก์ชันตรวจสอบสิทธิ์ระดับ Database
+CREATE OR REPLACE FUNCTION private.authorize(required_permission TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  current_user_id TEXT;
+  has_perm BOOLEAN;
+BEGIN
+  current_user_id := coalesce(
+    nullif(current_setting('request.jwt.claim.sub', true), ''),
+    nullif(current_setting('app.current_user_id', true), '')
+  );
 
-DROP POLICY IF EXISTS "public_receipts_all" ON receipts;
-CREATE POLICY "public_receipts_all" ON receipts FOR ALL TO public USING (true) WITH CHECK (true);
+  IF current_user_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1
+    FROM user_roles ur
+    JOIN role_permissions rp ON ur.role_id = rp.role_id
+    WHERE ur.user_id = current_user_id
+      AND (ur.expires_at IS NULL OR ur.expires_at > now())
+      AND (rp.permission_id = required_permission OR ur.role_id = 'SUPER_ADMIN')
+  ) INTO has_perm;
+
+  RETURN coalesce(has_perm, false);
+END;
+$$;
+
+-- เปิดใช้งาน Row Level Security (RLS)
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
+
+-- กำหนด Policies ที่เข้มงวด
+CREATE POLICY "categories_read" ON categories FOR SELECT TO public USING (true);
+CREATE POLICY "departments_read" ON departments FOR SELECT TO public USING (true);
+
+CREATE POLICY "items_read" ON items FOR SELECT TO public USING (true);
+CREATE POLICY "items_insert" ON items FOR INSERT TO authenticated WITH CHECK (private.authorize('inventory.items.create'));
+CREATE POLICY "items_update" ON items FOR UPDATE TO authenticated USING (private.authorize('inventory.items.edit'));
+CREATE POLICY "items_delete" ON items FOR DELETE TO authenticated USING (private.authorize('inventory.items.delete'));
+
+CREATE POLICY "receipts_read" ON receipts FOR SELECT TO authenticated USING (private.authorize('finance.receipts.read') OR private.authorize('finance.pos.sell'));
+CREATE POLICY "receipts_insert" ON receipts FOR INSERT TO authenticated WITH CHECK (private.authorize('finance.pos.sell'));
+CREATE POLICY "receipts_update" ON receipts FOR UPDATE TO authenticated USING (private.authorize('finance.receipts.void'));
+
+CREATE POLICY "customers_read" ON customers FOR SELECT TO authenticated USING (private.authorize('customers.read'));
+CREATE POLICY "customers_modify" ON customers FOR ALL TO authenticated USING (private.authorize('customers.manage'));
 
 -- =========================================================
 -- ข้อมูลหมวดหมู่ตั้งต้นตามหลักสูตรโรงเรียน IB (Initial Categories)

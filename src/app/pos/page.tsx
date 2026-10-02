@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Item,
   Category,
@@ -58,9 +59,11 @@ import {
   SlidersHorizontal,
   Check,
   Tag,
-  Wallet
+  Wallet,
+  CalendarDays
 } from 'lucide-react';
 import Link from 'next/link';
+import { ShiftView, TodaySalesView, ReturnExchangeView } from '@/components/pos/PosSubViews';
 
 interface CartItem {
   item: Item;
@@ -83,8 +86,10 @@ interface DraftOrder {
 
 const DEFAULT_PROMPTPAY_ID = process.env.NEXT_PUBLIC_DEFAULT_PROMPTPAY_ID || '0994000165';
 
-export default function PosPage() {
+function PosContent() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const currentTab = (searchParams.get('tab') || 'sell').toLowerCase();
 
   // Data states
   const [items, setItems] = useState<Item[]>([]);
@@ -103,7 +108,7 @@ export default function PosPage() {
   const [orderNumber] = useState(() => `ORD-${Date.now().toString().slice(-5)}`);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerType, setCustomerType] = useState<CustomerType>('STUDENT');
-  const [customerName, setCustomerName] = useState('Walk-in Customer / นักเรียน');
+  const [customerName, setCustomerName] = useState('Walk-in Customer');
   const [studentClass, setStudentClass] = useState(ALL_IB_GRADES[3] || 'Grade 1 (PYP 1)');
   const [studentId, setStudentId] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -290,7 +295,7 @@ export default function PosPage() {
 
   const handleClearCustomer = () => {
     setSelectedCustomer(null);
-    setCustomerName('Walk-in Customer / นักเรียน');
+    setCustomerName('Walk-in Customer');
     setStudentId('');
     setUseLoyaltyPoints(false);
   };
@@ -506,7 +511,7 @@ export default function PosPage() {
       const cashierEmail = user?.email || '';
 
       const payload = {
-        customerName: customerName.trim() || 'Walk-in Customer / นักเรียน',
+        customerName: customerName.trim() || 'Walk-in Customer',
         customerType,
         studentClass: customerType === 'STUDENT' ? studentClass : undefined,
         studentId: studentId.trim() || undefined,
@@ -886,10 +891,98 @@ export default function PosPage() {
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* MAIN TWO-COLUMN DASHBOARD (Matching Reference Mockup)                     */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      {/* Tab Navigation for POS Sub-items */}
+      <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5 rounded-2xl shadow-xs overflow-x-auto">
+        <Link
+          href="/pos"
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            currentTab === 'sell'
+              ? 'bg-[#0B6B4F] text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <ShoppingCart className="w-4 h-4" />
+          <span>Sell</span>
+        </Link>
+        <Link
+          href="/pos?tab=shift"
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            currentTab === 'shift'
+              ? 'bg-[#0B6B4F] text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Shift</span>
+        </Link>
+        <Link
+          href="/pos?tab=today"
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            currentTab === 'today'
+              ? 'bg-[#0B6B4F] text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <CalendarDays className="w-4 h-4" />
+          <span>Today's Sales</span>
+        </Link>
+        <Link
+          href="/pos?tab=return"
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            currentTab === 'return'
+              ? 'bg-[#0B6B4F] text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>Return / Exchange</span>
+        </Link>
+      </div>
+
+      {currentTab === 'shift' && (
+        <ShiftView
+          receipts={recentReceipts}
+          cashierName={user?.user_metadata?.full_name || user?.email || 'Store Cashier'}
+        />
+      )}
+
+      {currentTab === 'today' && (
+        <TodaySalesView
+          receipts={recentReceipts}
+          onViewReceipt={(r) => setCompletedReceipt(r)}
+          onDuplicateBill={handleDuplicateBill}
+        />
+      )}
+
+      {currentTab === 'return' && (
+        <ReturnExchangeView
+          receipts={recentReceipts}
+          onConfirmReturn={async (receiptId, itemsToReturn, returnReason, returnDetail) => {
+            const res = await fetch('/api/receipts/return', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                receiptId,
+                items: itemsToReturn,
+                reason: returnReason,
+                reasonDetail: returnDetail,
+                cashierName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Store Cashier'
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to process return');
+            showToast(data.message || 'Return completed and inventory restocked!');
+            fetchInitialData();
+          }}
+        />
+      )}
+
+      {currentTab === 'sell' && (
+        <>
+        {/* ========================================================================= */}
+        {/* MAIN TWO-COLUMN DASHBOARD (Matching Reference Mockup)                     */}
+        {/* ========================================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
         {/* ======================================================================= */}
         {/* LEFT COLUMN: Catalog, Categories & Search (7 Cols)                     */}
@@ -1147,7 +1240,7 @@ export default function PosPage() {
                     onClick={handleHoldDraft}
                     disabled={cart.length === 0}
                     className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-bold transition disabled:opacity-40"
-                    title="Hold Bill (พักบิล)"
+                    title="Hold Bill"
                   >
                     <PauseCircle className="w-4 h-4" />
                   </button>
@@ -1155,7 +1248,7 @@ export default function PosPage() {
                     onClick={clearCart}
                     disabled={cart.length === 0}
                     className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 text-rose-600 text-xs font-bold transition disabled:opacity-40"
-                    title="Clear Cart (ล้างตะกร้า)"
+                    title="Clear Cart"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -1190,7 +1283,7 @@ export default function PosPage() {
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-[#0B6B4F]" />
-                    <span>Customer Details (เลือกลูกค้า)</span>
+                    <span>Customer Details</span>
                   </label>
                   {selectedCustomer && (
                     <button
@@ -1291,7 +1384,7 @@ export default function PosPage() {
                       </div>
                       <div>
                         <div className="text-xs font-bold text-emerald-950">
-                          School Welfare Wallet (สวัสดิการโรงเรียน)
+                          School Welfare Wallet
                         </div>
                         <div className="text-[10px] text-emerald-700">
                           Balance: <strong className="font-mono font-bold text-[#0B6B4F]">฿{(selectedCustomer.welfareBalance ?? 1500).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</strong>
@@ -1396,7 +1489,7 @@ export default function PosPage() {
               <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200/70">
                 <div className="flex items-center gap-1 text-xs font-bold text-slate-700">
                   <Percent className="w-3.5 h-3.5 text-[#0B6B4F]" />
-                  <span>Discount (ส่วนลด)</span>
+                  <span>Discount</span>
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -1408,7 +1501,7 @@ export default function PosPage() {
                         discountType === 'FIXED' ? 'bg-[#0B6B4F] text-white' : 'text-slate-600'
                       }`}
                     >
-                      ฿ บาท
+                      THB (฿)
                     </button>
                     <button
                       onClick={() => setDiscountType('PERCENT')}
@@ -1436,7 +1529,7 @@ export default function PosPage() {
               {/* Price Calculations */}
               <div className="space-y-1 text-xs text-slate-600">
                 <div className="flex justify-between">
-                  <span>Subtotal (ยอดรวมสินค้า)</span>
+                  <span>Subtotal</span>
                   <span className="font-semibold text-slate-800">฿{subtotal.toLocaleString()}</span>
                 </div>
 
@@ -1455,7 +1548,7 @@ export default function PosPage() {
                 )}
 
                 <div className="flex justify-between items-baseline pt-2 border-t border-slate-100">
-                  <span className="text-sm font-black text-slate-900">Total Due (ยอดสุทธิ)</span>
+                  <span className="text-sm font-black text-slate-900">Total Due</span>
                   <span className="text-2xl font-black text-[#0B6B4F]">
                     ฿{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
@@ -1469,7 +1562,7 @@ export default function PosPage() {
                 className="w-full py-3.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-black text-sm transition shadow-lg shadow-emerald-950/20 active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <CreditCard className="w-5 h-5" />
-                <span>Pay / ชำระเงิน ฿{totalAmount.toLocaleString()}</span>
+                <span>Pay ฿{totalAmount.toLocaleString()}</span>
               </button>
 
               {/* Sub-Actions Grid (Matching reference mockup buttons) */}
@@ -1521,6 +1614,8 @@ export default function PosPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* ========================================================================= */}
       {/* 1. CHECKOUT & PAYMENT MODAL (Multi-Payment: Cash, Card, QR, Transfer)     */}
@@ -1564,7 +1659,7 @@ export default function PosPage() {
 
               {/* Payment Methods Tabs (Cash, Card, QR, Transfer, Welfare) */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700">Payment Method (วิธีชำระเงิน)</label>
+                <label className="text-xs font-bold text-slate-700">Payment Method</label>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   <button
                     onClick={() => setPaymentMethod('CASH')}
@@ -1575,7 +1670,7 @@ export default function PosPage() {
                     }`}
                   >
                     <Banknote className="w-5 h-5" />
-                    <span>Cash (เงินสด)</span>
+                    <span>Cash</span>
                   </button>
 
                   <button
@@ -1587,7 +1682,7 @@ export default function PosPage() {
                     }`}
                   >
                     <CreditCard className="w-5 h-5" />
-                    <span>Card (บัตร)</span>
+                    <span>Card</span>
                   </button>
 
                   <button
@@ -1611,7 +1706,7 @@ export default function PosPage() {
                     }`}
                   >
                     <Building2 className="w-5 h-5" />
-                    <span>Bank (โอน)</span>
+                    <span>Bank Transfer</span>
                   </button>
 
                   <button
@@ -1623,7 +1718,7 @@ export default function PosPage() {
                     }`}
                   >
                     <Wallet className="w-5 h-5 text-[#0B6B4F]" />
-                    <span>Welfare (สวัสดิการ)</span>
+                    <span>Welfare</span>
                   </button>
                 </div>
               </div>
@@ -1633,7 +1728,7 @@ export default function PosPage() {
                 <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Cash Received (รับเงินสดมา)
+                      Cash Received
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-2.5 text-slate-400 font-bold">฿</span>
@@ -1668,7 +1763,7 @@ export default function PosPage() {
 
                   {/* Change Calculation */}
                   <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-sm">
-                    <span className="font-bold text-slate-600">Change (เงินทอน):</span>
+                    <span className="font-bold text-slate-600">Change:</span>
                     <span className="text-lg font-black text-emerald-700">
                       ฿{changeAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
@@ -1681,7 +1776,7 @@ export default function PosPage() {
                 <div className="space-y-3 bg-blue-50/50 p-4 rounded-2xl border border-blue-200">
                   <div className="flex items-center gap-2 text-xs text-blue-900 font-bold">
                     <CreditCard className="w-4 h-4 text-blue-600" />
-                    <span>Credit / Debit Card Processing (เครื่องรูดบัตร EDC)</span>
+                    <span>Credit / Debit Card Processing (EDC)</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -1751,14 +1846,14 @@ export default function PosPage() {
                 <div className="space-y-3 bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200">
                   <div className="flex items-center gap-2 text-xs text-emerald-950 font-bold">
                     <Wallet className="w-4 h-4 text-[#0B6B4F]" />
-                    <span>School Welfare Wallet (ตัดบัญชีสวัสดิการโรงเรียน)</span>
+                    <span>School Welfare Wallet</span>
                   </div>
 
                   {selectedCustomer ? (
                     <div className="space-y-2">
                       <div className="bg-white p-3 rounded-xl border border-emerald-200 space-y-1.5 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-slate-600">Account Holder (เจ้าของบัญชี):</span>
+                          <span className="text-slate-600">Account Holder:</span>
                           <span className="font-bold text-slate-800">{selectedCustomer.name}</span>
                         </div>
                         <div className="flex justify-between">
@@ -1786,7 +1881,7 @@ export default function PosPage() {
                       {((selectedCustomer.welfareBalance ?? 1500) < totalAmount) && (
                         <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
-                          <span>Insufficient Welfare Balance! (ยอดเงินสวัสดิการไม่เพียงพอสำหรับบิลนี้)</span>
+                          <span>Insufficient Welfare Balance!</span>
                         </div>
                       )}
                     </div>
@@ -1821,7 +1916,7 @@ export default function PosPage() {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Confirm & Print Receipt (ออกใบเสร็จ)</span>
+                      <span>Confirm & Print Receipt</span>
                     </>
                   )}
                 </button>
@@ -1832,7 +1927,7 @@ export default function PosPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. RETURN & REFUND MODAL (เลือก, คอนเฟิร์ม, บันทึกเหตุผล)                 */}
+      {/* 2. RETURN & REFUND MODAL */}
       {/* ========================================================================= */}
       {isReturnModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
@@ -1841,7 +1936,7 @@ export default function PosPage() {
               <div>
                 <h3 className="font-black text-base flex items-center gap-2">
                   <RotateCcw className="w-5 h-5 text-rose-300" />
-                  <span>Return & Refund Item (คืนสินค้าและคืนสต็อก)</span>
+                  <span>Return & Refund Item</span>
                 </h3>
                 <p className="text-xs text-rose-200">Select receipt, choose items to return, and restock to inventory</p>
               </div>
@@ -1861,7 +1956,7 @@ export default function PosPage() {
               {!selectedReturnReceipt ? (
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-slate-700 block">
-                    Find Sale Receipt (ค้นหาเลขที่ใบเสร็จ)
+                    Find Sale Receipt
                   </label>
                   <div className="relative">
                     <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
@@ -1961,7 +2056,7 @@ export default function PosPage() {
                   {/* Return Reason Dropdown */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Return Reason (เหตุผลการคืน)</label>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Return Reason</label>
                       <select
                         value={returnReason}
                         onChange={e => setReturnReason(e.target.value as ReturnReason)}
@@ -1974,7 +2069,7 @@ export default function PosPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Remark / Detail (หมายเหตุ)</label>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Remark / Detail</label>
                       <input
                         type="text"
                         placeholder="Specific condition or note..."
@@ -2009,7 +2104,7 @@ export default function PosPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. BILL ADJUSTMENT MODAL (สร้างสำเนา, แก้ไข, ยกเลิกบิล)                   */}
+      {/* 3. BILL ADJUSTMENT MODAL */}
       {/* ========================================================================= */}
       {isBillsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
@@ -2070,7 +2165,7 @@ export default function PosPage() {
                         className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0B6B4F] font-bold flex items-center gap-1 transition"
                       >
                         <Copy className="w-3.5 h-3.5" />
-                        <span>สร้างสำเนา (Duplicate)</span>
+                        <span>Duplicate</span>
                       </button>
 
                       {/* Reprint */}
@@ -2082,7 +2177,7 @@ export default function PosPage() {
                         className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center gap-1 transition"
                       >
                         <Printer className="w-3.5 h-3.5" />
-                        <span>พิมพ์ซ้ำ</span>
+                        <span>Reprint</span>
                       </button>
 
                       {/* Void / Cancel */}
@@ -2093,7 +2188,7 @@ export default function PosPage() {
                           className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1 transition"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          <span>ยกเลิกบิล (Void)</span>
+                          <span>Void Bill</span>
                         </button>
                       )}
                     </div>
@@ -2118,7 +2213,7 @@ export default function PosPage() {
             <div className="px-6 py-4 bg-amber-900 text-white flex items-center justify-between">
               <h3 className="font-black text-base flex items-center gap-2">
                 <PauseCircle className="w-5 h-5 text-amber-300" />
-                <span>Held Bills / Draft Orders (บิลพัก)</span>
+                <span>Held Bills / Draft Orders</span>
               </h3>
               <button
                 onClick={() => setShowDraftsModal(false)}
@@ -2175,7 +2270,7 @@ export default function PosPage() {
             <div className="px-6 py-4 bg-[#0B6B4F] text-white flex items-center justify-between">
               <h3 className="font-black text-base flex items-center gap-2">
                 <Copy className="w-5 h-5 text-emerald-200" />
-                <span>Confirm Re-Order (ยืนยันสั่งซื้อซ้ำ)</span>
+                <span>Confirm Re-Order</span>
               </h3>
               <button
                 onClick={() => setReOrderTargetReceipt(null)}
@@ -2187,20 +2282,20 @@ export default function PosPage() {
 
             <div className="p-6 space-y-4 text-xs">
               <p className="text-slate-600 text-sm">
-                คุณต้องการโหลดรายการสินค้าจากใบเสร็จ <strong className="font-mono text-[#0B6B4F]">#{reOrderTargetReceipt.receiptNumber}</strong> เข้าสู่ตะกร้าขายเพื่อทำรายการใหม่หรือไม่?
+                Do you want to reload items from receipt <strong className="font-mono text-[#0B6B4F]">#{reOrderTargetReceipt.receiptNumber}</strong> into the cart to create a new order?
               </p>
 
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Customer (ลูกค้า):</span>
+                  <span className="text-slate-500">Customer:</span>
                   <span className="font-bold text-slate-800">{reOrderTargetReceipt.customerName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Items (รายการสินค้า):</span>
+                  <span className="text-slate-500">Items:</span>
                   <span className="font-bold text-slate-800">{reOrderTargetReceipt.items.length} items</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Total (ยอดรวมเดิม):</span>
+                  <span className="text-slate-500">Total:</span>
                   <span className="font-black font-mono text-[#0B6B4F]">฿{reOrderTargetReceipt.totalAmount.toLocaleString()}</span>
                 </div>
               </div>
@@ -2211,7 +2306,7 @@ export default function PosPage() {
                   onClick={() => setReOrderTargetReceipt(null)}
                   className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition cursor-pointer"
                 >
-                  Cancel (ยกเลิก)
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -2252,3 +2347,12 @@ export default function PosPage() {
     </div>
   );
 }
+
+export default function PosPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-500 font-sans">Loading Point of Sale...</div>}>
+      <PosContent />
+    </Suspense>
+  );
+}
+

@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, role, isSuperAdmin, isInventoryManager, canPrintQr, signOut } = useAuth();
+  const { user, roleLabel, signOut, can } = useAuth();
 
   // Pre-login: completely hide Top Nav and Bottom Nav
   if (!user || pathname === '/login') {
@@ -19,10 +19,10 @@ export default function Navbar() {
     { label: 'Scan', href: '/', icon: ScanLine },
     { label: 'POS Terminal', href: '/pos', icon: Store },
     { label: 'Inventory', href: '/inventory', icon: Boxes },
-    ...(isInventoryManager ? [{ label: 'Customers', href: '/customers', icon: Users }] : []),
-    ...(isInventoryManager ? [{ label: 'Finance', href: '/finance', icon: DollarSign }] : []),
+    ...(can('customer:read') ? [{ label: 'Customers', href: '/customers', icon: Users }] : []),
+    ...(can('pos:receipt:read') ? [{ label: 'Finance', href: '/finance', icon: DollarSign }] : []),
     { label: 'History', href: '/history', icon: History },
-    ...(canPrintQr ? [{ label: 'Print QR', href: '/print-qr', icon: QrCode }] : [])
+    ...(can('label:print') ? [{ label: 'Print QR', href: '/print-qr', icon: QrCode }] : [])
   ];
 
   // Mobile Bottom Navigation: Exactly 4 focused primary items
@@ -36,12 +36,7 @@ export default function Navbar() {
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
   const userAvatar = user?.user_metadata?.avatar_url || '';
 
-  // Clean role text without emojis
-  const roleDisplay = isSuperAdmin
-    ? 'Super Admin'
-    : isInventoryManager
-    ? 'Admin'
-    : 'Teacher / Staff';
+  const roleDisplay = roleLabel || 'Teacher / Staff';
 
   return (
     <>

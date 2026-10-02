@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Invoice, InvoiceItem } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:read');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('q')?.toLowerCase() || '';
     const status = searchParams.get('status');
@@ -115,6 +121,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:create');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const body = await request.json();
     const {
       customerName,

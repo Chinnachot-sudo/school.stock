@@ -254,7 +254,7 @@ export default function StockRestockPage() {
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#111827] flex items-center gap-2">
             <PackageCheck className="w-6 h-6 text-[#0B6B4F]" />
-            <span>Receive Stock & Inward Deliveries (รับสินค้าเข้าคลัง)</span>
+            <span>Receive Stock & Inward Deliveries</span>
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">
             Multi-item batch receiving, PO purchase tracking, and instant inventory replenishment.
@@ -347,7 +347,7 @@ export default function StockRestockPage() {
 
               <div>
                 <label className="text-xs font-semibold text-[#111827] block mb-1">
-                  Receiver Name (ผู้ตรวจรับ)
+                  Receiver Name
                 </label>
                 <input
                   type="text"
@@ -394,7 +394,7 @@ export default function StockRestockPage() {
                   {searchQuery.trim() ? (
                     <span>No items matched your search &quot;{searchQuery}&quot;.</span>
                   ) : (
-                    <span>พิมพ์ชื่อสินค้า, SKU หรือสแกนบาร์โค้ดเพื่อเริ่มทำรายการ</span>
+                    <span>Type item name, SKU, or scan barcode to get started</span>
                   )}
                 </div>
               ) : (
@@ -473,7 +473,7 @@ export default function StockRestockPage() {
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
               <span className="text-xs font-bold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
                 <ShoppingCart className="w-4 h-4 text-[#0B6B4F]" />
-                <span>Receive Cart (รายการรับเข้าคลัง • {cart.length} items)</span>
+                <span>Receive Cart ({cart.length} items)</span>
               </span>
               {cart.length > 0 && (
                 <button
@@ -592,7 +592,7 @@ export default function StockRestockPage() {
             {/* Note Input */}
             <div>
               <label className="text-xs font-semibold text-[#111827] block mb-1">
-                Additional Notes / Reference (บันทึกเพิ่มเติม)
+                Additional Notes / Reference
               </label>
               <input
                 type="text"

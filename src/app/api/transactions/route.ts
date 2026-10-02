@@ -3,9 +3,15 @@ import { readDb, writeDb } from '@/lib/db';
 import { Transaction, TransactionType } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { logAuditEvent } from '@/lib/audit';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:read');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const type = searchParams.get('type') as TransactionType | null;
@@ -103,48 +109,58 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Incomplete information or no items provided' }, { status: 400 });
     }
 
+    // Permission Guard based on transaction type
+    const requiredPermission =
+      type === 'IN'
+        ? 'inventory:stock:restock'
+        : type === 'OUT'
+        ? 'inventory:stock:issue'
+        : 'inventory:item:update';
+
+    const authCheck = await requirePermission(request, requiredPermission as any);
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const db = readDb();
 
-    // 1. Fetch any missing items from Supabase Cloud DB if configured
+    // 1. Fetch items from Supabase Cloud DB if configured to ensure fresh stock levels
     if (isSupabaseConfigured && supabase) {
       try {
         const itemIdentifiers = itemsToProcess.map(it => it.itemId);
-        // Find identifiers not in local db
-        const missingLocally = itemIdentifiers.filter(
-          id => !db.items.some(i => i.id === id || i.code.toLowerCase() === id.toLowerCase())
-        );
+        const { data: cloudItems, error: sbItemsErr } = await supabase
+          .from('items')
+          .select('*')
+          .in('id', itemIdentifiers);
 
-        if (missingLocally.length > 0) {
-          const { data: cloudItems } = await supabase
-            .from('items')
-            .select('*')
-            .or(`id.in.(${missingLocally.join(',')}),code.in.(${missingLocally.join(',')})`);
-
-          if (cloudItems && cloudItems.length > 0) {
-            for (const row of cloudItems) {
-              const localCachedItem = {
-                id: row.id,
-                code: row.code,
-                name: row.name,
-                categoryId: row.category_id,
-                currentStock: Number(row.current_stock) || 0,
-                minStock: Number(row.min_stock) || 5,
-                unit: row.unit || 'pcs',
-                location: row.location || '',
-                price: row.price !== undefined && row.price !== null ? Number(row.price) : 0,
-                cost: row.cost !== undefined && row.cost !== null ? Number(row.cost) : 0,
-                imageUrl: row.image_url || '',
-                isForSale: Boolean(row.is_for_sale),
-                note: row.note || '',
-                isBorrowable: row.is_borrowable,
-                updatedAt: row.updated_at
-              };
-              const existingIdx = db.items.findIndex(i => i.id === row.id);
-              if (existingIdx !== -1) {
-                db.items[existingIdx] = localCachedItem;
-              } else {
-                db.items.push(localCachedItem);
-              }
+        if (sbItemsErr) {
+          console.warn('Supabase items fetch warning:', sbItemsErr);
+        } else if (cloudItems && cloudItems.length > 0) {
+          for (const row of cloudItems) {
+            const syncedItem = {
+              id: row.id,
+              code: row.code,
+              name: row.name,
+              categoryId: row.category_id,
+              currentStock: Number(row.current_stock) || 0,
+              minStock: Number(row.min_stock) || 5,
+              unit: row.unit || 'pcs',
+              location: row.location || '',
+              price: row.price !== undefined && row.price !== null ? Number(row.price) : 0,
+              cost: row.cost !== undefined && row.cost !== null ? Number(row.cost) : 0,
+              imageUrl: row.image_url || '',
+              isForSale: Boolean(row.is_for_sale),
+              note: row.note || '',
+              isBorrowable: row.is_borrowable,
+              updatedAt: row.updated_at
+            };
+            const existingIdx = db.items.findIndex(
+              i => i.id === row.id || i.code.toLowerCase() === (row.code || '').toLowerCase()
+            );
+            if (existingIdx !== -1) {
+              db.items[existingIdx] = syncedItem;
+            } else {
+              db.items.push(syncedItem);
             }
           }
         }
@@ -311,12 +327,16 @@ export async function POST(request: Request) {
       // Also update Supabase Cloud DB if connected
       if (isSupabaseConfigured && supabase) {
         try {
-          await supabase
+          const { error: itemUpErr } = await supabase
             .from('items')
             .update({ current_stock: newStock, updated_at: now })
             .eq('id', item.id);
 
-          await supabase.from('transactions').insert({
+          if (itemUpErr) {
+            console.error('Failed to update item stock in Supabase:', itemUpErr);
+          }
+
+          const { error: txInsErr } = await supabase.from('transactions').insert({
             id: newTx.id,
             item_id: newTx.itemId,
             item_name: newTx.itemName,
@@ -335,6 +355,10 @@ export async function POST(request: Request) {
             note: newTx.note || null,
             created_at: now
           });
+
+          if (txInsErr) {
+            console.error('Failed to insert transaction in Supabase:', txInsErr);
+          }
         } catch (sbUpdateErr) {
           console.warn('Supabase stock transaction update warning:', sbUpdateErr);
         }
@@ -344,7 +368,8 @@ export async function POST(request: Request) {
     writeDb(db);
 
     // 5. Create audit log
-    const actor = (requesterName || issuedToName || 'Inventory Staff').trim();
+    const actor = (authCheck.user.name || authCheck.user.username || requesterName || issuedToName || 'Inventory Staff').trim();
+    const actorEmail = authCheck.user.email || undefined;
     const actionName = type === 'IN' ? 'RECEIVE_STOCK' : type === 'OUT' ? 'ISSUE_STOCK' : 'ADJUST_STOCK';
     const itemsSummary = createdTxs.map(t => `${t.itemName} (${type === 'OUT' ? '-' : '+'}${t.quantity})`).join(', ');
 
@@ -353,6 +378,7 @@ export async function POST(request: Request) {
       action: actionName,
       details: `${type === 'IN' ? 'Received stock' : type === 'OUT' ? 'Issued stock' : 'Adjusted stock'}: ${itemsSummary} | Dept: ${department || 'Central'}`,
       actorName: actor,
+      actorEmail,
       targetId: createdTxs[0]?.id,
       targetName: createdTxs.length === 1 ? createdTxs[0]?.itemName : `${createdTxs.length} items`,
       metadata: {

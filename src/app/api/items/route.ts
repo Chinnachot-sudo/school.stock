@@ -3,9 +3,15 @@ import { readDb, writeDb } from '@/lib/db';
 import { Item } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { logAuditEvent } from '@/lib/audit';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:read');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q')?.toLowerCase() || '';
     const categoryId = searchParams.get('categoryId') || '';
@@ -96,6 +102,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:create');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const body = await request.json();
     const { code, name, categoryId, currentStock, minStock, unit, location, note, isBorrowable, price, cost, isForSale, imageUrl } = body;
 

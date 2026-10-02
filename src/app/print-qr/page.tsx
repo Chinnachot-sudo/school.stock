@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 
 export default function PrintQrPage() {
-  const { canPrintQr, loading: authLoading } = useAuth();
+  const { can, loading: authLoading } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +73,7 @@ export default function PrintQrPage() {
     return item.code;
   };
 
-  if (!authLoading && !canPrintQr) {
+  if (!authLoading && !can('label:print')) {
     return (
       <div className="bg-white rounded-3xl p-8 text-center border border-slate-200 max-w-md mx-auto my-12 shadow-sm space-y-4">
         <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">

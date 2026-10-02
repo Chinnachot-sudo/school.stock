@@ -296,7 +296,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                       Roong Aroon International School
                     </span>
                     <span className="text-xs sm:text-sm font-semibold text-[#4B5563] block mt-0.5">
-                      โรงเรียนนานาชาติรุ่งอรุณ
+                      RAIS School Store & Uniform Center
                     </span>
                   </div>
                 </div>
@@ -430,18 +430,18 @@ export default function InvoiceModal({ invoice, isOpen, onClose, onStatusChange 
                 {/* Left 7 cols: Payment Instructions & Crisp Bangkok Bank PromptPay QR */}
                 <div className="sm:col-span-7 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3 sm:p-3.5 flex items-center justify-between gap-3">
                   <div className="space-y-1 flex-1 min-w-0">
-                    <h4 className="font-bold text-[#111827] text-xs">Payment Instructions (การชำระเงิน)</h4>
+                    <h4 className="font-bold text-[#111827] text-xs">Payment Instructions</h4>
                     <div className="text-[11px] text-[#374151] space-y-1">
                       <p>
-                        <span className="text-[#6B7280]">Payee / ชื่อบัญชี:</span>{' '}
+                        <span className="text-[#6B7280]">Payee:</span>{' '}
                         <strong className="text-[#111827]">{SCHOOL_BANK_INFO.accountName}</strong>
                       </p>
                       <p>
-                        <span className="text-[#6B7280]">Bank / ธนาคาร:</span>{' '}
-                        <strong className="text-[#111827]">{SCHOOL_BANK_INFO.bankName} (ธนาคารกรุงเทพ)</strong>
+                        <span className="text-[#6B7280]">Bank:</span>{' '}
+                        <strong className="text-[#111827]">{SCHOOL_BANK_INFO.bankName}</strong>
                       </p>
                       <p>
-                        <span className="text-[#6B7280]">Account No. / เลขที่บัญชี:</span>{' '}
+                        <span className="text-[#6B7280]">Account No.:</span>{' '}
                         <strong className="font-mono text-[#0B6B4F] text-sm">002203089172</strong>
                       </p>
                       <div className="text-[10px] text-[#4B5563] font-mono bg-slate-100 px-2 py-0.5 rounded inline-block">

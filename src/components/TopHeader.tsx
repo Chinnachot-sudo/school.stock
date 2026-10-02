@@ -23,7 +23,7 @@ interface TopHeaderProps {
 export default function TopHeader({ onToggleSidebar, onOpenMobileDrawer, onOpenScanner, isSidebarCollapsed = false }: TopHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isSuperAdmin, isInventoryManager, signOut } = useAuth();
+  const { user, roleLabel, signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [lowStockCount, setLowStockCount] = useState<number>(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -71,11 +71,7 @@ export default function TopHeader({ onToggleSidebar, onOpenMobileDrawer, onOpenS
   const userEmail = user?.email || '';
   const userAvatar = user?.user_metadata?.avatar_url || '';
 
-  const roleDisplay = isSuperAdmin
-    ? 'Super Admin'
-    : isInventoryManager
-    ? 'Admin'
-    : 'Teacher / Staff';
+  const roleDisplay = roleLabel || 'Teacher / Staff';
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-[#E5E7EB] h-16 px-4 lg:px-6 flex items-center justify-between gap-4">

@@ -28,9 +28,9 @@ export default function LoginPage() {
   // If already logged in, redirect to home
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/');
+      window.location.replace('/');
     }
-  }, [user, loading, router]);
+  }, [user, loading]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,7 +43,7 @@ export default function LoginPage() {
       setIsSubmitting(true);
       setError(null);
       await signIn(username.trim(), password);
-      window.location.href = '/';
+      window.location.replace('/');
     } catch (err: any) {
       setIsSubmitting(false);
       setError(err.message || 'Login failed. Please check your username and password.');
@@ -194,7 +194,7 @@ export default function LoginPage() {
 
               {showForgotNotice && (
                 <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[11px] animate-in fade-in">
-                  กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่านของคุณ
+                  Please contact your IT System Administrator to reset your credentials.
                 </div>
               )}
 
@@ -216,12 +216,14 @@ export default function LoginPage() {
             </form>
 
             {/* Helper text */}
-            <div className="text-center pt-2">
+            <div className="text-center pt-1">
               <p className="text-xs text-slate-500">
                 Don&apos;t have an account?{' '}
                 <span className="text-[#0B6B4F] font-bold">Contact Admin</span>
               </p>
             </div>
+
+
           </div>
 
           {/* Footer Copyright */}

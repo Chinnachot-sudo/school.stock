@@ -33,12 +33,12 @@ interface CartItem {
 }
 
 const DEDUCT_REASONS = [
-  'Classroom & Teaching Material (สื่อการเรียนการสอน)',
-  'School Event & Activity (กิจกรรมโรงเรียน)',
-  'Office & Administration (งานธุรการ/เอกสาร)',
-  'Maintenance & Facility (งานซ่อมบำรุง/อาคาร)',
-  'Damaged / Written-off (ชำรุด/ตัดจำหน่าย)',
-  'Other (อื่นๆ)'
+  'Classroom & Teaching Material',
+  'School Event & Activity',
+  'Office & Administration',
+  'Maintenance & Facility',
+  'Damaged / Written-off',
+  'Other'
 ];
 
 export default function StockDeductPage() {
@@ -300,7 +300,7 @@ export default function StockDeductPage() {
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#111827] flex items-center gap-2">
             <Scissors className="w-6 h-6 text-[#0B6B4F]" />
-            <span>Stock Issue & Department Requisition (เบิกจ่ายพัสดุ)</span>
+            <span>Stock Issue & Department Requisition</span>
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">
             Multi-item batch issuance with real-time department budget tracking and validation.
@@ -395,7 +395,7 @@ export default function StockDeductPage() {
                   <div className="flex items-center gap-2">
                     <Wallet className="w-4 h-4 text-[#0B6B4F]" />
                     <span className="text-xs font-bold text-[#111827]">
-                      {currentDepartment.name} • งบประมาณประจำปี {currentDepartment.fiscalYear || '2026'}
+                      {currentDepartment.name} • Fiscal Year {currentDepartment.fiscalYear || '2026'}
                     </span>
                   </div>
                   <span className="text-[11px] font-mono text-[#6B7280]">
@@ -406,21 +406,21 @@ export default function StockDeductPage() {
                 {/* Budget Stat Tiles */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div className="bg-white p-2.5 rounded-lg border border-[#E5E7EB]">
-                    <span className="text-[10px] text-[#6B7280] block">Allocated (งบจัดสรร)</span>
+                    <span className="text-[10px] text-[#6B7280] block">Allocated</span>
                     <span className="font-mono font-bold text-sm text-[#111827]">
                       ฿{allocatedBudget.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 
                   <div className="bg-white p-2.5 rounded-lg border border-[#E5E7EB]">
-                    <span className="text-[10px] text-[#6B7280] block">Spent (ใช้ไปแล้ว)</span>
+                    <span className="text-[10px] text-[#6B7280] block">Spent</span>
                     <span className="font-mono font-bold text-sm text-[#B45309]">
                       ฿{spentBudget.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 
                   <div className="bg-white p-2.5 rounded-lg border border-[#E5E7EB]">
-                    <span className="text-[10px] text-[#6B7280] block">Remaining (คงเหลือ)</span>
+                    <span className="text-[10px] text-[#6B7280] block">Remaining</span>
                     <span className="font-mono font-bold text-sm text-[#0B6B4F]">
                       ฿{currentRemainingBudget.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                     </span>
@@ -429,7 +429,7 @@ export default function StockDeductPage() {
                   <div className={`p-2.5 rounded-lg border ${
                     isBudgetExceeded ? 'bg-red-50 border-red-200' : 'bg-white border-[#E5E7EB]'
                   }`}>
-                    <span className="text-[10px] text-[#6B7280] block">Projected (หลังเบิก)</span>
+                    <span className="text-[10px] text-[#6B7280] block">Projected</span>
                     <span className={`font-mono font-bold text-sm ${
                       isBudgetExceeded ? 'text-[#B42318]' : 'text-[#0B6B4F]'
                     }`}>
@@ -456,7 +456,7 @@ export default function StockDeductPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div>
                 <label className="text-xs font-semibold text-[#111827] block mb-1">
-                  Requester Name (ผู้ขอเบิก) *
+                  Requester Name *
                 </label>
                 <input
                   type="text"
@@ -469,7 +469,7 @@ export default function StockDeductPage() {
 
               <div>
                 <label className="text-xs font-semibold text-[#111827] block mb-1">
-                  Requisition Purpose (วัตถุประสงค์) *
+                  Requisition Purpose *
                 </label>
                 <select
                   value={reason}
@@ -612,7 +612,7 @@ export default function StockDeductPage() {
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
               <span className="text-xs font-bold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
                 <ShoppingCart className="w-4 h-4 text-[#0B6B4F]" />
-                <span>Requisition Cart (รายการพัสดุที่จะเบิก • {cart.length} items)</span>
+                <span>Requisition Cart ({cart.length} items)</span>
               </span>
               {cart.length > 0 && (
                 <button
@@ -719,7 +719,7 @@ export default function StockDeductPage() {
             {/* Note Input */}
             <div>
               <label className="text-xs font-semibold text-[#111827] block mb-1">
-                Additional Reference / Note (บันทึกเพิ่มเติม)
+                Additional Reference / Note
               </label>
               <input
                 type="text"
@@ -737,7 +737,7 @@ export default function StockDeductPage() {
                   <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold block">
-                      Warning: Department Budget Exceeded (ยอดเบิกเกินงบประมาณคงเหลือ)
+                      Warning: Department Budget Exceeded
                     </span>
                     <p className="mt-0.5 text-[11px]">
                       This requisition of <strong>฿{totalCartCost.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</strong> exceeds the remaining budget of <strong>฿{currentRemainingBudget.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</strong> by <strong>฿{Math.abs(projectedRemainingBudget).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</strong>.
@@ -753,7 +753,7 @@ export default function StockDeductPage() {
                       onChange={e => setOverrideBudget(e.target.checked)}
                       className="w-4 h-4 rounded text-[#0B6B4F] focus:ring-[#0B6B4F]"
                     />
-                    <span>ผู้ดูแลระบบอนุมัติเบิกพัสดุเกินงบ (Admin Budget Override)</span>
+                    <span>Admin Budget Override</span>
                   </label>
 
                   {overrideBudget && (
@@ -761,7 +761,7 @@ export default function StockDeductPage() {
                       type="text"
                       value={overrideReason}
                       onChange={e => setOverrideReason(e.target.value)}
-                      placeholder="Justification note (เหตุผลความจำเป็น)..."
+                      placeholder="Justification note..."
                       className="bg-white border border-amber-300 rounded-lg text-xs p-1.5 text-amber-950 placeholder:text-amber-400 outline-none flex-1 max-w-sm"
                     />
                   )}

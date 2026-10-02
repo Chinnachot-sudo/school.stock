@@ -3,9 +3,15 @@ import { readDb, writeDb } from '@/lib/db';
 import { Item, Receipt, ReceiptItem, Transaction } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { logAuditEvent } from '@/lib/audit';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:read');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('q')?.toLowerCase() || '';
     const paymentMethod = searchParams.get('paymentMethod');
@@ -118,6 +124,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:create');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const body = await request.json();
     const {
       customerName,
@@ -129,8 +140,6 @@ export async function POST(request: Request) {
       discount = 0,
       cashReceived,
       change,
-      cashierName = 'Store Cashier',
-      cashierEmail = '',
       note
     } = body;
 
@@ -266,6 +275,9 @@ export async function POST(request: Request) {
     const received = paymentMethod === 'CASH' ? Number(cashReceived) || totalAmount : totalAmount;
     const changeAmount = paymentMethod === 'CASH' ? Math.max(0, received - totalAmount) : 0;
 
+    const cashierName = (authCheck.user.name || authCheck.user.username || 'Store Cashier').trim();
+    const cashierEmail = (authCheck.user.email || '').trim();
+
     const newReceipt: Receipt = {
       id: receiptId,
       receiptNumber,
@@ -280,8 +292,8 @@ export async function POST(request: Request) {
       totalAmount,
       cashReceived: received,
       change: changeAmount,
-      cashierName: cashierName.trim(),
-      cashierEmail: cashierEmail.trim(),
+      cashierName,
+      cashierEmail,
       note: note?.trim() || undefined,
       status: 'COMPLETED',
       createdAt: new Date().toISOString()

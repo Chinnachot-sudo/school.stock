@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Transaction, Department, TransactionType, AuditLog, AuditActionCategory } from '@/types/inventory';
 import {
   History,
@@ -18,14 +19,35 @@ import {
   Layers,
   ShoppingBag,
   UserCheck,
-  Settings
+  TrendingUp,
+  DollarSign,
+  PiggyBank,
+  ArrowLeftRight
 } from 'lucide-react';
+import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/lib/auth-context';
+import {
+  SalesReportView,
+  IssueReceiptReportView,
+  ReceivablesReportView,
+  FinanceBudgetReportView
+} from '@/components/history/ReportsSubViews';
 
-export default function HistoryPage() {
-  const { canExportExcel, isInventoryManager } = useAuth();
-  const [activeTab, setActiveTab] = useState<'movements' | 'audit'>('movements');
+function HistoryContent() {
+  const { can } = useAuth();
+  const searchParams = useSearchParams();
+  const tabParam = (searchParams.get('tab') || 'movements').toLowerCase();
+  const [activeTab, setActiveTab] = useState<'sales' | 'movements' | 'issue-receipt' | 'receivables' | 'finance' | 'audit'>('movements');
+
+  useEffect(() => {
+    if (tabParam === 'sales') setActiveTab('sales');
+    else if (tabParam === 'issue-receipt') setActiveTab('issue-receipt');
+    else if (tabParam === 'receivables') setActiveTab('receivables');
+    else if (tabParam === 'finance') setActiveTab('finance');
+    else if (tabParam === 'audit') setActiveTab('audit');
+    else setActiveTab('movements');
+  }, [tabParam]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -136,40 +158,89 @@ export default function HistoryPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto">
           {/* Tabs */}
-          <div className="flex items-center bg-[#F7F4EF] p-1 rounded-xl border border-[#E5E0D8] text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setActiveTab('movements')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                activeTab === 'movements'
-                  ? 'bg-white text-[#1F4D3A] shadow-2xs font-bold'
-                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Stock Movements ({transactions.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('audit')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                activeTab === 'audit'
+          <div className="flex items-center bg-[#F7F4EF] p-1 rounded-xl border border-[#E5E0D8] text-xs font-semibold overflow-x-auto">
+            <Link
+              href="/history?tab=sales"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                activeTab === 'sales'
                   ? 'bg-[#1F4D3A] text-white shadow-2xs font-bold'
                   : 'text-[#6B6560] hover:text-[#1A1A1A]'
               }`}
             >
-              <Activity className="w-3.5 h-3.5" />
-              <span>System Audit Logs ({auditLogs.length})</span>
-            </button>
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Sales</span>
+            </Link>
+
+            <Link
+              href="/history?tab=movements"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                activeTab === 'movements'
+                  ? 'bg-[#1F4D3A] text-white shadow-2xs font-bold'
+                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Stock Balance ({transactions.length})</span>
+            </Link>
+
+            <Link
+              href="/history?tab=issue-receipt"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                activeTab === 'issue-receipt'
+                  ? 'bg-[#1F4D3A] text-white shadow-2xs font-bold'
+                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
+              }`}
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+              <span>Issue & Receipt</span>
+            </Link>
+
+            <Link
+              href="/history?tab=receivables"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                activeTab === 'receivables'
+                  ? 'bg-[#1F4D3A] text-white shadow-2xs font-bold'
+                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              <span>Receivables</span>
+            </Link>
+
+            <Link
+              href="/history?tab=finance"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                activeTab === 'finance'
+                  ? 'bg-[#1F4D3A] text-white shadow-2xs font-bold'
+                  : 'text-[#6B6560] hover:text-[#1A1A1A]'
+              }`}
+            >
+              <PiggyBank className="w-3.5 h-3.5" />
+              <span>Finance & Budget</span>
+            </Link>
+
+            {can('audit:log:read') && (
+              <Link
+                href="/history?tab=audit"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                  activeTab === 'audit'
+                    ? 'bg-[#1F4D3A] text-white shadow-2xs font-bold'
+                    : 'text-[#6B6560] hover:text-[#1A1A1A]'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5" />
+                <span>Audit Log ({auditLogs.length})</span>
+              </Link>
+            )}
           </div>
 
-          {canExportExcel && activeTab === 'movements' && (
+          {can('report:export') && activeTab === 'movements' && (
             <button
               onClick={handleExportExcel}
               disabled={filtered.length === 0}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] disabled:opacity-40 text-[#1A1A1A] text-xs font-medium transition cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] disabled:opacity-40 text-[#1A1A1A] text-xs font-medium transition cursor-pointer shrink-0"
             >
               <FileSpreadsheet className="w-4 h-4 text-[#1F4D3A]" />
               <span className="hidden sm:inline">Export Excel</span>
@@ -178,7 +249,23 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {activeTab === 'movements' ? (
+      {activeTab === 'sales' && (
+        <SalesReportView transactions={transactions} />
+      )}
+
+      {activeTab === 'issue-receipt' && (
+        <IssueReceiptReportView transactions={transactions} />
+      )}
+
+      {activeTab === 'receivables' && (
+        <ReceivablesReportView />
+      )}
+
+      {activeTab === 'finance' && (
+        <FinanceBudgetReportView />
+      )}
+
+      {activeTab === 'movements' && (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -348,8 +435,10 @@ export default function HistoryPage() {
             )}
           </div>
         </>
-      ) : (
-        /* TAB 2: SYSTEM AUDIT LOGS */
+      )}
+
+      {/* TAB: SYSTEM AUDIT LOGS */}
+      {activeTab === 'audit' && (
         <div className="space-y-3">
           {/* Audit Filters */}
           <div className="bg-white p-3.5 rounded-xl border border-[#E5E0D8] space-y-3">
@@ -371,11 +460,11 @@ export default function HistoryPage() {
                   onChange={(e) => setAuditCategory(e.target.value)}
                   className="w-full text-xs bg-[#F7F4EF] border border-[#E5E0D8] rounded-lg p-2 font-medium text-[#1A1A1A] focus:outline-none focus:border-[#1F4D3A]"
                 >
-                  <option value="ALL">All Event Categories (ทั้งหมด)</option>
-                  <option value="STOCK_OPERATION">Stock Operations (รับเข้า / เบิกจ่าย)</option>
-                  <option value="INVENTORY">Inventory Master Data (สินค้า)</option>
-                  <option value="POS_SALE">POS Sales & Cashier (จุดขาย)</option>
-                  <option value="USER_MANAGEMENT">User & Permissions (ผู้ใช้งาน)</option>
+                  <option value="ALL">All Event Categories</option>
+                  <option value="STOCK_OPERATION">Stock Operations (Receipt & Issue)</option>
+                  <option value="INVENTORY">Inventory Master Data</option>
+                  <option value="POS_SALE">POS Sales & Cashier</option>
+                  <option value="USER_MANAGEMENT">User & Permissions</option>
                   <option value="SYSTEM">System & Settings</option>
                 </select>
               </div>
@@ -476,3 +565,12 @@ export default function HistoryPage() {
     </div>
   );
 }
+
+export default function HistoryPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-[#6B6560]">Loading Reports & History...</div>}>
+      <HistoryContent />
+    </Suspense>
+  );
+}
+

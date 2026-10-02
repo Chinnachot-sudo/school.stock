@@ -1,10 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Item, Category, Department, STANDARD_UNITS } from '@/types/inventory';
 import QuickDeductModal from '@/components/QuickDeductModal';
 import QuickRestockModal from '@/components/QuickRestockModal';
 import CategoryManageModal from '@/components/CategoryManageModal';
+import {
+  BorrowReturnView,
+  TransferView,
+  StockCountView,
+  LocationsView,
+  PurchaseRequestsView,
+  ReorderPointsView
+} from '@/components/inventory/InventorySubViews';
 import {
   Search,
   Plus,
@@ -23,13 +32,20 @@ import {
   ChevronRight,
   Filter,
   Upload,
-  ImageIcon
+  ImageIcon,
+  ArrowLeftRight,
+  Truck,
+  ClipboardCheck,
+  FileSpreadsheet,
+  LayoutGrid
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 
-export default function InventoryPage() {
-  const { canManageItems, canRestock, canDeleteItems, canPrintQr } = useAuth();
+function InventoryContent() {
+  const { can } = useAuth();
+  const searchParams = useSearchParams();
+  const currentTab = (searchParams.get('tab') || searchParams.get('filter') || 'dashboard').toLowerCase();
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -303,7 +319,7 @@ export default function InventoryPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {canPrintQr && (
+          {can('label:print') && (
             <Link
               href="/print-qr"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] text-xs font-medium transition"
@@ -313,7 +329,7 @@ export default function InventoryPage() {
             </Link>
           )}
 
-          {canManageItems && (
+          {can('inventory:item:create') && (
             <button
               onClick={() => setIsCategoryModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] text-xs font-medium transition"
@@ -323,7 +339,7 @@ export default function InventoryPage() {
             </button>
           )}
 
-          {canManageItems && (
+          {can('inventory:item:create') && (
             <button
               onClick={() => {
                 if (categories.length > 0 && !formData.categoryId) {
@@ -348,7 +364,125 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Filter & Toolbar */}
+      {/* Sub-tabs Navigation for Inventory */}
+      <div className="flex items-center gap-1.5 overflow-x-auto bg-white p-1.5 rounded-xl border border-[#E5E0D8] shadow-2xs">
+        <Link
+          href="/inventory"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+            currentTab === 'dashboard'
+              ? 'bg-[#E6F5EF] text-[#1F4D3A] shadow-2xs'
+              : 'text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF]'
+          }`}
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          <span>Dashboard</span>
+        </Link>
+        <Link
+          href="/inventory?tab=all"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+            currentTab === 'all'
+              ? 'bg-[#E6F5EF] text-[#1F4D3A] shadow-2xs'
+              : 'text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF]'
+          }`}
+        >
+          <Boxes className="w-3.5 h-3.5" />
+          <span>Item Master</span>
+        </Link>
+        <Link
+          href="/inventory?tab=borrow"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+            currentTab === 'borrow'
+              ? 'bg-[#E6F5EF] text-[#1F4D3A] shadow-2xs'
+              : 'text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF]'
+          }`}
+        >
+          <ArrowLeftRight className="w-3.5 h-3.5" />
+          <span>Borrow & Return</span>
+        </Link>
+        <Link
+          href="/inventory?tab=transfer"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+            currentTab === 'transfer'
+              ? 'bg-[#E6F5EF] text-[#1F4D3A] shadow-2xs'
+              : 'text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF]'
+          }`}
+        >
+          <Truck className="w-3.5 h-3.5" />
+          <span>Transfer</span>
+        </Link>
+        <Link
+          href="/inventory?tab=stock-count"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+            currentTab === 'stock-count'
+              ? 'bg-[#E6F5EF] text-[#1F4D3A] shadow-2xs'
+              : 'text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF]'
+          }`}
+        >
+          <ClipboardCheck className="w-3.5 h-3.5" />
+          <span>Stock Count</span>
+        </Link>
+        <Link
+          href="/inventory?tab=locations"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+            currentTab === 'locations'
+              ? 'bg-[#E6F5EF] text-[#1F4D3A] shadow-2xs'
+              : 'text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF]'
+          }`}
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          <span>Locations</span>
+        </Link>
+        <Link
+          href="/inventory?tab=pr"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+            currentTab === 'pr'
+              ? 'bg-[#E6F5EF] text-[#1F4D3A] shadow-2xs'
+              : 'text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF]'
+          }`}
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          <span>Purchase Requests</span>
+        </Link>
+        <Link
+          href="/inventory?tab=low"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+            currentTab === 'low'
+              ? 'bg-[#E6F5EF] text-[#1F4D3A] shadow-2xs'
+              : 'text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF]'
+          }`}
+        >
+          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+          <span>Reorder Points</span>
+        </Link>
+      </div>
+
+      {currentTab === 'borrow' && (
+        <BorrowReturnView items={items} departments={departments} />
+      )}
+
+      {currentTab === 'transfer' && (
+        <TransferView items={items} />
+      )}
+
+      {currentTab === 'stock-count' && (
+        <StockCountView items={items} />
+      )}
+
+      {currentTab === 'locations' && (
+        <LocationsView />
+      )}
+
+      {currentTab === 'pr' && (
+        <PurchaseRequestsView items={items} />
+      )}
+
+      {currentTab === 'low' && (
+        <ReorderPointsView items={items} onQuickRestock={(it) => setSelectedItemForRestock(it)} />
+      )}
+
+      {(currentTab === 'all' || currentTab === 'dashboard') && (
+        <>
+        {/* Filter & Toolbar */}
       <div className="bg-white p-3 rounded-lg border border-[#E5E0D8] flex flex-col sm:flex-row gap-2.5 items-center justify-between">
         {/* Search input */}
         <div className="relative w-full sm:w-80">
@@ -577,7 +711,7 @@ export default function InventoryPage() {
                         {/* Actions */}
                         <td className="py-2.5 px-3 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
-                            {canRestock && (
+                            {can('inventory:stock:restock') && (
                               <button
                                 onClick={() => setSelectedItemForRestock(item)}
                                 className="px-2 py-1 bg-white hover:bg-[#F7F4EF] text-[#1F4D3A] rounded text-[10px] font-medium border border-[#E5E0D8] transition"
@@ -587,16 +721,18 @@ export default function InventoryPage() {
                               </button>
                             )}
 
-                            <button
-                              onClick={() => setSelectedItemForDeduct(item)}
-                              disabled={isOut}
-                              className="px-2 py-1 bg-[#C45C26] hover:bg-[#A84B1E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
-                              title="Issue Stock"
-                            >
-                              Issue
-                            </button>
+                            {can('inventory:stock:issue') && (
+                              <button
+                                onClick={() => setSelectedItemForDeduct(item)}
+                                disabled={isOut}
+                                className="px-2 py-1 bg-[#C45C26] hover:bg-[#A84B1E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
+                                title="Issue Stock"
+                              >
+                                Issue
+                              </button>
+                            )}
 
-                            {canManageItems && (
+                            {can('inventory:item:update') && (
                               <button
                                 onClick={() => setEditingItem(item)}
                                 className="p-1 rounded text-[#6B6560] hover:text-[#1A1A1A] hover:bg-[#F7F4EF] transition"
@@ -606,7 +742,7 @@ export default function InventoryPage() {
                               </button>
                             )}
 
-                            {canDeleteItems && (
+                            {can('inventory:item:delete') && (
                               <button
                                 onClick={() => handleDeleteItem(item.id, item.name)}
                                 className="p-1 rounded text-[#6B6560] hover:text-[#B42318] hover:bg-[#FEE4E2] transition"
@@ -632,6 +768,8 @@ export default function InventoryPage() {
             <span className="font-mono text-[#6B6560]">School Inventory ERP</span>
           </div>
         </div>
+        </>
+      )}
 
       {/* ADD ITEM MODAL */}
       {isAddModalOpen && (
@@ -1152,13 +1290,13 @@ export default function InventoryPage() {
               {selectedItemIds.length}
             </span>
             <span className="text-xs font-medium">
-              Items Selected (เลือกแล้ว {selectedItemIds.length} รายการ)
+              Items Selected ({selectedItemIds.length} items)
             </span>
           </div>
 
           <div className="h-4 w-px bg-white/20" />
 
-          {canPrintQr && (
+          {can('label:print') && (
             <Link
               href={`/print-qr?ids=${selectedItemIds.join(',')}`}
               className="px-3.5 py-1.5 rounded-xl bg-white text-[#1F4D3A] font-bold text-xs hover:bg-[#F7F4EF] transition flex items-center gap-1.5 shadow-sm active:scale-95"
@@ -1181,3 +1319,12 @@ export default function InventoryPage() {
     </div>
   );
 }
+
+export default function InventoryPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-[#6B6560]">Loading Inventory...</div>}>
+      <InventoryContent />
+    </Suspense>
+  );
+}
+

@@ -2,20 +2,30 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Receipt, ReceiptItem, Transaction } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:read');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
+    const cleanId = (id || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    if (!cleanId) {
+      return NextResponse.json({ error: 'Valid receipt ID or number is required' }, { status: 400 });
+    }
 
     // 1. Supabase
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
         .from('receipts')
         .select('*')
-        .or(`id.eq.${id},receipt_number.eq.${id}`)
+        .or(`id.eq.${cleanId},receipt_number.eq.${cleanId}`)
         .maybeSingle();
 
       if (!error && data) {
@@ -46,7 +56,7 @@ export async function GET(
 
     // 2. Local JSON DB
     const db = readDb();
-    const found = db.receipts?.find(r => r.id === id || r.receiptNumber.toLowerCase() === id.toLowerCase());
+    const found = db.receipts?.find(r => r.id === cleanId || r.receiptNumber.toLowerCase() === cleanId.toLowerCase());
 
     if (!found) {
       return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
@@ -63,7 +73,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:void');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
+    const cleanId = (id || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    if (!cleanId) {
+      return NextResponse.json({ error: 'Valid receipt ID or number is required' }, { status: 400 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const voidReason = body.reason || 'Cancelled by administrator';
 
@@ -72,7 +92,7 @@ export async function DELETE(
       const { data: sbReceipt } = await supabase
         .from('receipts')
         .select('*')
-        .or(`id.eq.${id},receipt_number.eq.${id}`)
+        .or(`id.eq.${cleanId},receipt_number.eq.${cleanId}`)
         .maybeSingle();
 
       if (sbReceipt) {

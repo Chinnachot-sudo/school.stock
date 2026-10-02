@@ -2,19 +2,29 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { logAuditEvent } from '@/lib/audit';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:read');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
+    const cleanId = (id || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    if (!cleanId) {
+      return NextResponse.json({ error: 'Valid item ID or code is required' }, { status: 400 });
+    }
 
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
         .from('items')
         .select('*')
-        .or(`id.eq.${id},code.eq.${id}`)
+        .or(`id.eq.${cleanId},code.eq.${cleanId}`)
         .maybeSingle();
 
       if (error || !data) {
@@ -60,6 +70,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:update');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -142,7 +157,8 @@ export async function PUT(
         category: 'INVENTORY',
         action: 'UPDATE_ITEM',
         details: `Updated item details: "${updatedItem.name}" (${updatedItem.code})`,
-        actorName: 'Inventory Admin',
+        actorName: authCheck.user.name || authCheck.user.username || 'Inventory Admin',
+        actorEmail: authCheck.user.email || undefined,
         targetId: updatedItem.id,
         targetName: updatedItem.name,
         metadata: body
@@ -185,7 +201,8 @@ export async function PUT(
       category: 'INVENTORY',
       action: 'UPDATE_ITEM',
       details: `Updated item details: "${db.items[index].name}" (${db.items[index].code})`,
-      actorName: 'Inventory Admin',
+      actorName: authCheck.user.name || authCheck.user.username || 'Inventory Admin',
+      actorEmail: authCheck.user.email || undefined,
       targetId: db.items[index].id,
       targetName: db.items[index].name,
       metadata: body
@@ -202,6 +219,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'inventory:item:delete');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
     let deletedName = id;
 
@@ -228,7 +250,8 @@ export async function DELETE(
         category: 'INVENTORY',
         action: 'DELETE_ITEM',
         details: `Deleted item "${deletedName}" from system`,
-        actorName: 'Inventory Admin',
+        actorName: authCheck.user.name || authCheck.user.username || 'Inventory Admin',
+        actorEmail: authCheck.user.email || undefined,
         targetId: id,
         targetName: deletedName
       }).catch(e => console.warn('Audit log error:', e));
@@ -250,7 +273,8 @@ export async function DELETE(
       category: 'INVENTORY',
       action: 'DELETE_ITEM',
       details: `Deleted item "${deletedName}" from system`,
-      actorName: 'Inventory Admin',
+      actorName: authCheck.user.name || authCheck.user.username || 'Inventory Admin',
+      actorEmail: authCheck.user.email || undefined,
       targetId: id,
       targetName: deletedName
     }).catch(e => console.warn('Audit log error:', e));

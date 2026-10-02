@@ -1,17 +1,53 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'customer:update');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
     const body = await request.json();
-    const { name, nickname, type, programme, grade, studentId, parentName, phone, email, note } = body;
+    const { name, nickname, type, programme, grade, studentId, parentName, phone, email, note, guardians } = body;
 
     const now = new Date().toISOString();
+
+    let cleanParentName = parentName !== undefined ? (parentName || '').trim() || null : undefined;
+    let cleanPhone = phone !== undefined ? (phone || '').trim() || null : undefined;
+    let cleanEmail = email !== undefined ? (email || '').trim() || null : undefined;
+    let cleanNote = note !== undefined ? (note || '').trim() || null : undefined;
+
+    // Process guardians if provided
+    let processedGuardians: any[] | undefined = undefined;
+    if (guardians !== undefined && Array.isArray(guardians)) {
+      const validGuardians = guardians.filter((g: any) => g && g.name && g.name.trim());
+      processedGuardians = validGuardians.map((g: any, idx: number) => ({
+        id: g.id || `g-${Date.now()}-${idx}`,
+        name: g.name.trim(),
+        relationship: g.relationship || 'Father',
+        phone: (g.phone || '').trim() || undefined,
+        email: (g.email || '').trim() || undefined
+      }));
+
+      cleanParentName = processedGuardians
+        .map((g) => `${g.name} (${g.relationship})`)
+        .join(', ') || null;
+
+      const firstPhone = processedGuardians.find((g) => g.phone)?.phone;
+      const firstEmail = processedGuardians.find((g) => g.email)?.email;
+      if (!cleanPhone && firstPhone) cleanPhone = firstPhone;
+      if (!cleanEmail && firstEmail) cleanEmail = firstEmail;
+
+      const gTag = `[GUARDIANS]:${JSON.stringify(processedGuardians)}`;
+      cleanNote = cleanNote ? `${gTag}\n${cleanNote}` : gTag;
+    }
 
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
@@ -22,10 +58,10 @@ export async function PUT(
       if (programme !== undefined) updateData.programme = programme;
       if (grade !== undefined) updateData.grade = (grade || '').trim();
       if (studentId !== undefined) updateData.student_id = (studentId || '').trim() || null;
-      if (parentName !== undefined) updateData.parent_name = (parentName || '').trim() || null;
-      if (phone !== undefined) updateData.phone = (phone || '').trim() || null;
-      if (email !== undefined) updateData.email = (email || '').trim() || null;
-      if (note !== undefined) updateData.note = (note || '').trim() || null;
+      if (cleanParentName !== undefined) updateData.parent_name = cleanParentName;
+      if (cleanPhone !== undefined) updateData.phone = cleanPhone;
+      if (cleanEmail !== undefined) updateData.email = cleanEmail;
+      if (cleanNote !== undefined) updateData.note = cleanNote;
 
       const { data, error } = await supabase
         .from('customers')
@@ -61,10 +97,11 @@ export async function PUT(
       programme: programme !== undefined ? programme : current.programme,
       grade: grade !== undefined ? (grade || '').trim() : current.grade,
       studentId: studentId !== undefined ? (studentId || '').trim() || undefined : current.studentId,
-      parentName: parentName !== undefined ? (parentName || '').trim() || undefined : current.parentName,
-      phone: phone !== undefined ? (phone || '').trim() || undefined : current.phone,
-      email: email !== undefined ? (email || '').trim() || undefined : current.email,
-      note: note !== undefined ? (note || '').trim() || undefined : current.note,
+      parentName: cleanParentName !== undefined ? (cleanParentName || undefined) : current.parentName,
+      phone: cleanPhone !== undefined ? (cleanPhone || undefined) : current.phone,
+      email: cleanEmail !== undefined ? (cleanEmail || undefined) : current.email,
+      guardians: processedGuardians !== undefined ? processedGuardians : current.guardians,
+      note: cleanNote !== undefined ? (cleanNote || undefined) : current.note,
       updatedAt: now
     };
 
@@ -80,6 +117,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'customer:delete');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
 
     // 1. Supabase Cloud DB

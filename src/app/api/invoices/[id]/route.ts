@@ -2,13 +2,23 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { Invoice } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:read');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
+    const cleanId = (id || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    if (!cleanId) {
+      return NextResponse.json({ error: 'Valid invoice ID or number is required' }, { status: 400 });
+    }
 
     // 1. Supabase
     if (isSupabaseConfigured && supabase) {
@@ -16,7 +26,7 @@ export async function GET(
         const { data, error } = await supabase
           .from('invoices')
           .select('*')
-          .or(`id.eq.${id},invoice_number.eq.${id}`)
+          .or(`id.eq.${cleanId},invoice_number.eq.${cleanId}`)
           .maybeSingle();
 
         if (!error && data) {
@@ -69,12 +79,22 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:create');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
+    const cleanId = (id || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    if (!cleanId) {
+      return NextResponse.json({ error: 'Valid invoice ID or number is required' }, { status: 400 });
+    }
+
     const body = await request.json();
     const { status, receiptId, paidAt, note } = body;
 
     const db = readDb();
-    const idx = (db.invoices || []).findIndex(i => i.id === id || i.invoiceNumber === id);
+    const idx = (db.invoices || []).findIndex(i => i.id === cleanId || i.invoiceNumber === cleanId);
 
     const now = new Date().toISOString();
     const updates: Partial<Invoice> = {
@@ -98,7 +118,7 @@ export async function PATCH(
         await supabase
           .from('invoices')
           .update(sbUpdates)
-          .or(`id.eq.${id},invoice_number.eq.${id}`);
+          .or(`id.eq.${cleanId},invoice_number.eq.${cleanId}`);
       } catch (sbErr) {
         console.warn('Supabase invoice update warning:', sbErr);
       }
@@ -123,12 +143,22 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authCheck = await requirePermission(request, 'pos:receipt:void');
+    if (authCheck.errorResponse) {
+      return authCheck.errorResponse;
+    }
+
     const { id } = await params;
+    const cleanId = (id || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    if (!cleanId) {
+      return NextResponse.json({ error: 'Valid invoice ID or number is required' }, { status: 400 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const reason = body?.reason || 'Invoice cancelled';
 
     const db = readDb();
-    const idx = (db.invoices || []).findIndex(i => i.id === id || i.invoiceNumber === id);
+    const idx = (db.invoices || []).findIndex(i => i.id === cleanId || i.invoiceNumber === cleanId);
 
     const now = new Date().toISOString();
 
@@ -142,7 +172,7 @@ export async function DELETE(
             note: reason,
             updated_at: now
           })
-          .or(`id.eq.${id},invoice_number.eq.${id}`);
+          .or(`id.eq.${cleanId},invoice_number.eq.${cleanId}`);
       } catch (sbErr) {
         console.warn('Supabase invoice cancel warning:', sbErr);
       }
