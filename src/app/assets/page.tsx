@@ -33,12 +33,12 @@ function AssetsContent() {
     }
   }, [searchParams]);
 
-  // Overall Asset Statistics
+  // Overall Asset Statistics (Starts at 0 for fresh system)
   const stats = [
-    { label: 'Total Assets', value: '142', icon: Briefcase, color: 'text-emerald-700 bg-emerald-50' },
-    { label: 'Active in Use', value: '128', icon: CheckCircle2, color: 'text-blue-700 bg-blue-50' },
-    { label: 'On Loan / Borrowed', value: '9', icon: Repeat, color: 'text-amber-700 bg-amber-50' },
-    { label: 'Pending Dispose', value: '5', icon: Trash2, color: 'text-rose-700 bg-rose-50' },
+    { label: 'Total Assets', value: '0', icon: Briefcase, color: 'text-emerald-700 bg-emerald-50' },
+    { label: 'Active in Use', value: '0', icon: CheckCircle2, color: 'text-blue-700 bg-blue-50' },
+    { label: 'On Loan / Borrowed', value: '0', icon: Repeat, color: 'text-amber-700 bg-amber-50' },
+    { label: 'Pending Dispose', value: '0', icon: Trash2, color: 'text-rose-700 bg-rose-50' },
   ];
 
   const tabs: { key: AssetTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
