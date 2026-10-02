@@ -66,70 +66,70 @@
       "id": "dept-sci",
       "name": "กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี",
       "allocatedBudget": 150000,
-      "spentBudget": 42350,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-math",
       "name": "กลุ่มสาระฯ คณิตศาสตร์",
       "allocatedBudget": 120000,
-      "spentBudget": 18500,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-thai",
       "name": "กลุ่มสาระฯ ภาษาไทย",
       "allocatedBudget": 100000,
-      "spentBudget": 12000,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-foreign",
       "name": "กลุ่มสาระฯ ภาษาต่างประเทศ",
       "allocatedBudget": 110000,
-      "spentBudget": 24500,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-social",
       "name": "กลุ่มสาระฯ สังคมศึกษา ศาสนาฯ",
       "allocatedBudget": 95000,
-      "spentBudget": 15580,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-art",
       "name": "กลุ่มสาระฯ ศิลปะ / การงาน",
       "allocatedBudget": 140000,
-      "spentBudget": 51200,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-pe",
       "name": "กลุ่มสาระฯ สุขศึกษาและพลศึกษา",
       "allocatedBudget": 130000,
-      "spentBudget": 33000,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-admin",
       "name": "งานธุรการและสารบรรณ",
       "allocatedBudget": 200000,
-      "spentBudget": 89000,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-academic",
       "name": "งานวิชาการและทะเบียน",
       "allocatedBudget": 160000,
-      "spentBudget": 45000,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     },
     {
       "id": "dept-facility",
       "name": "งานพัสดุ อาคารสถานที่",
       "allocatedBudget": 250000,
-      "spentBudget": 112000,
+      "spentBudget": 0,
       "fiscalYear": "2026"
     }
   ],
@@ -138,28 +138,5 @@
   "receipts": [],
   "invoices": [],
   "customers": [],
-  "auditLogs": [
-    {
-      "id": "log-1790328073661-5875",
-      "category": "USER_MANAGEMENT",
-      "action": "CREATE_USER",
-      "details": "Created 1 staff account(s): test teacher (@teacher01)",
-      "actorName": "Super Administrator",
-      "actorEmail": "superadmin@roong-aroon.ac.th",
-      "targetId": "usr-1790328073272-534",
-      "targetName": "test teacher",
-      "metadata": {
-        "actorId": "usr-superadmin",
-        "count": 1,
-        "users": [
-          {
-            "id": "usr-1790328073272-534",
-            "username": "teacher01",
-            "role": "TEACHER"
-          }
-        ]
-      },
-      "createdAt": "2026-09-25T09:21:13.661Z"
-    }
-  ]
+  "auditLogs": []
 }
