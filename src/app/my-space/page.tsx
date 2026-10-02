@@ -22,6 +22,26 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { Item, Department } from '@/types/inventory';
 
+interface MyRequestItem {
+  id: string;
+  itemName: string;
+  qty: number;
+  unit: string;
+  department: string;
+  status: 'PENDING' | 'APPROVED' | 'RECEIVED' | 'REJECTED';
+  createdAt: string;
+  purpose: string;
+}
+
+interface MyReceiptItem {
+  id: string;
+  date: string;
+  itemsCount: number;
+  totalAmount: number;
+  paymentMethod: string;
+  status: string;
+}
+
 type MySpaceTab = 'new-request' | 'my-requests' | 'my-receipts' | 'report-issue' | 'search-stock';
 
 export default function MySpacePage() {
@@ -49,6 +69,10 @@ export default function MySpacePage() {
   const [issueDetails, setIssueDetails] = useState('');
   const [issueSubmitted, setIssueSubmitted] = useState(false);
 
+  // User Requests & Receipts State
+  const [myRequests, setMyRequests] = useState<MyRequestItem[]>([]);
+  const [myReceipts, setMyReceipts] = useState<MyReceiptItem[]>([]);
+
   // Sync tab with URL
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as MySpaceTab;
@@ -69,63 +93,25 @@ export default function MySpacePage() {
     });
   }, []);
 
-  // Mock My Requests
-  const myRequests = [
-    {
-      id: 'REQ-2026-089',
-      itemName: 'A4 Printing Paper (80gsm) Double A',
-      qty: 3,
-      unit: 'Ream',
-      department: 'Primary Years (PYP)',
-      status: 'PENDING',
-      createdAt: '24 Sep 2026, 08:30',
-      purpose: 'Grade 3 Art & Worksheet Activities'
-    },
-    {
-      id: 'REQ-2026-074',
-      itemName: 'Whiteboard Marker (Blue) Pentel',
-      qty: 5,
-      unit: 'Pack',
-      department: 'Middle Years (MYP)',
-      status: 'APPROVED',
-      createdAt: '22 Sep 2026, 14:15',
-      purpose: 'Science Lab Room 302'
-    },
-    {
-      id: 'REQ-2026-061',
-      itemName: 'Permanent Marker Bullet Tip (Black)',
-      qty: 2,
-      unit: 'Box',
-      department: 'Diploma Programme (DP)',
-      status: 'RECEIVED',
-      createdAt: '19 Sep 2026, 10:00',
-      purpose: 'Exam Grading Preparation'
-    }
-  ];
-
-  // Mock My Receipts
-  const myReceipts = [
-    {
-      id: 'RCP-2026-0412',
-      date: '23 Sep 2026',
-      itemsCount: 4,
-      totalAmount: 320,
-      paymentMethod: 'School Welfare Wallet',
-      status: 'PAID'
-    },
-    {
-      id: 'RCP-2026-0355',
-      date: '15 Sep 2026',
-      itemsCount: 2,
-      totalAmount: 145,
-      paymentMethod: 'PromptPay QR',
-      status: 'PAID'
-    }
-  ];
-
   const handleRequestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItem || requestQty <= 0) return;
+
+    const itemObj = items.find(i => i.id === selectedItem);
+    const deptObj = departments.find(d => d.id === targetDepartment);
+
+    const newReq: MyRequestItem = {
+      id: `REQ-${new Date().getFullYear()}-${String(myRequests.length + 1).padStart(3, '0')}`,
+      itemName: itemObj?.name || 'School Material',
+      qty: requestQty,
+      unit: itemObj?.unit || 'Units',
+      department: deptObj?.name || 'General Instruction',
+      status: 'PENDING',
+      createdAt: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      purpose: requestPurpose || 'Instructional activity'
+    };
+
+    setMyRequests(prev => [newReq, ...prev]);
     setRequestSubmitted(true);
     setTimeout(() => {
       setSelectedItem('');
@@ -389,38 +375,47 @@ export default function MySpacePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {myRequests.map(req => (
-                  <tr key={req.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3 px-3 font-mono font-bold text-[#0B6B4F]">{req.id}</td>
-                    <td className="py-3 px-3 font-medium text-slate-900">{req.itemName}</td>
-                    <td className="py-3 px-3 text-center font-mono font-bold">
-                      {req.qty} {req.unit}
-                    </td>
-                    <td className="py-3 px-3 text-slate-600">{req.department}</td>
-                    <td className="py-3 px-3 text-slate-500 text-[11px] max-w-xs truncate">{req.purpose}</td>
-                    <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">{req.createdAt}</td>
-                    <td className="py-3 px-3 text-center">
-                      {req.status === 'PENDING' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                          <Clock className="w-3 h-3" />
-                          <span>Pending Approval</span>
-                        </span>
-                      )}
-                      {req.status === 'APPROVED' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Approved (Ready for Pickup)</span>
-                        </span>
-                      )}
-                      {req.status === 'RECEIVED' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Dispensed</span>
-                        </span>
-                      )}
+                {myRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
+                      <ClipboardList className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <span>No requisition records found. Click &quot;+ New Request&quot; to create one.</span>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  myRequests.map(req => (
+                    <tr key={req.id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-3 px-3 font-mono font-bold text-[#0B6B4F]">{req.id}</td>
+                      <td className="py-3 px-3 font-medium text-slate-900">{req.itemName}</td>
+                      <td className="py-3 px-3 text-center font-mono font-bold">
+                        {req.qty} {req.unit}
+                      </td>
+                      <td className="py-3 px-3 text-slate-600">{req.department}</td>
+                      <td className="py-3 px-3 text-slate-500 text-[11px] max-w-xs truncate">{req.purpose}</td>
+                      <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">{req.createdAt}</td>
+                      <td className="py-3 px-3 text-center">
+                        {req.status === 'PENDING' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock className="w-3 h-3" />
+                            <span>Pending Approval</span>
+                          </span>
+                        )}
+                        {req.status === 'APPROVED' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Approved (Ready for Pickup)</span>
+                          </span>
+                        )}
+                        {req.status === 'RECEIVED' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Dispensed</span>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -435,33 +430,40 @@ export default function MySpacePage() {
           <div className="border-b border-slate-100 pb-4">
             <h2 className="text-base font-bold text-[#111827] flex items-center gap-2">
               <Receipt className="w-5 h-5 text-[#0B6B4F]" />
-              <span>My Receipts & Welfare Purchases</span>
+              <span>My Receipts &amp; Welfare Purchases</span>
             </h2>
             <p className="text-xs text-[#6B7280]">
               Payment history and school welfare deductions from school store purchases
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {myReceipts.map(rcp => (
-              <div key={rcp.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-slate-800">{rcp.id}</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                    {rcp.status}
-                  </span>
+          {myReceipts.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+              <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <span>No receipt history found for your account.</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {myReceipts.map(rcp => (
+                <div key={rcp.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-slate-800">{rcp.id}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                      {rcp.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span>Date: {rcp.date}</span>
+                    <span>{rcp.itemsCount} items</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500">{rcp.paymentMethod}</span>
+                    <span className="font-mono font-black text-sm text-[#0B6B4F]">฿{rcp.totalAmount.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span>Date: {rcp.date}</span>
-                  <span>{rcp.itemsCount} items</span>
-                </div>
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-500">{rcp.paymentMethod}</span>
-                  <span className="font-mono font-black text-sm text-[#0B6B4F]">฿{rcp.totalAmount.toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

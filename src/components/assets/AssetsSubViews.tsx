@@ -31,6 +31,66 @@ import {
   Camera
 } from 'lucide-react';
 
+export interface AssetItem {
+  id: string;
+  code: string;
+  name: string;
+  serial: string;
+  category: string;
+  location: string;
+  custodian: string;
+  purchaseDate: string;
+  cost: number;
+  status: string;
+}
+
+export interface DepreciationItem {
+  code: string;
+  name: string;
+  cost: number;
+  salvageValue: number;
+  usefulLifeYears: number;
+  accumulatedDepreciation: number;
+  netBookValue: number;
+  monthlyDepreciation: number;
+  status: string;
+}
+
+export interface DisposalRecord {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  reason: string;
+  reasonText: string;
+  salvageValue: number;
+  disposalDate: string;
+  approvedBy: string;
+  status: string;
+}
+
+export interface LoanRecord {
+  id: string;
+  assetCode: string;
+  assetName: string;
+  borrower: string;
+  department: string;
+  borrowDate: string;
+  dueDate: string;
+  purpose: string;
+  status: string;
+}
+
+export interface AuditRecord {
+  code: string;
+  name: string;
+  location: string;
+  expectedCustodian: string;
+  status: string;
+  verifiedAt: string;
+  verifiedBy: string;
+}
+
 // ============================================================================
 // 1. ASSET REGISTER VIEW (Fixed Assets Register & Master)
 // ============================================================================
@@ -47,80 +107,7 @@ export function AssetRegisterView({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Asset Register State
-  const [assets, setAssets] = useState([
-    {
-      id: 'ast-1',
-      code: 'AST-2024-001',
-      name: 'Apple iMac 24" M3 (Silver)',
-      serial: 'C02G89AJK01',
-      category: 'IT_COMPUTER',
-      location: 'Computer Lab 3 (Building B, Fl 2)',
-      custodian: 'Mr. Panyawut S. (IT)',
-      purchaseDate: '2024-01-15',
-      cost: 49900,
-      status: 'IN_USE',
-    },
-    {
-      id: 'ast-2',
-      code: 'AST-2024-002',
-      name: 'Epson EB-L260F Laser Projector',
-      serial: 'EP-99214-X',
-      category: 'AUDIO_VISUAL',
-      location: 'Primary Hall Auditorioum',
-      custodian: 'Kru Prasert S. (Audio)',
-      purchaseDate: '2024-02-10',
-      cost: 38500,
-      status: 'IN_USE',
-    },
-    {
-      id: 'ast-3',
-      code: 'AST-2023-089',
-      name: 'Olympus CX23 Binocular Microscope (x10)',
-      serial: 'OLY-CX23-441',
-      category: 'SCIENCE_LAB',
-      location: 'Science Lab 1 (Biology)',
-      custodian: 'Dr. Jane Wattana',
-      purchaseDate: '2023-08-20',
-      cost: 185000,
-      status: 'IN_USE',
-    },
-    {
-      id: 'ast-4',
-      code: 'AST-2023-045',
-      name: 'Yamaha Clavinova CLP-745 Digital Piano',
-      serial: 'YMH-CLV-882',
-      category: 'MUSIC_ARTS',
-      location: 'Music Studio Room 4',
-      custodian: 'Aj. Danai R.',
-      purchaseDate: '2023-05-12',
-      cost: 82000,
-      status: 'MAINTENANCE',
-    },
-    {
-      id: 'ast-5',
-      code: 'AST-2022-012',
-      name: 'MakerBot Replicator+ 3D Printer',
-      serial: 'MB-REP-9002',
-      category: 'IT_COMPUTER',
-      location: 'Makerspace / Innovation Hub',
-      custodian: 'Mr. David Clark (MYP Design)',
-      purchaseDate: '2022-11-05',
-      cost: 76000,
-      status: 'IN_USE',
-    },
-    {
-      id: 'ast-6',
-      code: 'AST-2021-030',
-      name: 'Sony PXW-Z90 4K Camcorder & Tripod Kit',
-      serial: 'SNY-Z90-3310',
-      category: 'AUDIO_VISUAL',
-      location: 'Media Production Room',
-      custodian: 'Ms. Sarah Jenkins',
-      purchaseDate: '2021-09-18',
-      cost: 95000,
-      status: 'ON_LOAN',
-    }
-  ]);
+  const [assets, setAssets] = useState<AssetItem[]>([]);
 
   // New Asset Form State
   const [newCode, setNewCode] = useState(`AST-2024-${String(assets.length + 1).padStart(3, '0')}`);
@@ -457,63 +444,7 @@ export function AssetRegisterView({
 export function AssetDepreciationView() {
   const [fiscalYear, setFiscalYear] = useState('2024');
 
-  const items = [
-    {
-      code: 'AST-2024-001',
-      name: 'Apple iMac 24" M3 (Silver)',
-      cost: 49900,
-      salvageValue: 1,
-      usefulLifeYears: 5,
-      accumulatedDepreciation: 8316,
-      netBookValue: 41584,
-      monthlyDepreciation: 831.65,
-      status: 'DEPRECIATING'
-    },
-    {
-      code: 'AST-2024-002',
-      name: 'Epson EB-L260F Laser Projector',
-      cost: 38500,
-      salvageValue: 1,
-      usefulLifeYears: 5,
-      accumulatedDepreciation: 5775,
-      netBookValue: 32725,
-      monthlyDepreciation: 641.65,
-      status: 'DEPRECIATING'
-    },
-    {
-      code: 'AST-2023-089',
-      name: 'Olympus CX23 Binocular Microscope (x10)',
-      cost: 185000,
-      salvageValue: 1000,
-      usefulLifeYears: 10,
-      accumulatedDepreciation: 23000,
-      netBookValue: 162000,
-      monthlyDepreciation: 1533.33,
-      status: 'DEPRECIATING'
-    },
-    {
-      code: 'AST-2023-045',
-      name: 'Yamaha Clavinova CLP-745 Digital Piano',
-      cost: 82000,
-      salvageValue: 1,
-      usefulLifeYears: 8,
-      accumulatedDepreciation: 15375,
-      netBookValue: 66625,
-      monthlyDepreciation: 854.16,
-      status: 'DEPRECIATING'
-    },
-    {
-      code: 'AST-2022-012',
-      name: 'MakerBot Replicator+ 3D Printer',
-      cost: 76000,
-      salvageValue: 1,
-      usefulLifeYears: 5,
-      accumulatedDepreciation: 30400,
-      netBookValue: 45600,
-      monthlyDepreciation: 1266.65,
-      status: 'DEPRECIATING'
-    }
-  ];
+  const items: DepreciationItem[] = [];
 
   const totalCost = items.reduce((acc, curr) => acc + curr.cost, 0);
   const totalAccum = items.reduce((acc, curr) => acc + curr.accumulatedDepreciation, 0);
@@ -591,29 +522,38 @@ export function AssetDepreciationView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {items.map(item => (
-                <tr key={item.code} className="hover:bg-slate-50/60 transition">
-                  <td className="py-3 px-4">
-                    <span className="font-mono font-bold text-slate-900 block">{item.code}</span>
-                    <span className="text-slate-600 block">{item.name}</span>
-                  </td>
-                  <td className="py-3 px-4 text-center font-mono font-semibold text-slate-700">
-                    {item.usefulLifeYears}y
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-900">
-                    ฿{item.cost.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-600">
-                    ฿{item.monthlyDepreciation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-semibold text-rose-600">
-                    -฿{item.accumulatedDepreciation.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-[#0B6B4F]">
-                    ฿{item.netBookValue.toLocaleString()}
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400 text-xs">
+                    <TrendingDown className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <span>No depreciating fixed assets recorded.</span>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                items.map(item => (
+                  <tr key={item.code} className="hover:bg-slate-50/60 transition">
+                    <td className="py-3 px-4">
+                      <span className="font-mono font-bold text-slate-900 block">{item.code}</span>
+                      <span className="text-slate-600 block">{item.name}</span>
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono font-semibold text-slate-700">
+                      {item.usefulLifeYears}y
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-900">
+                      ฿{item.cost.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-600">
+                      ฿{item.monthlyDepreciation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-rose-600">
+                      -฿{item.accumulatedDepreciation.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-[#0B6B4F]">
+                      ฿{item.netBookValue.toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -626,32 +566,7 @@ export function AssetDepreciationView() {
 // 3. ASSET DISPOSAL VIEW (Asset Disposal & Write-off)
 // ============================================================================
 export function AssetDisposeView() {
-  const [disposals, setDisposals] = useState([
-    {
-      id: 'disp-1',
-      code: 'AST-2018-042',
-      name: 'Dell OptiPlex 7050 Desktop',
-      category: 'IT_COMPUTER',
-      reason: 'UNREPAIRABLE_DEFECT',
-      reasonText: 'Motherboard failure, obsolete DDR3 components no longer available',
-      salvageValue: 500,
-      disposalDate: '2024-03-01',
-      approvedBy: 'Director / Board',
-      status: 'APPROVED'
-    },
-    {
-      id: 'disp-2',
-      code: 'AST-2017-015',
-      name: 'Sony VPL-DX102 Projector',
-      category: 'AUDIO_VISUAL',
-      reason: 'OBSOLETE',
-      reasonText: 'Low resolution 1024x768 lamp burned out, replaced by laser projector',
-      salvageValue: 200,
-      disposalDate: '2024-02-14',
-      approvedBy: 'Dept Head (Kru Prasert)',
-      status: 'APPROVED'
-    }
-  ]);
+  const [disposals, setDisposals] = useState<DisposalRecord[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [assetCode, setAssetCode] = useState('');
@@ -721,36 +636,45 @@ export function AssetDisposeView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {disposals.map(disp => (
-                <tr key={disp.id} className="hover:bg-slate-50/60 transition">
-                  <td className="py-3 px-4">
-                    <span className="font-mono font-bold text-slate-900 block">{disp.code}</span>
-                    <span className="text-slate-600 block">{disp.name}</span>
-                  </td>
-                  <td className="py-3 px-4 max-w-xs">
-                    <span className="font-semibold text-slate-900 block">{disp.reason.replace('_', ' ')}</span>
-                    <span className="text-[11px] text-slate-500 block truncate">{disp.reasonText}</span>
-                  </td>
-                  <td className="py-3 px-4 text-slate-700 font-medium">
-                    {disp.approvedBy}
-                    <span className="text-[11px] text-slate-400 block">{disp.disposalDate}</span>
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-semibold text-slate-900">
-                    ฿{disp.salvageValue.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    {disp.status === 'APPROVED' ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        Written Off
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        Pending Sign-off
-                      </span>
-                    )}
+              {disposals.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400 text-xs">
+                    <Trash2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <span>No asset disposal or write-off records found.</span>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                disposals.map(disp => (
+                  <tr key={disp.id} className="hover:bg-slate-50/60 transition">
+                    <td className="py-3 px-4">
+                      <span className="font-mono font-bold text-slate-900 block">{disp.code}</span>
+                      <span className="text-slate-600 block">{disp.name}</span>
+                    </td>
+                    <td className="py-3 px-4 max-w-xs">
+                      <span className="font-semibold text-slate-900 block">{disp.reason.replace('_', ' ')}</span>
+                      <span className="text-[11px] text-slate-500 block truncate">{disp.reasonText}</span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-700 font-medium">
+                      {disp.approvedBy}
+                      <span className="text-[11px] text-slate-400 block">{disp.disposalDate}</span>
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-slate-900">
+                      ฿{disp.salvageValue.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {disp.status === 'APPROVED' ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Written Off
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          Pending Sign-off
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -856,41 +780,7 @@ export function AssetDisposeView() {
 // 4. ASSET BORROW VIEW (Asset Loan & Custody)
 // ============================================================================
 export function AssetBorrowView() {
-  const [loans, setLoans] = useState([
-    {
-      id: 'loan-1',
-      assetCode: 'AST-2021-030',
-      assetName: 'Sony PXW-Z90 4K Camcorder & Tripod Kit',
-      borrower: 'Kru Nattaporn (Drama & Arts)',
-      department: 'Secondary School',
-      borrowDate: '2024-03-20',
-      dueDate: '2024-03-25',
-      purpose: 'Annual IB Theatre Arts Showcase Recording',
-      status: 'ON_LOAN'
-    },
-    {
-      id: 'loan-2',
-      assetCode: 'AST-2023-018',
-      assetName: 'DJI RS3 Gimbal Stabilizer',
-      borrower: 'Mr. David Clark',
-      department: 'MYP Design',
-      borrowDate: '2024-03-18',
-      dueDate: '2024-03-22',
-      purpose: 'Field Trip Video Documentary',
-      status: 'OVERDUE'
-    },
-    {
-      id: 'loan-3',
-      assetCode: 'AST-2024-009',
-      assetName: 'Portable PA Speaker & Wireless Mic',
-      borrower: 'Coach Marcus T.',
-      department: 'Athletics & PE',
-      borrowDate: '2024-03-15',
-      dueDate: '2024-03-16',
-      purpose: 'Swimming Gala Event',
-      status: 'RETURNED'
-    }
-  ]);
+  const [loans, setLoans] = useState<LoanRecord[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCode, setNewCode] = useState('');
@@ -966,54 +856,63 @@ export function AssetBorrowView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loans.map(loan => (
-                <tr key={loan.id} className="hover:bg-slate-50/60 transition">
-                  <td className="py-3 px-4">
-                    <span className="font-mono font-bold text-slate-900 block">{loan.assetCode}</span>
-                    <span className="text-slate-600 block">{loan.assetName}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="font-semibold text-slate-900 block">{loan.borrower}</span>
-                    <span className="text-[11px] text-slate-500 block">{loan.department}</span>
-                  </td>
-                  <td className="py-3 px-4 font-mono text-[11px]">
-                    <span className="text-slate-700 block">Out: {loan.borrowDate}</span>
-                    <span className={`block font-semibold ${loan.status === 'OVERDUE' ? 'text-rose-600' : 'text-slate-500'}`}>
-                      Due: {loan.dueDate}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
-                    {loan.purpose}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    {loan.status === 'ON_LOAN' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        On Loan
-                      </span>
-                    )}
-                    {loan.status === 'OVERDUE' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
-                        Overdue
-                      </span>
-                    )}
-                    {loan.status === 'RETURNED' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        Returned
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    {loan.status !== 'RETURNED' && (
-                      <button
-                        onClick={() => handleReturn(loan.id)}
-                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition"
-                      >
-                        Return
-                      </button>
-                    )}
+              {loans.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400 text-xs">
+                    <Repeat className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <span>No equipment currently on loan or overdue.</span>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                loans.map(loan => (
+                  <tr key={loan.id} className="hover:bg-slate-50/60 transition">
+                    <td className="py-3 px-4">
+                      <span className="font-mono font-bold text-slate-900 block">{loan.assetCode}</span>
+                      <span className="text-slate-600 block">{loan.assetName}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="font-semibold text-slate-900 block">{loan.borrower}</span>
+                      <span className="text-[11px] text-slate-500 block">{loan.department}</span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-[11px]">
+                      <span className="text-slate-700 block">Out: {loan.borrowDate}</span>
+                      <span className={`block font-semibold ${loan.status === 'OVERDUE' ? 'text-rose-600' : 'text-slate-500'}`}>
+                        Due: {loan.dueDate}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
+                      {loan.purpose}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {loan.status === 'ON_LOAN' && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          On Loan
+                        </span>
+                      )}
+                      {loan.status === 'OVERDUE' && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
+                          Overdue
+                        </span>
+                      )}
+                      {loan.status === 'RETURNED' && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Returned
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {loan.status !== 'RETURNED' && (
+                        <button
+                          onClick={() => handleReturn(loan.id)}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition"
+                        >
+                          Return
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1121,53 +1020,7 @@ export function AssetVerificationView() {
   const [scanInput, setScanInput] = useState('');
   const [lastScanned, setLastScanned] = useState<string | null>(null);
 
-  const [auditList, setAuditList] = useState([
-    {
-      code: 'AST-2024-001',
-      name: 'Apple iMac 24" M3 (Silver)',
-      location: 'Computer Lab 3 (Building B, Fl 2)',
-      expectedCustodian: 'Mr. Panyawut S. (IT)',
-      status: 'VERIFIED',
-      verifiedAt: '2024-03-24 10:15',
-      verifiedBy: 'Audit Committee Team 1'
-    },
-    {
-      code: 'AST-2024-002',
-      name: 'Epson EB-L260F Laser Projector',
-      location: 'Primary Hall Auditorioum',
-      expectedCustodian: 'Kru Prasert S. (Audio)',
-      status: 'VERIFIED',
-      verifiedAt: '2024-03-24 11:20',
-      verifiedBy: 'Audit Committee Team 1'
-    },
-    {
-      code: 'AST-2023-089',
-      name: 'Olympus CX23 Binocular Microscope (x10)',
-      location: 'Science Lab 1 (Biology)',
-      expectedCustodian: 'Dr. Jane Wattana',
-      status: 'PENDING',
-      verifiedAt: '-',
-      verifiedBy: '-'
-    },
-    {
-      code: 'AST-2023-045',
-      name: 'Yamaha Clavinova CLP-745 Digital Piano',
-      location: 'Music Studio Room 4',
-      expectedCustodian: 'Aj. Danai R.',
-      status: 'PENDING',
-      verifiedAt: '-',
-      verifiedBy: '-'
-    },
-    {
-      code: 'AST-2022-012',
-      name: 'MakerBot Replicator+ 3D Printer',
-      location: 'Makerspace / Innovation Hub',
-      expectedCustodian: 'Mr. David Clark (MYP Design)',
-      status: 'PENDING',
-      verifiedAt: '-',
-      verifiedBy: '-'
-    }
-  ]);
+  const [auditList, setAuditList] = useState<AuditRecord[]>([]);
 
   const handleScanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1198,7 +1051,7 @@ export function AssetVerificationView() {
 
   const verifiedCount = auditList.filter(a => a.status === 'VERIFIED').length;
   const totalCount = auditList.length;
-  const progressPct = Math.round((verifiedCount / totalCount) * 100);
+  const progressPct = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
@@ -1277,36 +1130,45 @@ export function AssetVerificationView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {auditList.map(item => (
-                <tr key={item.code} className="hover:bg-slate-50/60 transition">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                    {item.code}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="font-bold text-slate-900 block">{item.name}</span>
-                    <span className="text-[11px] text-slate-500 block">Custodian: {item.expectedCustodian}</span>
-                  </td>
-                  <td className="py-3 px-4 text-slate-700">
-                    {item.location}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
-                    {item.verifiedAt}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    {item.status === 'VERIFIED' ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3 text-emerald-600" />
-                        Verified
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1">
-                        <HelpCircle className="w-3 h-3 text-amber-600" />
-                        Pending Scan
-                      </span>
-                    )}
+              {auditList.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400 text-xs">
+                    <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <span>No assets currently scheduled for physical verification audit.</span>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                auditList.map(item => (
+                  <tr key={item.code} className="hover:bg-slate-50/60 transition">
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                      {item.code}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="font-bold text-slate-900 block">{item.name}</span>
+                      <span className="text-[11px] text-slate-500 block">Custodian: {item.expectedCustodian}</span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-700">
+                      {item.location}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
+                      {item.verifiedAt}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {item.status === 'VERIFIED' ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1">
+                          <HelpCircle className="w-3 h-3 text-amber-600" />
+                          Pending Scan
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

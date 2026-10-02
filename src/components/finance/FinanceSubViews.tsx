@@ -37,28 +37,7 @@ export interface BillingNote {
 }
 
 export function BillingNotesView({ invoices }: { invoices: Invoice[] }) {
-  const [billingNotes, setBillingNotes] = useState<BillingNote[]>([
-    {
-      id: 'bn-1',
-      noteNumber: 'BN-202609-001',
-      customerName: 'Bangkok International Bookfair Co., Ltd.',
-      issueDate: '20 Sep 2026',
-      dueDate: '05 Oct 2026',
-      invoices: ['INV-202609-0012', 'INV-202609-0015'],
-      totalAmount: 48500,
-      status: 'SENT'
-    },
-    {
-      id: 'bn-2',
-      noteNumber: 'BN-202609-002',
-      customerName: 'RAIS PTA (Parent Teacher Association)',
-      issueDate: '22 Sep 2026',
-      dueDate: '07 Oct 2026',
-      invoices: ['INV-202609-0021'],
-      totalAmount: 18200,
-      status: 'PENDING'
-    }
-  ]);
+  const [billingNotes, setBillingNotes] = useState<BillingNote[]>([]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -140,41 +119,50 @@ export function BillingNotesView({ invoices }: { invoices: Invoice[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filtered.map(bn => (
-                <tr key={bn.id} className="hover:bg-slate-50/70 transition">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-900">{bn.noteNumber}</td>
-                  <td className="py-3 px-4 font-bold text-slate-800">{bn.customerName}</td>
-                  <td className="py-3 px-4 text-slate-500">{bn.issueDate}</td>
-                  <td className="py-3 px-4 font-bold text-slate-700">{bn.dueDate}</td>
-                  <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
-                    {bn.invoices.join(', ')}
-                  </td>
-                  <td className="py-3 px-4 text-right font-black text-slate-900">
-                    ฿{bn.totalAmount.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      bn.status === 'PAID'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : bn.status === 'SENT'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {bn.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => alert(`Printing Billing Note ${bn.noteNumber}`)}
-                        className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center gap-1"
-                      >
-                        <Printer className="w-3 h-3" /> Print
-                      </button>
-                    </div>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400 text-xs">
+                    <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <span>No billing notes found.</span>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map(bn => (
+                  <tr key={bn.id} className="hover:bg-slate-50/70 transition">
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900">{bn.noteNumber}</td>
+                    <td className="py-3 px-4 font-bold text-slate-800">{bn.customerName}</td>
+                    <td className="py-3 px-4 text-slate-500">{bn.issueDate}</td>
+                    <td className="py-3 px-4 font-bold text-slate-700">{bn.dueDate}</td>
+                    <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
+                      {bn.invoices.join(', ')}
+                    </td>
+                    <td className="py-3 px-4 text-right font-black text-slate-900">
+                      ฿{bn.totalAmount.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        bn.status === 'PAID'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : bn.status === 'SENT'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {bn.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => alert(`Printing Billing Note ${bn.noteNumber}`)}
+                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center gap-1"
+                        >
+                          <Printer className="w-3 h-3" /> Print
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -244,37 +232,54 @@ export function BillingNotesView({ invoices }: { invoices: Invoice[] }) {
 // ============================================================================
 // 2. AR AGING VIEW (Accounts Receivable Aging Schedule)
 // ============================================================================
-export function AgingReportView({ invoices }: { invoices: Invoice[] }) {
-  const agingData = [
-    {
-      debtor: 'Grade 9 Parent Association',
-      total: 35000,
-      current: 25000,
-      days30: 10000,
-      days60: 0,
-      days90: 0,
-      lastPayment: '10 Sep 2026'
-    },
-    {
-      debtor: 'Siam Sports Equipment Partner',
-      total: 48000,
-      current: 0,
-      days30: 28000,
-      days60: 20000,
-      days90: 0,
-      lastPayment: '15 Aug 2026'
-    },
-    {
-      debtor: 'Catering & Canteen Concession',
-      total: 62000,
-      current: 0,
-      days30: 0,
-      days60: 32000,
-      days90: 30000,
-      lastPayment: '02 Jul 2026'
-    }
-  ];
+export function AgingReportView({ invoices = [] }: { invoices?: Invoice[] }) {
+  const unpaidInvoices = (invoices || []).filter(inv => inv.status !== 'PAID' && inv.status !== 'CANCELLED');
 
+  const debtorMap = new Map<string, {
+    debtor: string;
+    total: number;
+    current: number;
+    days30: number;
+    days60: number;
+    days90: number;
+    lastPayment: string;
+  }>();
+
+  const now = Date.now();
+
+  unpaidInvoices.forEach(inv => {
+    const debtor = inv.customerName || 'Customer / Debtor';
+    const amount = inv.totalAmount || 0;
+    const invDateStr = inv.dueDate || inv.createdAt;
+    const invDate = invDateStr ? new Date(invDateStr).getTime() : now;
+    const diffDays = Math.max(0, Math.floor((now - invDate) / (1000 * 60 * 60 * 24)));
+
+    if (!debtorMap.has(debtor)) {
+      debtorMap.set(debtor, {
+        debtor,
+        total: 0,
+        current: 0,
+        days30: 0,
+        days60: 0,
+        days90: 0,
+        lastPayment: inv.paidAt || inv.createdAt || '-'
+      });
+    }
+
+    const entry = debtorMap.get(debtor)!;
+    entry.total += amount;
+    if (diffDays <= 30) {
+      entry.current += amount;
+    } else if (diffDays <= 60) {
+      entry.days30 += amount;
+    } else if (diffDays <= 90) {
+      entry.days60 += amount;
+    } else {
+      entry.days90 += amount;
+    }
+  });
+
+  const agingData = Array.from(debtorMap.values());
   const totalOutstanding = agingData.reduce((sum, d) => sum + d.total, 0);
   const totalCurrent = agingData.reduce((sum, d) => sum + d.current, 0);
   const total30 = agingData.reduce((sum, d) => sum + d.days30, 0);
@@ -334,35 +339,44 @@ export function AgingReportView({ invoices }: { invoices: Invoice[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {agingData.map((row, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/70 transition">
-                  <td className="py-3 px-4 font-bold text-slate-900">{row.debtor}</td>
-                  <td className="py-3 px-4 text-right font-black text-slate-900">
-                    ฿{row.total.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-emerald-700">
-                    {row.current > 0 ? `฿${row.current.toLocaleString()}` : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-blue-700">
-                    {row.days30 > 0 ? `฿${row.days30.toLocaleString()}` : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-amber-700">
-                    {row.days60 > 0 ? `฿${row.days60.toLocaleString()}` : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-rose-700">
-                    {row.days90 > 0 ? `฿${row.days90.toLocaleString()}` : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-slate-500">{row.lastPayment}</td>
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => alert(`Sent payment statement reminder to ${row.debtor}`)}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0B6B4F] text-[11px] font-bold border border-emerald-200 transition flex items-center gap-1 mx-auto"
-                    >
-                      <Send className="w-3 h-3" /> Remind
-                    </button>
+              {agingData.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400 text-xs">
+                    <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <span>No outstanding accounts receivable found.</span>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                agingData.map((row, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/70 transition">
+                    <td className="py-3 px-4 font-bold text-slate-900">{row.debtor}</td>
+                    <td className="py-3 px-4 text-right font-black text-slate-900">
+                      ฿{row.total.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-emerald-700">
+                      {row.current > 0 ? `฿${row.current.toLocaleString()}` : '-'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-blue-700">
+                      {row.days30 > 0 ? `฿${row.days30.toLocaleString()}` : '-'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-amber-700">
+                      {row.days60 > 0 ? `฿${row.days60.toLocaleString()}` : '-'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-rose-700">
+                      {row.days90 > 0 ? `฿${row.days90.toLocaleString()}` : '-'}
+                    </td>
+                    <td className="py-3 px-4 text-slate-500">{row.lastPayment}</td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => alert(`Sent payment statement reminder to ${row.debtor}`)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0B6B4F] text-[11px] font-bold border border-emerald-200 transition flex items-center gap-1 mx-auto"
+                      >
+                        <Send className="w-3 h-3" /> Remind
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -386,28 +400,7 @@ export interface CreditNoteRecord {
 }
 
 export function CreditNoteView() {
-  const [creditNotes, setCreditNotes] = useState<CreditNoteRecord[]>([
-    {
-      id: 'cn-1',
-      cnNumber: 'CN-202609-001',
-      date: '23 Sep 2026',
-      invoiceRef: 'INV-202609-0012',
-      customerName: 'Bangkok International Bookfair Co., Ltd.',
-      reason: 'Damaged Books returned to warehouse',
-      amount: 4200,
-      status: 'ISSUED'
-    },
-    {
-      id: 'cn-2',
-      cnNumber: 'CN-202609-002',
-      date: '21 Sep 2026',
-      invoiceRef: 'INV-202609-0008',
-      customerName: 'Kru Prasert (Primary School)',
-      reason: 'Volume discount retroactive correction',
-      amount: 1500,
-      status: 'APPLIED'
-    }
-  ]);
+  const [creditNotes, setCreditNotes] = useState<CreditNoteRecord[]>([]);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [invRef, setInvRef] = useState('');
@@ -473,31 +466,40 @@ export function CreditNoteView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {creditNotes.map(cn => (
-                <tr key={cn.id} className="hover:bg-slate-50/70 transition">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-900">{cn.cnNumber}</td>
-                  <td className="py-3 px-4 text-slate-500">{cn.date}</td>
-                  <td className="py-3 px-4 font-mono text-[#0B6B4F] font-bold">{cn.invoiceRef}</td>
-                  <td className="py-3 px-4 font-semibold text-slate-800">{cn.customerName}</td>
-                  <td className="py-3 px-4 text-slate-600">{cn.reason}</td>
-                  <td className="py-3 px-4 text-right font-black text-rose-600">
-                    -฿{cn.amount.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                      {cn.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => alert(`Printing Credit Note ${cn.cnNumber}`)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold"
-                    >
-                      Print
-                    </button>
+              {creditNotes.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400 text-xs">
+                    <FileMinus className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <span>No credit notes issued.</span>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                creditNotes.map(cn => (
+                  <tr key={cn.id} className="hover:bg-slate-50/70 transition">
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900">{cn.cnNumber}</td>
+                    <td className="py-3 px-4 text-slate-500">{cn.date}</td>
+                    <td className="py-3 px-4 font-mono text-[#0B6B4F] font-bold">{cn.invoiceRef}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-800">{cn.customerName}</td>
+                    <td className="py-3 px-4 text-slate-600">{cn.reason}</td>
+                    <td className="py-3 px-4 text-right font-black text-rose-600">
+                      -฿{cn.amount.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                        {cn.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => alert(`Printing Credit Note ${cn.cnNumber}`)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold"
+                      >
+                        Print
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

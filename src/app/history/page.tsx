@@ -51,6 +51,8 @@ function HistoryContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [receipts, setReceipts] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters for stock movement
@@ -65,18 +67,24 @@ function HistoryContent() {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const [txRes, deptRes, auditRes] = await Promise.all([
-        fetch('/api/transactions?limit=200'),
-        fetch('/api/categories'),
-        fetch('/api/audit-logs?limit=200')
+      const [txRes, deptRes, auditRes, receiptsRes, invoicesRes] = await Promise.all([
+        fetch('/api/transactions?limit=200').catch(() => null),
+        fetch('/api/categories').catch(() => null),
+        fetch('/api/audit-logs?limit=200').catch(() => null),
+        fetch('/api/receipts').catch(() => null),
+        fetch('/api/invoices').catch(() => null)
       ]);
-      const txData = await txRes.json();
-      const deptData = await deptRes.json();
-      const auditData = await auditRes.json();
+      const txData = txRes ? await txRes.json() : { transactions: [] };
+      const deptData = deptRes ? await deptRes.json() : { departments: [] };
+      const auditData = auditRes ? await auditRes.json() : { logs: [] };
+      const rcData = receiptsRes ? await receiptsRes.json() : { receipts: [] };
+      const invData = invoicesRes ? await invoicesRes.json() : { invoices: [] };
 
       setTransactions(txData.transactions || []);
       setDepartments(deptData.departments || []);
       setAuditLogs(auditData.logs || []);
+      setReceipts(rcData.receipts || []);
+      setInvoices(invData.invoices || []);
     } catch (err) {
       console.error('Error fetching history:', err);
     } finally {
@@ -250,7 +258,7 @@ function HistoryContent() {
       </div>
 
       {activeTab === 'sales' && (
-        <SalesReportView transactions={transactions} />
+        <SalesReportView transactions={transactions} receipts={receipts} />
       )}
 
       {activeTab === 'issue-receipt' && (
@@ -258,11 +266,11 @@ function HistoryContent() {
       )}
 
       {activeTab === 'receivables' && (
-        <ReceivablesReportView />
+        <ReceivablesReportView invoices={invoices} />
       )}
 
       {activeTab === 'finance' && (
-        <FinanceBudgetReportView />
+        <FinanceBudgetReportView departments={departments} />
       )}
 
       {activeTab === 'movements' && (
