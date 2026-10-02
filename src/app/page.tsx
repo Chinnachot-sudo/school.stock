@@ -89,53 +89,20 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const activeTab = (searchParams.get('tab') || 'overview').toLowerCase();
 
+  interface ApprovalItem {
+    id: string;
+    requester: string;
+    dept: string;
+    item: string;
+    qty: number;
+    unit: string;
+    date: string;
+    purpose: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  }
+
   // Approvals State
-  const [approvals, setApprovals] = useState([
-    {
-      id: 'APP-101',
-      requester: 'Ms. Sarah (Grade 4)',
-      dept: 'Primary Years (PYP)',
-      item: 'A4 Copier Paper (Double A 80gsm)',
-      qty: 5,
-      unit: 'Ream',
-      date: '24 Sep 2026, 08:30',
-      purpose: 'Term Examination Preparation and Worksheets',
-      status: 'PENDING'
-    },
-    {
-      id: 'APP-102',
-      requester: 'Mr. David (Science Lab)',
-      dept: 'Middle Years (MYP)',
-      item: 'Nitrile Disposable Gloves (Size M)',
-      qty: 2,
-      unit: 'Box',
-      date: '24 Sep 2026, 09:15',
-      purpose: 'Grade 8 Chemistry Laboratory Experiment',
-      status: 'PENDING'
-    },
-    {
-      id: 'APP-103',
-      requester: 'Kru Sompong (Thai Dept)',
-      dept: 'Diploma Programme (DP)',
-      item: 'Whiteboard Bullet Markers (Black)',
-      qty: 6,
-      unit: 'Piece',
-      date: '23 Sep 2026, 15:40',
-      purpose: 'IB Language & Literature Classrooms',
-      status: 'PENDING'
-    },
-    {
-      id: 'APP-104',
-      requester: 'Ms. Jenny (Art Dept)',
-      dept: 'Primary Years (PYP)',
-      item: 'Acrylic Color Set (12 Colors 75ml)',
-      qty: 4,
-      unit: 'Set',
-      date: '22 Sep 2026, 11:20',
-      purpose: 'IB Visual Arts Exhibition',
-      status: 'APPROVED'
-    }
-  ]);
+  const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [approvalFilter, setApprovalFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
 
   const handleApprove = (id: string) => {
@@ -455,65 +422,75 @@ function HomeContent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {approvals
-              .filter(a => approvalFilter === 'ALL' || a.status === approvalFilter)
-              .map(app => (
-                <div
-                  key={app.id}
-                  className="p-4 rounded-xl border border-slate-200 bg-white hover:border-[#0B6B4F]/40 transition space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-[#0B6B4F]">{app.id}</span>
-                    <span
-                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        app.status === 'PENDING'
-                          ? 'bg-amber-100 text-amber-800'
-                          : app.status === 'APPROVED'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
-                    >
-                      {app.status}
-                    </span>
-                  </div>
+          {approvals.filter(a => approvalFilter === 'ALL' || a.status === approvalFilter).length === 0 ? (
+            <div className="py-14 text-center bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 space-y-2">
+              <ClipboardCheck className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-sm font-semibold text-slate-700">No approval requests found</h3>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                There are currently no supply requests pending approval or matching the selected filter.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {approvals
+                .filter(a => approvalFilter === 'ALL' || a.status === approvalFilter)
+                .map(app => (
+                  <div
+                    key={app.id}
+                    className="p-4 rounded-xl border border-slate-200 bg-white hover:border-[#0B6B4F]/40 transition space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-[#0B6B4F]">{app.id}</span>
+                      <span
+                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                          app.status === 'PENDING'
+                            ? 'bg-amber-100 text-amber-800'
+                            : app.status === 'APPROVED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {app.status}
+                      </span>
+                    </div>
 
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">{app.item}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Quantity: <span className="font-bold text-slate-800 font-mono">{app.qty} {app.unit}</span> • Department: {app.dept}
-                    </p>
-                    <p className="text-[11px] text-slate-600 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      Purpose: {app.purpose}
-                    </p>
-                  </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">{app.item}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Quantity: <span className="font-bold text-slate-800 font-mono">{app.qty} {app.unit}</span> • Department: {app.dept}
+                      </p>
+                      <p className="text-[11px] text-slate-600 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        Purpose: {app.purpose}
+                      </p>
+                    </div>
 
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                    <span>Requester: <strong className="text-slate-700">{app.requester}</strong> ({app.date})</span>
-                    {app.status === 'PENDING' && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleReject(app.id)}
-                          className="px-2.5 py-1 rounded-lg text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold transition flex items-center gap-1 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>Reject</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleApprove(app.id)}
-                          className="px-3 py-1 rounded-lg text-white bg-[#0B6B4F] hover:bg-[#084D39] font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Approve</span>
-                        </button>
-                      </div>
-                    )}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                      <span>Requester: <strong className="text-slate-700">{app.requester}</strong> ({app.date})</span>
+                      {app.status === 'PENDING' && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleReject(app.id)}
+                            className="px-2.5 py-1 rounded-lg text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(app.id)}
+                            className="px-3 py-1 rounded-lg text-white bg-[#0B6B4F] hover:bg-[#084D39] font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Approve</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-          </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
 

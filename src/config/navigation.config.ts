@@ -96,17 +96,13 @@ export const navigationConfig: NavigationGroup[] = [
         label: 'Approvals',
         href: '/?tab=approvals',
         icon: ClipboardCheck,
-        badge: '3',
-        badgeColor: 'bg-amber-100 text-amber-700',
         permissions: ['inventory:stock:issue', 'inventory:stock:restock', 'iam:user:read'],
         roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN', 'INVENTORY_MANAGER']
       },
       {
         label: 'Inbox',
         href: '/?tab=inbox',
-        icon: Bell,
-        badge: '2',
-        badgeColor: 'bg-emerald-100 text-emerald-700'
+        icon: Bell
       },
       {
         label: 'Calendar',
