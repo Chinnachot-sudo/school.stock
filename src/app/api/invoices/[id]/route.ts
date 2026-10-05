@@ -108,20 +108,24 @@ export async function PATCH(
 
     // 1. Supabase
     if (isSupabaseConfigured && supabase) {
-      try {
-        const sbUpdates: any = { updated_at: now };
-        if (status) sbUpdates.status = status;
-        if (receiptId !== undefined) sbUpdates.receipt_id = receiptId;
-        if (paidAt !== undefined) sbUpdates.paid_at = paidAt;
-        if (note !== undefined) sbUpdates.note = note;
+      const sbUpdates: any = { updated_at: now };
+      if (status) sbUpdates.status = status;
+      if (receiptId !== undefined) sbUpdates.receipt_id = receiptId;
+      if (paidAt !== undefined) sbUpdates.paid_at = paidAt;
+      if (note !== undefined) sbUpdates.note = note;
 
-        await supabase
-          .from('invoices')
-          .update(sbUpdates)
-          .or(`id.eq.${cleanId},invoice_number.eq.${cleanId}`);
-      } catch (sbErr) {
-        console.warn('Supabase invoice update warning:', sbErr);
+      const { data, error } = await supabase
+        .from('invoices')
+        .update(sbUpdates)
+        .or(`id.eq.${cleanId},invoice_number.eq.${cleanId}`)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        throw error;
       }
+
+      return NextResponse.json({ success: true, invoice: data });
     }
 
     // 2. Local DB
@@ -156,29 +160,31 @@ export async function DELETE(
 
     const body = await request.json().catch(() => ({}));
     const reason = body?.reason || 'Invoice cancelled';
-
-    const db = readDb();
-    const idx = (db.invoices || []).findIndex(i => i.id === cleanId || i.invoiceNumber === cleanId);
-
     const now = new Date().toISOString();
 
     // 1. Supabase
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase
-          .from('invoices')
-          .update({
-            status: 'CANCELLED',
-            note: reason,
-            updated_at: now
-          })
-          .or(`id.eq.${cleanId},invoice_number.eq.${cleanId}`);
-      } catch (sbErr) {
-        console.warn('Supabase invoice cancel warning:', sbErr);
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({
+          status: 'CANCELLED',
+          note: reason,
+          updated_at: now
+        })
+        .or(`id.eq.${cleanId},invoice_number.eq.${cleanId}`)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        throw error;
       }
+
+      return NextResponse.json({ success: true, invoice: data });
     }
 
     // 2. Local DB
+    const db = readDb();
+    const idx = (db.invoices || []).findIndex(i => i.id === cleanId || i.invoiceNumber === cleanId);
     if (idx !== -1) {
       db.invoices[idx].status = 'CANCELLED';
       db.invoices[idx].note = reason;

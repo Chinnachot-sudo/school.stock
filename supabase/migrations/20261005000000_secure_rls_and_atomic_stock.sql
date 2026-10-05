@@ -4,8 +4,12 @@
 -- 2. Revoke wide-open anon/authenticated RLS policies on ALL public tables
 -- 3. Restrict user_roles, roles, permissions, role_permissions modifications
 -- 4. Secure audit_logs (Strict service_role inserts only)
--- 5. Add Atomic Stock Movement & POS Sale RPCs with row-level locking (FOR UPDATE)
--- 6. Enforce SET search_path = public, pg_temp and strict service_role EXECUTE permissions
+-- 5. Atomic PostgreSQL RPCs:
+--    - create_pos_sale (Receipt + Stock Deductions + Transaction Logs)
+--    - create_stock_movement_batch (Stock Mutations + Budget Deductions + Transaction Logs)
+--    - void_receipt_with_stock_restore (Void Receipt + Stock Restorations + Void Logs)
+--    - process_receipt_return (Return Restock + Refund Validations + Return Logs)
+-- 6. Enforce SET search_path = public, pg_temp and exclusive service_role EXECUTE permissions
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
@@ -23,6 +27,7 @@ INSERT INTO public.permissions (id, name, module, description) VALUES
   ('pos:receipt:read', 'ดูประวัติใบเสร็จและยอดเงิน', 'Finance', 'สิทธิ์ในการดูรายการขายและรายงานการเงิน'),
   ('pos:receipt:create', 'สร้างใบเสร็จ/ขายสินค้า POS', 'Finance', 'สิทธิ์ในการคิดเงินและออกใบเสร็จรับเงิน'),
   ('pos:receipt:void', 'ยกเลิกใบเสร็จ (Void)', 'Finance', 'สิทธิ์ในการกดยกเลิกและคืนยอดสต็อกใบเสร็จที่ผิดพลาด'),
+  ('pos:receipt:refund', 'คืนเงิน/คืนสินค้า (Return)', 'Finance', 'สิทธิ์ในการทำรายการคืนสินค้า'),
   ('customer:read', 'ดูข้อมูลลูกค้าและนักเรียน', 'Customers', 'สิทธิ์ในการค้นหาและดูข้อมูลนักเรียน/ลูกค้า'),
   ('customer:create', 'เพิ่มข้อมูลลูกค้า', 'Customers', 'สิทธิ์ในการสร้างข้อมูลลูกค้า/นักเรียน'),
   ('customer:update', 'แก้ไขข้อมูลลูกค้า', 'Customers', 'สิทธิ์ในการแก้ไขข้อมูลลูกค้า/นักเรียน'),
@@ -94,7 +99,7 @@ BEGIN
 END $$;
 
 -- ------------------------------------------------------------------------------
--- 3. Apply Strict RLS Policies (Securing Direct Access)
+-- 3. Apply Strict RLS Policies
 -- ------------------------------------------------------------------------------
 ALTER TABLE IF EXISTS public.items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.transactions ENABLE ROW LEVEL SECURITY;
@@ -105,7 +110,6 @@ ALTER TABLE IF EXISTS public.roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.role_permissions ENABLE ROW LEVEL SECURITY;
 
--- 3.1 Read policies for authenticated users
 CREATE POLICY items_select_policy ON public.items
   FOR SELECT TO authenticated USING (true);
 
@@ -139,7 +143,6 @@ CREATE POLICY user_roles_select_policy ON public.user_roles
     )
   );
 
--- 3.2 Strict user_roles write restriction (Only admins can manage roles)
 CREATE POLICY user_roles_insert_policy ON public.user_roles
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -162,7 +165,6 @@ CREATE POLICY user_roles_delete_policy ON public.user_roles
     )
   );
 
--- 3.3 Audit logs: Read restricted to security admins, NO direct authenticated inserts
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'audit_logs') THEN
@@ -178,137 +180,14 @@ BEGIN
           WHERE ur.user_id = auth.uid()::text AND p.id IN ('audit:log:read', 'audit.logs.read')
         )
       );
-    -- Note: No INSERT policy for authenticated role. Audit logs MUST be written via service_role.
   END IF;
 END $$;
 
 -- ------------------------------------------------------------------------------
--- 4. Atomic PostgreSQL Stored Procedures (With Row Locks and Fixed Search Path)
+-- 4. Atomic PostgreSQL Stored Procedures
 -- ------------------------------------------------------------------------------
 
--- 4.1 Deduct Item Stock
-CREATE OR REPLACE FUNCTION public.deduct_item_stock(
-  p_item_id TEXT,
-  p_quantity INT
-)
-RETURNS TABLE (
-  success BOOLEAN,
-  new_stock INT,
-  message TEXT
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  v_current INT;
-  v_updated INT;
-BEGIN
-  IF p_quantity <= 0 THEN
-    RETURN QUERY SELECT false, 0, 'Deduction quantity must be greater than zero'::TEXT;
-    RETURN;
-  END IF;
-
-  SELECT current_stock INTO v_current
-  FROM public.items
-  WHERE id = p_item_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RETURN QUERY SELECT false, 0, 'Item not found'::TEXT;
-    RETURN;
-  END IF;
-
-  IF v_current < p_quantity THEN
-    RETURN QUERY SELECT false, v_current, ('Insufficient stock. Available: ' || v_current || ', Requested: ' || p_quantity)::TEXT;
-    RETURN;
-  END IF;
-
-  UPDATE public.items
-  SET current_stock = current_stock - p_quantity,
-      updated_at = NOW()
-  WHERE id = p_item_id
-  RETURNING current_stock INTO v_updated;
-
-  RETURN QUERY SELECT true, v_updated, 'Stock deducted successfully'::TEXT;
-END;
-$$;
-
--- 4.2 Increase Item Stock
-CREATE OR REPLACE FUNCTION public.increase_item_stock(
-  p_item_id TEXT,
-  p_quantity INT
-)
-RETURNS TABLE (
-  success BOOLEAN,
-  new_stock INT,
-  message TEXT
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  v_updated INT;
-BEGIN
-  IF p_quantity <= 0 THEN
-    RETURN QUERY SELECT false, 0, 'Increase quantity must be greater than zero'::TEXT;
-    RETURN;
-  END IF;
-
-  UPDATE public.items
-  SET current_stock = current_stock + p_quantity,
-      updated_at = NOW()
-  WHERE id = p_item_id
-  RETURNING current_stock INTO v_updated;
-
-  IF NOT FOUND THEN
-    RETURN QUERY SELECT false, 0, 'Item not found'::TEXT;
-    RETURN;
-  END IF;
-
-  RETURN QUERY SELECT true, v_updated, 'Stock increased successfully'::TEXT;
-END;
-$$;
-
--- 4.3 Adjust Item Stock
-CREATE OR REPLACE FUNCTION public.adjust_item_stock(
-  p_item_id TEXT,
-  p_new_stock INT
-)
-RETURNS TABLE (
-  success BOOLEAN,
-  new_stock INT,
-  message TEXT
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  v_updated INT;
-BEGIN
-  IF p_new_stock < 0 THEN
-    RETURN QUERY SELECT false, 0, 'New stock cannot be negative'::TEXT;
-    RETURN;
-  END IF;
-
-  UPDATE public.items
-  SET current_stock = p_new_stock,
-      updated_at = NOW()
-  WHERE id = p_item_id
-  RETURNING current_stock INTO v_updated;
-
-  IF NOT FOUND THEN
-    RETURN QUERY SELECT false, 0, 'Item not found'::TEXT;
-    RETURN;
-  END IF;
-
-  RETURN QUERY SELECT true, v_updated, 'Stock adjusted successfully'::TEXT;
-END;
-$$;
-
--- 4.4 All-in-One Atomic POS Sale (Receipt + Stock Deductions + Transaction Logs in 1 DB Transaction)
+-- 4.1 All-in-One Atomic POS Sale
 CREATE OR REPLACE FUNCTION public.create_pos_sale(
   p_receipt JSONB,
   p_items JSONB
@@ -417,7 +296,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- 4.5 All-in-One Atomic Stock Movements + Transactions Batch RPC
+-- 4.2 All-in-One Atomic Stock Movements + Budget Deductions + Transactions Batch RPC
 CREATE OR REPLACE FUNCTION public.create_stock_movement_batch(
   p_type TEXT,
   p_items JSONB,
@@ -445,7 +324,12 @@ DECLARE
   v_issued_user_id TEXT;
   v_issued_name TEXT;
   v_note TEXT;
-  v_budget_deducted BOOLEAN;
+  v_budget_deducted BOOLEAN := false;
+  v_override_budget BOOLEAN;
+  v_total_batch_cost NUMERIC := 0;
+  v_alloc_budget NUMERIC := 0;
+  v_spent_budget NUMERIC := 0;
+  v_remaining_budget NUMERIC := 0;
   v_created_txs JSONB := '[]'::JSONB;
 BEGIN
   v_dept := COALESCE(p_metadata->>'department', 'General Academic Dept');
@@ -454,8 +338,50 @@ BEGIN
   v_issued_user_id := p_metadata->>'issuedToUserId';
   v_issued_name := p_metadata->>'issuedToName';
   v_note := p_metadata->>'note';
-  v_budget_deducted := COALESCE((p_metadata->>'budgetDeducted')::BOOLEAN, false);
+  v_override_budget := COALESCE((p_metadata->>'overrideBudget')::BOOLEAN, false);
 
+  -- 1. Pre-calculate total cost
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_qty := (v_item->>'quantity')::INT;
+    v_unit_cost := COALESCE((v_item->>'unitCost')::NUMERIC, 0);
+    v_total_batch_cost := v_total_batch_cost + (v_qty * v_unit_cost);
+  END LOOP;
+
+  -- 2. Atomic Budget Verification and Deduction inside DB Transaction
+  IF p_type = 'OUT' AND (v_dept_id IS NOT NULL OR (v_dept IS NOT NULL AND v_dept != 'ALL')) THEN
+    IF v_dept_id IS NOT NULL THEN
+      SELECT allocated_budget, spent_budget INTO v_alloc_budget, v_spent_budget
+      FROM public.departments
+      WHERE id = v_dept_id
+      FOR UPDATE;
+    ELSE
+      SELECT id, allocated_budget, spent_budget INTO v_dept_id, v_alloc_budget, v_spent_budget
+      FROM public.departments
+      WHERE LOWER(name) = LOWER(v_dept)
+      FOR UPDATE
+      LIMIT 1;
+    END IF;
+
+    IF FOUND THEN
+      v_alloc_budget := COALESCE(v_alloc_budget, 0);
+      v_spent_budget := COALESCE(v_spent_budget, 0);
+      v_remaining_budget := v_alloc_budget - v_spent_budget;
+
+      IF v_total_batch_cost > v_remaining_budget AND NOT v_override_budget THEN
+        RAISE EXCEPTION 'Department budget exceeded! Available: %, Required: %', v_remaining_budget, v_total_batch_cost;
+      END IF;
+
+      UPDATE public.departments
+      SET spent_budget = spent_budget + v_total_batch_cost,
+          updated_at = v_now
+      WHERE id = v_dept_id;
+
+      v_budget_deducted := true;
+    END IF;
+  END IF;
+
+  -- 3. Atomic Stock Mutations and Transaction Inserts
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
     v_item_id := v_item->>'itemId';
@@ -541,7 +467,239 @@ BEGIN
   RETURN jsonb_build_object(
     'success', true,
     'count', jsonb_array_length(v_created_txs),
-    'transactions', v_created_txs
+    'transactions', v_created_txs,
+    'totalCost', v_total_batch_cost,
+    'budgetDeducted', v_budget_deducted
+  );
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- 4.3 All-in-One Atomic Void Receipt with Stock Restoration
+CREATE OR REPLACE FUNCTION public.void_receipt_with_stock_restore(
+  p_receipt_id TEXT,
+  p_void_reason TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_rc RECORD;
+  v_item JSONB;
+  v_item_id TEXT;
+  v_item_code TEXT;
+  v_item_name TEXT;
+  v_qty INT;
+  v_current_stock INT;
+  v_new_stock INT;
+  v_now TIMESTAMPTZ := NOW();
+  v_items_json JSONB;
+BEGIN
+  -- 1. Lock receipt row
+  SELECT * INTO v_rc
+  FROM public.receipts
+  WHERE id = p_receipt_id OR receipt_number = p_receipt_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Receipt % not found in database', p_receipt_id;
+  END IF;
+
+  IF v_rc.status = 'VOIDED' THEN
+    RAISE EXCEPTION 'Receipt #% has already been voided', v_rc.receipt_number;
+  END IF;
+
+  -- 2. Mark receipt as VOIDED
+  UPDATE public.receipts
+  SET status = 'VOIDED',
+      void_reason = p_void_reason
+  WHERE id = v_rc.id;
+
+  -- 3. Parse items and restore stock atomically
+  IF jsonb_typeof(v_rc.items::jsonb) = 'array' THEN
+    v_items_json := v_rc.items::jsonb;
+  ELSE
+    v_items_json := '[]'::jsonb;
+  END IF;
+
+  FOR v_item IN SELECT * FROM jsonb_array_elements(v_items_json)
+  LOOP
+    v_item_id := v_item->>'itemId';
+    v_qty := (v_item->>'quantity')::INT;
+
+    -- Lock item row
+    SELECT current_stock, code, name INTO v_current_stock, v_item_code, v_item_name
+    FROM public.items
+    WHERE id = v_item_id
+    FOR UPDATE;
+
+    IF FOUND THEN
+      v_new_stock := COALESCE(v_current_stock, 0) + v_qty;
+
+      UPDATE public.items
+      SET current_stock = v_new_stock,
+          updated_at = v_now
+      WHERE id = v_item_id;
+
+      INSERT INTO public.transactions (
+        id, item_id, item_name, item_code, type, quantity,
+        balance_after, department, requester_name, note,
+        receipt_id, created_at
+      ) VALUES (
+        'tx-void-' || floor(extract(epoch from now()) * 1000)::text || '-' || floor(random() * 1000)::text,
+        v_item_id,
+        v_item_name,
+        v_item_code,
+        'VOID_SALE',
+        v_qty,
+        v_new_stock,
+        'School Store & Co-op',
+        'System (Void Transaction)',
+        'Restocked due to voided receipt #' || v_rc.receipt_number || ' (' || p_void_reason || ')',
+        v_rc.id,
+        v_now
+      );
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'receiptId', v_rc.id,
+    'receiptNumber', v_rc.receipt_number,
+    'message', 'Receipt voided and inventory restored successfully'
+  );
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- 4.4 All-in-One Atomic Process Receipt Return with Restocking
+CREATE OR REPLACE FUNCTION public.process_receipt_return(
+  p_receipt_id TEXT,
+  p_items JSONB,
+  p_reason TEXT,
+  p_reason_detail TEXT,
+  p_cashier_name TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_rc RECORD;
+  v_item JSONB;
+  v_orig_item JSONB;
+  v_item_id TEXT;
+  v_item_code TEXT;
+  v_item_name TEXT;
+  v_return_qty INT;
+  v_orig_qty INT;
+  v_current_stock INT;
+  v_new_stock INT;
+  v_total_refund NUMERIC := 0;
+  v_unit_price NUMERIC := 0;
+  v_refund_amt NUMERIC := 0;
+  v_now TIMESTAMPTZ := NOW();
+  v_orig_items_json JSONB;
+  v_matched BOOLEAN;
+BEGIN
+  -- 1. Lock receipt row
+  SELECT * INTO v_rc
+  FROM public.receipts
+  WHERE id = p_receipt_id OR receipt_number = p_receipt_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Receipt % not found in database', p_receipt_id;
+  END IF;
+
+  IF v_rc.status = 'VOIDED' THEN
+    RAISE EXCEPTION 'Cannot return items from a voided receipt #%', v_rc.receipt_number;
+  END IF;
+
+  IF jsonb_typeof(v_rc.items::jsonb) = 'array' THEN
+    v_orig_items_json := v_rc.items::jsonb;
+  ELSE
+    v_orig_items_json := '[]'::jsonb;
+  END IF;
+
+  -- 2. Validate return items against original receipt
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_item_id := v_item->>'itemId';
+    v_return_qty := (v_item->>'quantity')::INT;
+    v_matched := false;
+
+    IF v_return_qty <= 0 THEN
+      RAISE EXCEPTION 'Return quantity must be greater than zero';
+    END IF;
+
+    FOR v_orig_item IN SELECT * FROM jsonb_array_elements(v_orig_items_json)
+    LOOP
+      IF (v_orig_item->>'itemId' = v_item_id) OR (v_orig_item->>'itemCode' = v_item->>'itemCode') THEN
+        v_orig_qty := (v_orig_item->>'quantity')::INT;
+        IF v_return_qty > v_orig_qty THEN
+          RAISE EXCEPTION 'Return quantity (%) exceeds purchased quantity (%) for "%"', v_return_qty, v_orig_qty, v_orig_item->>'itemName';
+        END IF;
+        v_matched := true;
+        EXIT;
+      END IF;
+    END LOOP;
+
+    IF NOT v_matched THEN
+      RAISE EXCEPTION 'Item % was not found on receipt #%', v_item_id, v_rc.receipt_number;
+    END IF;
+
+    -- Calculate refund
+    v_unit_price := COALESCE((v_item->>'unitPrice')::NUMERIC, 0);
+    v_refund_amt := COALESCE((v_item->>'refundAmount')::NUMERIC, v_return_qty * v_unit_price);
+    v_total_refund := v_total_refund + v_refund_amt;
+
+    -- Lock item row and restock
+    SELECT current_stock, code, name INTO v_current_stock, v_item_code, v_item_name
+    FROM public.items
+    WHERE id = v_item_id
+    FOR UPDATE;
+
+    IF FOUND THEN
+      v_new_stock := COALESCE(v_current_stock, 0) + v_return_qty;
+
+      UPDATE public.items
+      SET current_stock = v_new_stock,
+          updated_at = v_now
+      WHERE id = v_item_id;
+
+      INSERT INTO public.transactions (
+        id, item_id, item_name, item_code, type, quantity,
+        balance_after, department, requester_name, note,
+        receipt_id, created_at
+      ) VALUES (
+        'tx-ret-' || floor(extract(epoch from now()) * 1000)::text || '-' || floor(random() * 1000)::text,
+        v_item_id,
+        v_item_name,
+        v_item_code,
+        'RETURN_RESTOCK',
+        v_return_qty,
+        v_new_stock,
+        'School Store & Co-op',
+        'Return (Receipt #' || v_rc.receipt_number || ')',
+        'Item returned & restocked: ' || p_reason || ' - ' || COALESCE(p_reason_detail, 'No remarks'),
+        v_rc.id,
+        v_now
+      );
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'receiptId', v_rc.id,
+    'receiptNumber', v_rc.receipt_number,
+    'totalRefund', v_total_refund,
+    'message', 'Return processed and stock restored successfully'
   );
 EXCEPTION WHEN OTHERS THEN
   RETURN jsonb_build_object('success', false, 'error', SQLERRM);
@@ -549,16 +707,14 @@ END;
 $$;
 
 -- ------------------------------------------------------------------------------
--- 5. Restrict RPC EXECUTE Privileges to service_role and postgres ONLY
+-- 5. Restrict All RPC EXECUTE Privileges to service_role and postgres ONLY
 -- ------------------------------------------------------------------------------
-REVOKE EXECUTE ON FUNCTION public.deduct_item_stock(TEXT, INT) FROM PUBLIC, authenticated;
-REVOKE EXECUTE ON FUNCTION public.increase_item_stock(TEXT, INT) FROM PUBLIC, authenticated;
-REVOKE EXECUTE ON FUNCTION public.adjust_item_stock(TEXT, INT) FROM PUBLIC, authenticated;
 REVOKE EXECUTE ON FUNCTION public.create_pos_sale(JSONB, JSONB) FROM PUBLIC, authenticated;
 REVOKE EXECUTE ON FUNCTION public.create_stock_movement_batch(TEXT, JSONB, JSONB) FROM PUBLIC, authenticated;
+REVOKE EXECUTE ON FUNCTION public.void_receipt_with_stock_restore(TEXT, TEXT) FROM PUBLIC, authenticated;
+REVOKE EXECUTE ON FUNCTION public.process_receipt_return(TEXT, JSONB, TEXT, TEXT, TEXT) FROM PUBLIC, authenticated;
 
-GRANT EXECUTE ON FUNCTION public.deduct_item_stock(TEXT, INT) TO service_role, postgres;
-GRANT EXECUTE ON FUNCTION public.increase_item_stock(TEXT, INT) TO service_role, postgres;
-GRANT EXECUTE ON FUNCTION public.adjust_item_stock(TEXT, INT) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.create_pos_sale(JSONB, JSONB) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.create_stock_movement_batch(TEXT, JSONB, JSONB) TO service_role, postgres;
+GRANT EXECUTE ON FUNCTION public.void_receipt_with_stock_restore(TEXT, TEXT) TO service_role, postgres;
+GRANT EXECUTE ON FUNCTION public.process_receipt_return(TEXT, JSONB, TEXT, TEXT, TEXT) TO service_role, postgres;

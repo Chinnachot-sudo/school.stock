@@ -11,6 +11,20 @@ export async function GET(request: Request) {
       return authCheck.errorResponse;
     }
 
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.from('departments').select('*').order('name');
+      if (!error && data) {
+        const departments: Department[] = data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          allocatedBudget: Number(row.allocated_budget || row.allocatedBudget) || 0,
+          spentBudget: Number(row.spent_budget || row.spentBudget) || 0,
+          fiscalYear: row.fiscal_year || row.fiscalYear || '2026-2027'
+        }));
+        return NextResponse.json({ departments });
+      }
+    }
+
     const db = readDb();
     return NextResponse.json({
       departments: db.departments || []
@@ -41,6 +55,38 @@ export async function PATCH(request: Request) {
       );
     }
 
+    if (isSupabaseConfigured && supabase) {
+      const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (allocatedBudget !== undefined) updateData.allocated_budget = Number(allocatedBudget);
+      if (spentBudget !== undefined) updateData.spent_budget = Number(spentBudget);
+      if (name) updateData.name = String(name).trim();
+
+      const { data, error } = await supabase
+        .from('departments')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      const department: Department = {
+        id: data.id,
+        name: data.name,
+        allocatedBudget: Number(data.allocated_budget || data.allocatedBudget) || 0,
+        spentBudget: Number(data.spent_budget || data.spentBudget) || 0,
+        fiscalYear: data.fiscal_year || data.fiscalYear || '2026-2027'
+      };
+
+      return NextResponse.json({
+        success: true,
+        department
+      });
+    }
+
+    // Offline / Local DB fallback
     const db = readDb();
     const deptIndex = db.departments.findIndex(d => d.id === id);
 
@@ -66,7 +112,7 @@ export async function PATCH(request: Request) {
   } catch (error: any) {
     console.error('Error updating department:', error);
     return NextResponse.json(
-      { error: 'Failed to update department' },
+      { error: error.message || 'Failed to update department' },
       { status: 500 }
     );
   }

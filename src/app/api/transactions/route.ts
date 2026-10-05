@@ -173,10 +173,8 @@ export async function POST(request: Request) {
         }
       }
 
-      // Check Department Budget if OUT
+      // Check Department Budget preview info if OUT
       let targetDept: any = null;
-      let budgetDeducted = false;
-
       if (type === 'OUT' && (departmentId || department)) {
         try {
           let deptQuery = supabase.from('departments').select('*');
@@ -193,35 +191,13 @@ export async function POST(request: Request) {
               allocatedBudget: Number(deptData.allocated_budget || deptData.allocatedBudget) || 0,
               spentBudget: Number(deptData.spent_budget || deptData.spentBudget) || 0
             };
-
-            const remaining = targetDept.allocatedBudget - targetDept.spentBudget;
-            if (totalBatchCost > remaining && !overrideBudget) {
-              return NextResponse.json(
-                {
-                  error: `Department budget exceeded! Available: ฿${remaining.toLocaleString()}, Requisition Total: ฿${totalBatchCost.toLocaleString()}`,
-                  budgetExceeded: true,
-                  allocatedBudget: targetDept.allocatedBudget,
-                  spentBudget: targetDept.spentBudget,
-                  remainingBudget: remaining,
-                  requiredBudget: totalBatchCost
-                },
-                { status: 400 }
-              );
-            }
-
-            // Deduct department budget
-            await supabase
-              .from('departments')
-              .update({ spent_budget: targetDept.spentBudget + totalBatchCost, updated_at: now })
-              .eq('id', targetDept.id);
-            budgetDeducted = true;
           }
         } catch (deptErr) {
-          console.warn('Department budget check warning:', deptErr);
+          console.warn('Department budget fetch warning:', deptErr);
         }
       }
 
-      // Execute Atomic Stock Movement Batch RPC (All-in-one Single DB Transaction)
+      // Execute Atomic Stock Movement Batch + Budget RPC (All-in-one Single DB Transaction)
       const { data: rpcResult, error: rpcErr } = await supabase.rpc('create_stock_movement_batch', {
         p_type: type,
         p_items: itemsToProcess.map(it => {
@@ -241,13 +217,15 @@ export async function POST(request: Request) {
           issuedToName: issuedToName || requesterName || null,
           requesterName: (requesterName || issuedToName || '').trim(),
           note: (note || '').trim(),
-          budgetDeducted
+          overrideBudget: Boolean(overrideBudget)
         }
       });
 
       if (rpcErr || !rpcResult || rpcResult.success === false) {
         throw new Error(rpcResult?.error || rpcErr?.message || 'Failed to process stock movement in database');
       }
+
+      const budgetDeducted = Boolean(rpcResult.budgetDeducted);
 
       const createdTxs: Transaction[] = (rpcResult.transactions || []).map((t: any) => ({
         id: t.id,

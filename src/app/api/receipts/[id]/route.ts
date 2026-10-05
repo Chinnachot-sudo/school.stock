@@ -87,65 +87,22 @@ export async function DELETE(
     const body = await request.json().catch(() => ({}));
     const voidReason = body.reason || 'Cancelled by administrator';
 
-    // 1. Supabase Cloud DB
+    // 1. Supabase Cloud DB (All-in-One Atomic Void & Restock RPC)
     if (isSupabaseConfigured && supabase) {
-      const { data: sbReceipt } = await supabase
-        .from('receipts')
-        .select('*')
-        .or(`id.eq.${cleanId},receipt_number.eq.${cleanId}`)
-        .maybeSingle();
+      const { data: voidResult, error: voidErr } = await supabase.rpc('void_receipt_with_stock_restore', {
+        p_receipt_id: cleanId,
+        p_void_reason: voidReason
+      });
 
-      if (sbReceipt) {
-        if (sbReceipt.status === 'VOIDED') {
-          return NextResponse.json({ error: 'This receipt has already been voided' }, { status: 400 });
-        }
-
-        await supabase
-          .from('receipts')
-          .update({ status: 'VOIDED', void_reason: voidReason })
-          .eq('id', sbReceipt.id);
-
-        const items: ReceiptItem[] = typeof sbReceipt.items === 'string'
-          ? JSON.parse(sbReceipt.items)
-          : (sbReceipt.items || []);
-
-        for (const item of items) {
-          const { data: cur } = await supabase
-            .from('items')
-            .select('current_stock')
-            .eq('id', item.itemId)
-            .maybeSingle();
-
-          if (cur) {
-            const restoredStock = (cur.current_stock || 0) + item.quantity;
-            await supabase
-              .from('items')
-              .update({ current_stock: restoredStock, updated_at: new Date().toISOString() })
-              .eq('id', item.itemId);
-
-            await supabase.from('transactions').insert({
-              id: `tx-void-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-              item_id: item.itemId,
-              item_name: item.itemName,
-              item_code: item.itemCode,
-              type: 'VOID_SALE',
-              quantity: item.quantity,
-              balance_after: restoredStock,
-              department: 'School Store & Co-op',
-              requester_name: 'System (Void Transaction)',
-              note: `Restocked due to voided receipt #${sbReceipt.receipt_number} (${voidReason})`,
-              receipt_id: sbReceipt.id,
-              created_at: new Date().toISOString()
-            });
-          }
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: `Receipt #${sbReceipt.receipt_number} voided and inventory restored successfully.`,
-          receipt: { ...sbReceipt, status: 'VOIDED', voidReason }
-        });
+      if (voidErr || !voidResult || voidResult.success === false) {
+        throw new Error(voidResult?.error || voidErr?.message || 'Failed to void receipt in database');
       }
+
+      return NextResponse.json({
+        success: true,
+        message: `Receipt #${voidResult.receiptNumber || cleanId} voided and inventory restored successfully.`,
+        receiptId: voidResult.receiptId
+      });
     }
 
     // 2. Local JSON DB Fallback

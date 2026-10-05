@@ -34,75 +34,26 @@ export async function POST(request: Request) {
     const returnId = `ret-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const reasonLabel = RETURN_REASON_LABELS[reason as ReturnReason] || reason;
 
-    // 1. Supabase Cloud DB
+    // 1. Supabase Cloud DB (All-in-One Atomic Return & Restock RPC)
     if (isSupabaseConfigured && supabase) {
-      const { data: receipt } = await supabase
-        .from('receipts')
-        .select('*')
-        .or(`id.eq.${cleanReceiptId},receipt_number.eq.${cleanReceiptId}`)
-        .maybeSingle();
+      const { data: retResult, error: retErr } = await supabase.rpc('process_receipt_return', {
+        p_receipt_id: cleanReceiptId,
+        p_items: items,
+        p_reason: reasonLabel,
+        p_reason_detail: reasonDetail || null,
+        p_cashier_name: verifiedCashierName
+      });
 
-      if (!receipt) {
-        return NextResponse.json({ error: 'Original receipt not found' }, { status: 404 });
-      }
-
-      if (receipt.status === 'VOIDED') {
-        return NextResponse.json({ error: 'Cannot return items from a voided receipt' }, { status: 400 });
-      }
-
-      const originalItems = typeof receipt.items === 'string' ? JSON.parse(receipt.items) : (receipt.items || []);
-
-      // Validate returned items against original receipt
-      for (const it of items) {
-        const orig = originalItems.find((oi: any) => oi.itemId === it.itemId || oi.itemCode === it.itemCode);
-        if (!orig) {
-          return NextResponse.json({ error: `Item "${it.itemName || it.itemId}" was not on receipt #${receipt.receipt_number}` }, { status: 400 });
-        }
-        const returnQty = Number(it.quantity) || 1;
-        if (returnQty > (orig.quantity || 0)) {
-          return NextResponse.json({ error: `Return quantity (${returnQty}) exceeds purchased quantity (${orig.quantity}) for "${orig.itemName}"` }, { status: 400 });
-        }
-      }
-
-      // Restock items in Supabase
-      for (const it of items) {
-        const qty = Number(it.quantity) || 1;
-        const { data: curItem } = await supabase
-          .from('items')
-          .select('current_stock, name, code')
-          .eq('id', it.itemId)
-          .maybeSingle();
-
-        if (curItem) {
-          const newStock = (curItem.current_stock || 0) + qty;
-          await supabase
-            .from('items')
-            .update({ current_stock: newStock, updated_at: new Date().toISOString() })
-            .eq('id', it.itemId);
-
-          await supabase.from('transactions').insert({
-            id: `tx-ret-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            item_id: it.itemId,
-            item_name: curItem.name || it.itemName,
-            item_code: curItem.code || it.itemCode,
-            type: 'RETURN_RESTOCK',
-            quantity: qty,
-            balance_after: newStock,
-            department: 'School Store & Co-op',
-            requester_name: `Return (Receipt #${receipt.receipt_number})`,
-            note: `Item returned & restocked: ${reasonLabel} - ${reasonDetail || 'No remarks'}`,
-            receipt_id: receipt.id,
-            created_at: new Date().toISOString()
-          });
-        }
+      if (retErr || !retResult || retResult.success === false) {
+        throw new Error(retResult?.error || retErr?.message || 'Failed to process return in database');
       }
 
       const returnRecord: ReturnRecord = {
         id: returnId,
-        receiptId: receipt.id,
-        receiptNumber: receipt.receipt_number,
+        receiptId: retResult.receiptId || cleanReceiptId,
+        receiptNumber: retResult.receiptNumber || cleanReceiptId,
         items,
-        totalRefund,
+        totalRefund: Number(retResult.totalRefund) || totalRefund,
         reason,
         reasonDetail,
         cashierName: verifiedCashierName,
@@ -111,7 +62,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true,
-        message: `Processed return for Receipt #${receipt.receipt_number}. Refund: ฿${totalRefund.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+        message: `Processed return for Receipt #${returnRecord.receiptNumber}. Refund: ฿${returnRecord.totalRefund.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
         returnRecord
       });
     }
