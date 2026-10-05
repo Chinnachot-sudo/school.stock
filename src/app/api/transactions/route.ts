@@ -221,138 +221,53 @@ export async function POST(request: Request) {
         }
       }
 
-      // Execute Atomic Stock Updates and Create Transactions
-      const createdTxs: Transaction[] = [];
-
-      for (const reqItem of itemsToProcess) {
-        const found = dbItems.find((i: any) => i.id === reqItem.itemId || i.code === reqItem.itemId)!;
-        const itemCost = reqItem.unitCost !== undefined ? reqItem.unitCost : Number(found.cost ?? found.price ?? 0);
-        let newStock = Number(found.current_stock) || 0;
-
-        if (type === 'OUT') {
-          // Attempt atomic RPC deduction
-          const { data: rpcData, error: rpcErr } = await supabase.rpc('deduct_item_stock', {
-            p_item_id: found.id,
-            p_quantity: reqItem.quantity
-          });
-
-          if (!rpcErr && rpcData && rpcData.length > 0) {
-            if (!rpcData[0].success) {
-              throw new Error(rpcData[0].message || `Insufficient stock for "${found.name}"`);
-            }
-            newStock = rpcData[0].new_stock;
-          } else {
-            // Direct conditional verification before update
-            const { data: freshItem, error: freshErr } = await supabase
-              .from('items')
-              .select('current_stock')
-              .eq('id', found.id)
-              .single();
-
-            if (freshErr || !freshItem || (freshItem.current_stock || 0) < reqItem.quantity) {
-              throw new Error(`Insufficient stock for "${found.name}"! Available: ${freshItem?.current_stock || 0}, Requested: ${reqItem.quantity}`);
-            }
-
-            newStock = (freshItem.current_stock || 0) - reqItem.quantity;
-            const { error: updErr } = await supabase
-              .from('items')
-              .update({ current_stock: newStock, updated_at: now })
-              .eq('id', found.id);
-
-            if (updErr) {
-              throw new Error(`Failed to update item stock for "${found.name}": ${updErr.message}`);
-            }
-          }
-        } else if (type === 'IN') {
-          const { data: rpcData, error: rpcErr } = await supabase.rpc('increase_item_stock', {
-            p_item_id: found.id,
-            p_quantity: reqItem.quantity
-          });
-
-          if (!rpcErr && rpcData && rpcData.length > 0) {
-            if (!rpcData[0].success) {
-              throw new Error(rpcData[0].message || `Failed to increase stock for "${found.name}"`);
-            }
-            newStock = rpcData[0].new_stock;
-          } else {
-            const { data: freshItem, error: freshErr } = await supabase
-              .from('items')
-              .select('current_stock')
-              .eq('id', found.id)
-              .single();
-
-            if (freshErr || !freshItem) {
-              throw new Error(`Item "${found.name}" not found in database`);
-            }
-
-            newStock = (freshItem.current_stock || 0) + reqItem.quantity;
-            const { error: updErr } = await supabase
-              .from('items')
-              .update({ current_stock: newStock, updated_at: now })
-              .eq('id', found.id);
-
-            if (updErr) {
-              throw new Error(`Failed to update item stock for "${found.name}": ${updErr.message}`);
-            }
-          }
-        } else if (type === 'ADJUST') {
-          newStock = reqItem.quantity;
-          const { error: updErr } = await supabase
-            .from('items')
-            .update({ current_stock: newStock, updated_at: now })
-            .eq('id', found.id);
-
-          if (updErr) {
-            throw new Error(`Failed to update item "${found.name}": ${updErr.message}`);
-          }
-        }
-
-        const newTx: Transaction = {
-          id: `tx-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-          itemId: found.id,
-          itemName: found.name,
-          itemCode: found.code,
-          type: type as TransactionType,
-          quantity: reqItem.quantity,
-          balanceAfter: newStock,
+      // Execute Atomic Stock Movement Batch RPC (All-in-one Single DB Transaction)
+      const { data: rpcResult, error: rpcErr } = await supabase.rpc('create_stock_movement_batch', {
+        p_type: type,
+        p_items: itemsToProcess.map(it => {
+          const found = dbItems.find((i: any) => i.id === it.itemId || i.code === it.itemId)!;
+          return {
+            itemId: found.id,
+            quantity: it.quantity,
+            unitCost: it.unitCost !== undefined ? it.unitCost : Number(found.cost ?? found.price ?? 0),
+            itemCode: found.code,
+            itemName: found.name
+          };
+        }),
+        p_metadata: {
           department: (targetDept ? targetDept.name : (department || 'General Academic Dept')).trim(),
-          departmentId: targetDept ? targetDept.id : departmentId,
-          issuedToUserId,
-          issuedToName: issuedToName || requesterName,
+          departmentId: targetDept ? targetDept.id : departmentId || null,
+          issuedToUserId: issuedToUserId || null,
+          issuedToName: issuedToName || requesterName || null,
           requesterName: (requesterName || issuedToName || '').trim(),
-          unitCost: itemCost,
-          totalCost: reqItem.quantity * itemCost,
-          budgetDeducted,
           note: (note || '').trim(),
-          createdAt: now
-        };
-
-        const { error: txInsErr } = await supabase.from('transactions').insert({
-          id: newTx.id,
-          item_id: newTx.itemId,
-          item_name: newTx.itemName,
-          item_code: newTx.itemCode,
-          type: newTx.type,
-          quantity: newTx.quantity,
-          balance_after: newTx.balanceAfter,
-          department: newTx.department,
-          department_id: newTx.departmentId || null,
-          issued_to_user_id: newTx.issuedToUserId || null,
-          issued_to_name: newTx.issuedToName || null,
-          unit_cost: newTx.unitCost || 0,
-          total_cost: newTx.totalCost || 0,
-          budget_deducted: Boolean(newTx.budgetDeducted),
-          requester_name: newTx.requesterName || null,
-          note: newTx.note || null,
-          created_at: now
-        });
-
-        if (txInsErr) {
-          throw new Error(`Failed to insert transaction in Supabase: ${txInsErr.message}`);
+          budgetDeducted
         }
+      });
 
-        createdTxs.push(newTx);
+      if (rpcErr || !rpcResult || rpcResult.success === false) {
+        throw new Error(rpcResult?.error || rpcErr?.message || 'Failed to process stock movement in database');
       }
+
+      const createdTxs: Transaction[] = (rpcResult.transactions || []).map((t: any) => ({
+        id: t.id,
+        itemId: t.itemId,
+        itemName: t.itemName,
+        itemCode: t.itemCode,
+        type: t.type,
+        quantity: t.quantity,
+        balanceAfter: t.balanceAfter,
+        department: t.department,
+        departmentId: targetDept ? targetDept.id : departmentId,
+        issuedToUserId,
+        issuedToName: issuedToName || requesterName,
+        requesterName: (requesterName || issuedToName || '').trim(),
+        unitCost: itemsToProcess.find(it => it.itemId === t.itemId)?.unitCost || 0,
+        totalCost: (itemsToProcess.find(it => it.itemId === t.itemId)?.quantity || 0) * (itemsToProcess.find(it => it.itemId === t.itemId)?.unitCost || 0),
+        budgetDeducted,
+        note: (note || '').trim(),
+        createdAt: t.createdAt || now
+      }));
 
       // Server-side verified Audit Log
       const actor = (authCheck.user.name || authCheck.user.username || requesterName || issuedToName || 'Inventory Staff').trim();

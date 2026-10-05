@@ -301,7 +301,6 @@ export async function POST(request: Request) {
 
     // 3. Deduct stock and record transactions atomically in Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
-      // 3.1 Try unified atomic POS sale RPC
       const { data: saleResult, error: saleErr } = await supabase.rpc('create_pos_sale', {
         p_receipt: {
           id: newReceipt.id,
@@ -323,91 +322,8 @@ export async function POST(request: Request) {
         p_items: validatedReceiptItems
       });
 
-      if (!saleErr && saleResult) {
-        if (saleResult.success === false) {
-          throw new Error(saleResult.error || 'Failed to complete sale transaction');
-        }
-      } else {
-        // 3.2 If RPC not found yet, execute sequential atomic deductions with strict error throwing
-        const { error: rcErr } = await supabase.from('receipts').insert({
-          id: newReceipt.id,
-          receipt_number: newReceipt.receiptNumber,
-          customer_name: newReceipt.customerName,
-          customer_type: newReceipt.customerType,
-          student_class: newReceipt.studentClass,
-          student_id: newReceipt.studentId,
-          payment_method: newReceipt.paymentMethod,
-          items: JSON.stringify(newReceipt.items),
-          subtotal: newReceipt.subtotal,
-          discount: newReceipt.discount,
-          total_amount: newReceipt.totalAmount,
-          cash_received: newReceipt.cashReceived,
-          change: newReceipt.change,
-          cashier_name: newReceipt.cashierName,
-          cashier_email: newReceipt.cashierEmail,
-          note: newReceipt.note,
-          status: 'COMPLETED',
-          created_at: newReceipt.createdAt
-        });
-
-        if (rcErr) {
-          throw new Error(`Receipt creation failed: ${rcErr.message}`);
-        }
-
-        for (const rItem of validatedReceiptItems) {
-          const { data: rpcData, error: rpcErr } = await supabase.rpc('deduct_item_stock', {
-            p_item_id: rItem.itemId,
-            p_quantity: rItem.quantity
-          });
-
-          let newStock = 0;
-          if (!rpcErr && rpcData && rpcData.length > 0) {
-            if (!rpcData[0].success) {
-              throw new Error(rpcData[0].message || `Insufficient stock for ${rItem.itemName}`);
-            }
-            newStock = rpcData[0].new_stock;
-          } else {
-            // Direct conditional update: decrement only if stock is sufficient
-            const { data: cur, error: fetchErr } = await supabase
-              .from('items')
-              .select('current_stock')
-              .eq('id', rItem.itemId)
-              .single();
-
-            if (fetchErr || !cur || (cur.current_stock || 0) < rItem.quantity) {
-              throw new Error(`Insufficient stock for item "${rItem.itemName}"`);
-            }
-
-            newStock = (cur.current_stock || 0) - rItem.quantity;
-            const { error: updErr } = await supabase
-              .from('items')
-              .update({ current_stock: newStock, updated_at: new Date().toISOString() })
-              .eq('id', rItem.itemId);
-
-            if (updErr) {
-              throw new Error(`Failed to deduct stock for ${rItem.itemName}: ${updErr.message}`);
-            }
-          }
-
-          const { error: txErr } = await supabase.from('transactions').insert({
-            id: `tx-sale-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            item_id: rItem.itemId,
-            item_name: rItem.itemName,
-            item_code: rItem.itemCode,
-            type: 'SALE',
-            quantity: rItem.quantity,
-            balance_after: newStock,
-            department: 'School Store & Co-op',
-            requester_name: newReceipt.customerName + (newReceipt.studentClass ? ` (${newReceipt.studentClass})` : ''),
-            note: `Sale as per Receipt #${receiptNumber}`,
-            receipt_id: newReceipt.id,
-            created_at: new Date().toISOString()
-          });
-
-          if (txErr) {
-            throw new Error(`Failed to record transaction for ${rItem.itemName}: ${txErr.message}`);
-          }
-        }
+      if (saleErr || !saleResult || saleResult.success === false) {
+        throw new Error(saleResult?.error || saleErr?.message || 'Failed to complete POS sale in database');
       }
     } else {
       // 4. Fallback to Local JSON DB if Supabase is not configured

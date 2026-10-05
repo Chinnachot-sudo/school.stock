@@ -138,20 +138,6 @@ export async function PUT(
         updatedAt: data.updated_at
       };
 
-      // Also sync update to local DB
-      try {
-        const db = readDb();
-        const idx = db.items.findIndex(i => i.id === id);
-        if (idx !== -1) {
-          db.items[idx] = updatedItem;
-        } else {
-          db.items.push(updatedItem);
-        }
-        writeDb(db);
-      } catch (cacheErr) {
-        console.warn('Local cache sync warning on item update:', cacheErr);
-      }
-
       // Record audit log
       logAuditEvent({
         category: 'INVENTORY',
@@ -233,18 +219,6 @@ export async function DELETE(
 
       const { error } = await supabase.from('items').delete().eq('id', id);
       if (error) throw error;
-
-      // Sync delete to local DB
-      try {
-        const db = readDb();
-        const idx = db.items.findIndex(i => i.id === id);
-        if (idx !== -1) {
-          db.items.splice(idx, 1);
-          writeDb(db);
-        }
-      } catch (cacheErr) {
-        console.warn('Local cache sync warning on item delete:', cacheErr);
-      }
 
       logAuditEvent({
         category: 'INVENTORY',

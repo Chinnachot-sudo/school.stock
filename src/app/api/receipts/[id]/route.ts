@@ -140,17 +140,6 @@ export async function DELETE(
           }
         }
 
-        // Also safely sync to local DB cache
-        try {
-          const db = readDb();
-          const localIdx = db.receipts?.findIndex(r => r.id === sbReceipt.id || r.receiptNumber === sbReceipt.receipt_number);
-          if (localIdx !== -1 && db.receipts) {
-            db.receipts[localIdx].status = 'VOIDED';
-            db.receipts[localIdx].voidReason = voidReason;
-            writeDb(db);
-          }
-        } catch {}
-
         return NextResponse.json({
           success: true,
           message: `Receipt #${sbReceipt.receipt_number} voided and inventory restored successfully.`,
