@@ -230,24 +230,37 @@ export async function POST(request: Request) {
         let newStock = Number(found.current_stock) || 0;
 
         if (type === 'OUT') {
-          // Attempt atomic RPC deduction first
+          // Attempt atomic RPC deduction
           const { data: rpcData, error: rpcErr } = await supabase.rpc('deduct_item_stock', {
             p_item_id: found.id,
             p_quantity: reqItem.quantity
           });
 
-          if (!rpcErr && rpcData && rpcData.length > 0 && rpcData[0].success) {
+          if (!rpcErr && rpcData && rpcData.length > 0) {
+            if (!rpcData[0].success) {
+              throw new Error(rpcData[0].message || `Insufficient stock for "${found.name}"`);
+            }
             newStock = rpcData[0].new_stock;
           } else {
-            // Direct conditional update fallback
-            newStock = Math.max(0, newStock - reqItem.quantity);
+            // Direct conditional verification before update
+            const { data: freshItem, error: freshErr } = await supabase
+              .from('items')
+              .select('current_stock')
+              .eq('id', found.id)
+              .single();
+
+            if (freshErr || !freshItem || (freshItem.current_stock || 0) < reqItem.quantity) {
+              throw new Error(`Insufficient stock for "${found.name}"! Available: ${freshItem?.current_stock || 0}, Requested: ${reqItem.quantity}`);
+            }
+
+            newStock = (freshItem.current_stock || 0) - reqItem.quantity;
             const { error: updErr } = await supabase
               .from('items')
               .update({ current_stock: newStock, updated_at: now })
               .eq('id', found.id);
 
             if (updErr) {
-              throw new Error(`Failed to update item ${found.name}: ${updErr.message}`);
+              throw new Error(`Failed to update item stock for "${found.name}": ${updErr.message}`);
             }
           }
         } else if (type === 'IN') {
@@ -256,17 +269,30 @@ export async function POST(request: Request) {
             p_quantity: reqItem.quantity
           });
 
-          if (!rpcErr && rpcData && rpcData.length > 0 && rpcData[0].success) {
+          if (!rpcErr && rpcData && rpcData.length > 0) {
+            if (!rpcData[0].success) {
+              throw new Error(rpcData[0].message || `Failed to increase stock for "${found.name}"`);
+            }
             newStock = rpcData[0].new_stock;
           } else {
-            newStock = newStock + reqItem.quantity;
+            const { data: freshItem, error: freshErr } = await supabase
+              .from('items')
+              .select('current_stock')
+              .eq('id', found.id)
+              .single();
+
+            if (freshErr || !freshItem) {
+              throw new Error(`Item "${found.name}" not found in database`);
+            }
+
+            newStock = (freshItem.current_stock || 0) + reqItem.quantity;
             const { error: updErr } = await supabase
               .from('items')
               .update({ current_stock: newStock, updated_at: now })
               .eq('id', found.id);
 
             if (updErr) {
-              throw new Error(`Failed to update item ${found.name}: ${updErr.message}`);
+              throw new Error(`Failed to update item stock for "${found.name}": ${updErr.message}`);
             }
           }
         } else if (type === 'ADJUST') {
@@ -277,7 +303,7 @@ export async function POST(request: Request) {
             .eq('id', found.id);
 
           if (updErr) {
-            throw new Error(`Failed to update item ${found.name}: ${updErr.message}`);
+            throw new Error(`Failed to update item "${found.name}": ${updErr.message}`);
           }
         }
 
@@ -322,7 +348,7 @@ export async function POST(request: Request) {
         });
 
         if (txInsErr) {
-          console.error('Failed to insert transaction in Supabase:', txInsErr);
+          throw new Error(`Failed to insert transaction in Supabase: ${txInsErr.message}`);
         }
 
         createdTxs.push(newTx);

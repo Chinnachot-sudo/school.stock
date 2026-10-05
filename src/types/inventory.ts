@@ -270,7 +270,7 @@ export interface Transaction {
   createdAt: string; // ISO 8601
 }
 
-export type AuditActionCategory = 'INVENTORY' | 'STOCK_OPERATION' | 'POS_SALE' | 'USER_MANAGEMENT' | 'SYSTEM';
+export type AuditActionCategory = 'INVENTORY' | 'STOCK_OPERATION' | 'POS_SALE' | 'USER_MANAGEMENT' | 'SYSTEM' | 'SECURITY';
 
 export interface AuditLog {
   id: string;
