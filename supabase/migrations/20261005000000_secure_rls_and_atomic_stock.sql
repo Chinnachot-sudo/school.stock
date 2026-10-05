@@ -1,22 +1,22 @@
 -- ==============================================================================
 -- 20261005000000_secure_rls_and_atomic_stock.sql
 -- 1. Standardize Permissions schema & seed aliases
--- 2. Revoke wide-open anon/authenticated RLS policies on ALL public tables
--- 3. Restrict user_roles, roles, permissions, role_permissions modifications
--- 4. Secure audit_logs (Strict service_role inserts only)
--- 5. Atomic PostgreSQL RPCs:
+-- 2. Create receipt_returns ledger table for idempotent & tracked returns
+-- 3. Revoke wide-open anon/authenticated RLS policies on ALL public tables
+-- 4. Restrict user_roles, roles, permissions, role_permissions modifications
+-- 5. Secure audit_logs (Strict service_role inserts only)
+-- 6. Production Atomic PostgreSQL RPCs:
 --    - create_pos_sale (Receipt + Stock Deductions + Transaction Logs)
 --    - create_stock_movement_batch (Stock Mutations + Budget Deductions + Transaction Logs)
---    - void_receipt_with_stock_restore (Void Receipt + Stock Restorations + Void Logs)
---    - process_receipt_return (Return Restock + Refund Validations + Return Logs)
--- 6. Enforce SET search_path = public, pg_temp and exclusive service_role EXECUTE permissions
+--    - void_receipt_with_stock_restore (Void Receipt + Return-Aware Net Stock Restorations + Void Logs)
+--    - process_receipt_return (Return Ledger + Duplicate/Over-return Prevention + Server-Verified Refund Calculation)
+-- 7. Enforce SET search_path = public, pg_temp and exclusive service_role EXECUTE permissions
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
 -- 1. Standardize & Seed Permissions Aliases
 -- ------------------------------------------------------------------------------
 INSERT INTO public.permissions (id, name, module, description) VALUES
-  -- Colon-delimited aliases to match application keys
   ('inventory:item:read', 'ดูรายการสินค้า', 'Inventory', 'สิทธิ์ในการดูข้อมูลรายการสินค้าและสต็อกคงเหลือ'),
   ('inventory:item:create', 'เพิ่มสินค้าใหม่', 'Inventory', 'สิทธิ์ในการสร้างรายการพัสดุหรือสินค้าใหม่'),
   ('inventory:item:update', 'แก้ไขข้อมูลสินค้า', 'Inventory', 'สิทธิ์ในการแก้ไขชื่อ หมวดหมู่ หรือราคาของสินค้า'),
@@ -43,7 +43,6 @@ ON CONFLICT (id) DO UPDATE SET
   module = EXCLUDED.module,
   description = EXCLUDED.description;
 
--- Grant permissions to SUPER_ADMIN & ADMIN roles
 INSERT INTO public.role_permissions (role_id, permission_id)
 SELECT 'SUPER_ADMIN', id FROM public.permissions
 ON CONFLICT DO NOTHING;
@@ -54,7 +53,24 @@ WHERE id NOT IN ('inventory:item:delete', 'inventory.items.delete', 'audit:log:r
 ON CONFLICT DO NOTHING;
 
 -- ------------------------------------------------------------------------------
--- 2. Drop Insecure Old Policies Across All Public Tables
+-- 2. Create Receipt Returns Ledger Table
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.receipt_returns (
+  id TEXT PRIMARY KEY,
+  receipt_id TEXT NOT NULL REFERENCES public.receipts(id) ON DELETE CASCADE,
+  receipt_number TEXT NOT NULL,
+  items JSONB NOT NULL,
+  total_refund NUMERIC NOT NULL DEFAULT 0,
+  reason TEXT NOT NULL,
+  reason_detail TEXT,
+  cashier_name TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_receipt_returns_receipt_id ON public.receipt_returns(receipt_id);
+
+-- ------------------------------------------------------------------------------
+-- 3. Drop Insecure Old Policies Across All Public Tables
 -- ------------------------------------------------------------------------------
 DROP POLICY IF EXISTS items_select_policy ON public.items;
 DROP POLICY IF EXISTS items_insert_policy ON public.items;
@@ -75,6 +91,8 @@ DROP POLICY IF EXISTS receipts_insert_policy ON public.receipts;
 DROP POLICY IF EXISTS receipts_update_policy ON public.receipts;
 DROP POLICY IF EXISTS receipts_read_policy ON public.receipts;
 DROP POLICY IF EXISTS receipts_write_policy ON public.receipts;
+
+DROP POLICY IF EXISTS receipt_returns_select_policy ON public.receipt_returns;
 
 DROP POLICY IF EXISTS customers_all_policy ON public.customers;
 DROP POLICY IF EXISTS customers_select_policy ON public.customers;
@@ -99,11 +117,12 @@ BEGIN
 END $$;
 
 -- ------------------------------------------------------------------------------
--- 3. Apply Strict RLS Policies
+-- 4. Apply Strict RLS Policies
 -- ------------------------------------------------------------------------------
 ALTER TABLE IF EXISTS public.items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.receipts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.receipt_returns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.roles ENABLE ROW LEVEL SECURITY;
@@ -117,6 +136,9 @@ CREATE POLICY transactions_select_policy ON public.transactions
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY receipts_select_policy ON public.receipts
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY receipt_returns_select_policy ON public.receipt_returns
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY customers_select_policy ON public.customers
@@ -184,10 +206,10 @@ BEGIN
 END $$;
 
 -- ------------------------------------------------------------------------------
--- 4. Atomic PostgreSQL Stored Procedures
+-- 5. Production Atomic PostgreSQL Stored Procedures
 -- ------------------------------------------------------------------------------
 
--- 4.1 All-in-One Atomic POS Sale
+-- 5.1 Atomic POS Sale (Receipt + Stock Deductions + Transaction Logs)
 CREATE OR REPLACE FUNCTION public.create_pos_sale(
   p_receipt JSONB,
   p_items JSONB
@@ -296,7 +318,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- 4.2 All-in-One Atomic Stock Movements + Budget Deductions + Transactions Batch RPC
+-- 5.2 Atomic Stock Movements + Budget Deductions + Transactions Batch RPC
 CREATE OR REPLACE FUNCTION public.create_stock_movement_batch(
   p_type TEXT,
   p_items JSONB,
@@ -476,7 +498,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- 4.3 All-in-One Atomic Void Receipt with Stock Restoration
+-- 5.3 Return-Aware Atomic Void Receipt (Restores only Net Unreturned Inventory)
 CREATE OR REPLACE FUNCTION public.void_receipt_with_stock_restore(
   p_receipt_id TEXT,
   p_void_reason TEXT
@@ -489,10 +511,14 @@ AS $$
 DECLARE
   v_rc RECORD;
   v_item JSONB;
+  v_ret_rec RECORD;
+  v_ret_item JSONB;
   v_item_id TEXT;
   v_item_code TEXT;
   v_item_name TEXT;
-  v_qty INT;
+  v_purchased_qty INT;
+  v_returned_qty INT;
+  v_net_restore_qty INT;
   v_current_stock INT;
   v_new_stock INT;
   v_now TIMESTAMPTZ := NOW();
@@ -518,7 +544,7 @@ BEGIN
       void_reason = p_void_reason
   WHERE id = v_rc.id;
 
-  -- 3. Parse items and restore stock atomically
+  -- 3. Parse items and restore net unreturned stock atomically
   IF jsonb_typeof(v_rc.items::jsonb) = 'array' THEN
     v_items_json := v_rc.items::jsonb;
   ELSE
@@ -528,40 +554,58 @@ BEGIN
   FOR v_item IN SELECT * FROM jsonb_array_elements(v_items_json)
   LOOP
     v_item_id := v_item->>'itemId';
-    v_qty := (v_item->>'quantity')::INT;
+    v_purchased_qty := (v_item->>'quantity')::INT;
 
-    -- Lock item row
-    SELECT current_stock, code, name INTO v_current_stock, v_item_code, v_item_name
-    FROM public.items
-    WHERE id = v_item_id
-    FOR UPDATE;
+    -- Calculate previously returned quantity for this item
+    v_returned_qty := 0;
+    FOR v_ret_rec IN SELECT items FROM public.receipt_returns WHERE receipt_id = v_rc.id
+    LOOP
+      IF jsonb_typeof(v_ret_rec.items::jsonb) = 'array' THEN
+        FOR v_ret_item IN SELECT * FROM jsonb_array_elements(v_ret_rec.items::jsonb)
+        LOOP
+          IF v_ret_item->>'itemId' = v_item_id THEN
+            v_returned_qty := v_returned_qty + COALESCE((v_ret_item->>'quantity')::INT, 0);
+          END IF;
+        END LOOP;
+      END IF;
+    END LOOP;
 
-    IF FOUND THEN
-      v_new_stock := COALESCE(v_current_stock, 0) + v_qty;
+    -- Net quantity to restore (only items not already returned and restocked)
+    v_net_restore_qty := GREATEST(0, v_purchased_qty - v_returned_qty);
 
-      UPDATE public.items
-      SET current_stock = v_new_stock,
-          updated_at = v_now
-      WHERE id = v_item_id;
+    IF v_net_restore_qty > 0 THEN
+      SELECT current_stock, code, name INTO v_current_stock, v_item_code, v_item_name
+      FROM public.items
+      WHERE id = v_item_id
+      FOR UPDATE;
 
-      INSERT INTO public.transactions (
-        id, item_id, item_name, item_code, type, quantity,
-        balance_after, department, requester_name, note,
-        receipt_id, created_at
-      ) VALUES (
-        'tx-void-' || floor(extract(epoch from now()) * 1000)::text || '-' || floor(random() * 1000)::text,
-        v_item_id,
-        v_item_name,
-        v_item_code,
-        'VOID_SALE',
-        v_qty,
-        v_new_stock,
-        'School Store & Co-op',
-        'System (Void Transaction)',
-        'Restocked due to voided receipt #' || v_rc.receipt_number || ' (' || p_void_reason || ')',
-        v_rc.id,
-        v_now
-      );
+      IF FOUND THEN
+        v_new_stock := COALESCE(v_current_stock, 0) + v_net_restore_qty;
+
+        UPDATE public.items
+        SET current_stock = v_new_stock,
+            updated_at = v_now
+        WHERE id = v_item_id;
+
+        INSERT INTO public.transactions (
+          id, item_id, item_name, item_code, type, quantity,
+          balance_after, department, requester_name, note,
+          receipt_id, created_at
+        ) VALUES (
+          'tx-void-' || floor(extract(epoch from now()) * 1000)::text || '-' || floor(random() * 1000)::text,
+          v_item_id,
+          v_item_name,
+          v_item_code,
+          'VOID_SALE',
+          v_net_restore_qty,
+          v_new_stock,
+          'School Store & Co-op',
+          'System (Void Transaction)',
+          'Restocked net unreturned items from voided receipt #' || v_rc.receipt_number || ' (' || p_void_reason || ')',
+          v_rc.id,
+          v_now
+        );
+      END IF;
     END IF;
   END LOOP;
 
@@ -569,15 +613,16 @@ BEGIN
     'success', true,
     'receiptId', v_rc.id,
     'receiptNumber', v_rc.receipt_number,
-    'message', 'Receipt voided and inventory restored successfully'
+    'message', 'Receipt voided and unreturned inventory restored successfully'
   );
 EXCEPTION WHEN OTHERS THEN
   RETURN jsonb_build_object('success', false, 'error', SQLERRM);
 END;
 $$;
 
--- 4.4 All-in-One Atomic Process Receipt Return with Restocking
+-- 5.4 Production Atomic Process Receipt Return (With Cumulative Return Ledger & True Price Calculation)
 CREATE OR REPLACE FUNCTION public.process_receipt_return(
+  p_return_id TEXT,
   p_receipt_id TEXT,
   p_items JSONB,
   p_reason TEXT,
@@ -591,6 +636,8 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_rc RECORD;
+  v_ret_rec RECORD;
+  v_prev_item JSONB;
   v_item JSONB;
   v_orig_item JSONB;
   v_item_id TEXT;
@@ -598,16 +645,34 @@ DECLARE
   v_item_name TEXT;
   v_return_qty INT;
   v_orig_qty INT;
+  v_prev_returned_qty INT;
+  v_remaining_returnable INT;
   v_current_stock INT;
   v_new_stock INT;
   v_total_refund NUMERIC := 0;
-  v_unit_price NUMERIC := 0;
-  v_refund_amt NUMERIC := 0;
+  v_server_unit_price NUMERIC := 0;
+  v_line_refund NUMERIC := 0;
   v_now TIMESTAMPTZ := NOW();
   v_orig_items_json JSONB;
+  v_validated_return_items JSONB := '[]'::JSONB;
   v_matched BOOLEAN;
+  v_req_aggregated JSONB := '{}'::JSONB;
+  v_agg_key TEXT;
+  v_agg_qty INT;
 BEGIN
-  -- 1. Lock receipt row
+  -- 1. Check Idempotency (Prevent Duplicate Processing)
+  IF EXISTS (SELECT 1 FROM public.receipt_returns WHERE id = p_return_id) THEN
+    SELECT * INTO v_rc FROM public.receipt_returns WHERE id = p_return_id;
+    RETURN jsonb_build_object(
+      'success', true,
+      'receiptId', v_rc.receipt_id,
+      'receiptNumber', v_rc.receipt_number,
+      'totalRefund', v_rc.total_refund,
+      'message', 'Return already processed (idempotent)'
+    );
+  END IF;
+
+  -- 2. Lock receipt row
   SELECT * INTO v_rc
   FROM public.receipts
   WHERE id = p_receipt_id OR receipt_number = p_receipt_id
@@ -627,24 +692,40 @@ BEGIN
     v_orig_items_json := '[]'::jsonb;
   END IF;
 
-  -- 2. Validate return items against original receipt
+  -- 3. Pre-aggregate requested items by itemId to prevent duplicate line bypass
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
     v_item_id := v_item->>'itemId';
     v_return_qty := (v_item->>'quantity')::INT;
-    v_matched := false;
 
     IF v_return_qty <= 0 THEN
-      RAISE EXCEPTION 'Return quantity must be greater than zero';
+      RAISE EXCEPTION 'Return quantity must be greater than zero for item %', v_item_id;
     END IF;
 
+    IF v_req_aggregated ? v_item_id THEN
+      v_agg_qty := (v_req_aggregated->>v_item_id)::INT + v_return_qty;
+    ELSE
+      v_agg_qty := v_return_qty;
+    END IF;
+    v_req_aggregated := jsonb_set(v_req_aggregated, ARRAY[v_item_id], to_jsonb(v_agg_qty));
+  END LOOP;
+
+  -- 4. Validate return quantities against Cumulative Return Ledger & True Database Prices
+  FOR v_agg_key IN SELECT jsonb_object_keys(v_req_aggregated)
+  LOOP
+    v_item_id := v_agg_key;
+    v_return_qty := (v_req_aggregated->>v_item_id)::INT;
+    v_matched := false;
+
+    -- Find original line on receipt
     FOR v_orig_item IN SELECT * FROM jsonb_array_elements(v_orig_items_json)
     LOOP
-      IF (v_orig_item->>'itemId' = v_item_id) OR (v_orig_item->>'itemCode' = v_item->>'itemCode') THEN
+      IF (v_orig_item->>'itemId' = v_item_id) OR (v_orig_item->>'itemCode' = v_item_id) THEN
         v_orig_qty := (v_orig_item->>'quantity')::INT;
-        IF v_return_qty > v_orig_qty THEN
-          RAISE EXCEPTION 'Return quantity (%) exceeds purchased quantity (%) for "%"', v_return_qty, v_orig_qty, v_orig_item->>'itemName';
-        END IF;
+        v_item_name := v_orig_item->>'itemName';
+        v_item_code := v_orig_item->>'itemCode';
+        -- Use Server-Stored Price from Receipt (Never trust client pricing)
+        v_server_unit_price := COALESCE((v_orig_item->>'unitPrice')::NUMERIC, 0);
         v_matched := true;
         EXIT;
       END IF;
@@ -654,13 +735,42 @@ BEGIN
       RAISE EXCEPTION 'Item % was not found on receipt #%', v_item_id, v_rc.receipt_number;
     END IF;
 
-    -- Calculate refund
-    v_unit_price := COALESCE((v_item->>'unitPrice')::NUMERIC, 0);
-    v_refund_amt := COALESCE((v_item->>'refundAmount')::NUMERIC, v_return_qty * v_unit_price);
-    v_total_refund := v_total_refund + v_refund_amt;
+    -- Calculate previously returned quantity across all historical returns for this receipt
+    v_prev_returned_qty := 0;
+    FOR v_ret_rec IN SELECT items FROM public.receipt_returns WHERE receipt_id = v_rc.id
+    LOOP
+      IF jsonb_typeof(v_ret_rec.items::jsonb) = 'array' THEN
+        FOR v_prev_item IN SELECT * FROM jsonb_array_elements(v_ret_rec.items::jsonb)
+        LOOP
+          IF v_prev_item->>'itemId' = v_item_id THEN
+            v_prev_returned_qty := v_prev_returned_qty + COALESCE((v_prev_item->>'quantity')::INT, 0);
+          END IF;
+        END LOOP;
+      END IF;
+    END LOOP;
+
+    v_remaining_returnable := v_orig_qty - v_prev_returned_qty;
+
+    IF v_return_qty > v_remaining_returnable THEN
+      RAISE EXCEPTION 'Cannot return % units of "%": only % units remaining returnable (Purchased: %, Previously Returned: %)',
+        v_return_qty, v_item_name, v_remaining_returnable, v_orig_qty, v_prev_returned_qty;
+    END IF;
+
+    -- Compute line refund securely from database unit price
+    v_line_refund := v_return_qty * v_server_unit_price;
+    v_total_refund := v_total_refund + v_line_refund;
+
+    v_validated_return_items := v_validated_return_items || jsonb_build_object(
+      'itemId', v_item_id,
+      'itemCode', v_item_code,
+      'itemName', v_item_name,
+      'quantity', v_return_qty,
+      'unitPrice', v_server_unit_price,
+      'refundAmount', v_line_refund
+    );
 
     -- Lock item row and restock
-    SELECT current_stock, code, name INTO v_current_stock, v_item_code, v_item_name
+    SELECT current_stock INTO v_current_stock
     FROM public.items
     WHERE id = v_item_id
     FOR UPDATE;
@@ -694,11 +804,29 @@ BEGIN
     END IF;
   END LOOP;
 
+  -- 5. Record Return in Persistent Ledger
+  INSERT INTO public.receipt_returns (
+    id, receipt_id, receipt_number, items, total_refund,
+    reason, reason_detail, cashier_name, created_at
+  ) VALUES (
+    p_return_id,
+    v_rc.id,
+    v_rc.receipt_number,
+    v_validated_return_items,
+    v_total_refund,
+    p_reason,
+    p_reason_detail,
+    p_cashier_name,
+    v_now
+  );
+
   RETURN jsonb_build_object(
     'success', true,
+    'returnId', p_return_id,
     'receiptId', v_rc.id,
     'receiptNumber', v_rc.receipt_number,
     'totalRefund', v_total_refund,
+    'items', v_validated_return_items,
     'message', 'Return processed and stock restored successfully'
   );
 EXCEPTION WHEN OTHERS THEN
@@ -707,14 +835,14 @@ END;
 $$;
 
 -- ------------------------------------------------------------------------------
--- 5. Restrict All RPC EXECUTE Privileges to service_role and postgres ONLY
+-- 6. Restrict All RPC EXECUTE Privileges to service_role and postgres ONLY
 -- ------------------------------------------------------------------------------
 REVOKE EXECUTE ON FUNCTION public.create_pos_sale(JSONB, JSONB) FROM PUBLIC, authenticated;
 REVOKE EXECUTE ON FUNCTION public.create_stock_movement_batch(TEXT, JSONB, JSONB) FROM PUBLIC, authenticated;
 REVOKE EXECUTE ON FUNCTION public.void_receipt_with_stock_restore(TEXT, TEXT) FROM PUBLIC, authenticated;
-REVOKE EXECUTE ON FUNCTION public.process_receipt_return(TEXT, JSONB, TEXT, TEXT, TEXT) FROM PUBLIC, authenticated;
+REVOKE EXECUTE ON FUNCTION public.process_receipt_return(TEXT, TEXT, JSONB, TEXT, TEXT, TEXT) FROM PUBLIC, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.create_pos_sale(JSONB, JSONB) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.create_stock_movement_batch(TEXT, JSONB, JSONB) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.void_receipt_with_stock_restore(TEXT, TEXT) TO service_role, postgres;
-GRANT EXECUTE ON FUNCTION public.process_receipt_return(TEXT, JSONB, TEXT, TEXT, TEXT) TO service_role, postgres;
+GRANT EXECUTE ON FUNCTION public.process_receipt_return(TEXT, TEXT, JSONB, TEXT, TEXT, TEXT) TO service_role, postgres;
