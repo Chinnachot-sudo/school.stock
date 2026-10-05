@@ -197,6 +197,9 @@ export async function POST(request: Request) {
     // Default due date: 7 days from now if not provided
     const defaultDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+    const realCreatorName = (authCheck.user.name || authCheck.user.username || creatorName || 'Finance Staff').trim();
+    const realCreatorEmail = (authCheck.user.email || creatorEmail || '').trim();
+
     const newInvoice: Invoice = {
       id: invoiceId,
       invoiceNumber,
@@ -211,8 +214,8 @@ export async function POST(request: Request) {
       subtotal,
       discount: discountAmount,
       totalAmount,
-      creatorName: creatorName.trim(),
-      creatorEmail: creatorEmail.trim(),
+      creatorName: realCreatorName,
+      creatorEmail: realCreatorEmail,
       note: note?.trim() || undefined,
       status: 'PENDING',
       createdAt: new Date().toISOString(),
@@ -246,15 +249,15 @@ export async function POST(request: Request) {
       } catch (sbErr) {
         console.warn('Supabase invoice insert warning:', sbErr);
       }
-    }
-
-    // 2. Local DB update
-    try {
-      if (!db.invoices) db.invoices = [];
-      db.invoices.push(newInvoice);
-      writeDb(db);
-    } catch (localErr) {
-      console.warn('Local db invoice write skipped:', localErr);
+    } else {
+      // 2. Local DB update when Supabase is unconfigured
+      try {
+        if (!db.invoices) db.invoices = [];
+        db.invoices.push(newInvoice);
+        writeDb(db);
+      } catch (localErr) {
+        console.warn('Local db invoice write skipped:', localErr);
+      }
     }
 
     return NextResponse.json({

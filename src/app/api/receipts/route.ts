@@ -302,7 +302,7 @@ export async function POST(request: Request) {
     // 3. Deduct stock and record transactions in Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('receipts').insert({
+        const { error: rcErr } = await supabase.from('receipts').insert({
           id: newReceipt.id,
           receipt_number: newReceipt.receiptNumber,
           customer_name: newReceipt.customerName,
@@ -323,19 +323,35 @@ export async function POST(request: Request) {
           created_at: newReceipt.createdAt
         });
 
+        if (rcErr) {
+          console.error('Supabase receipt insert error:', rcErr);
+        }
+
         for (const rItem of validatedReceiptItems) {
-          const { data: cur } = await supabase
-            .from('items')
-            .select('current_stock')
-            .eq('id', rItem.itemId)
-            .maybeSingle();
+          let newStock = 0;
+          // Attempt atomic RPC deduction
+          const { data: rpcData, error: rpcErr } = await supabase.rpc('deduct_item_stock', {
+            p_item_id: rItem.itemId,
+            p_quantity: rItem.quantity
+          });
 
-          const newStock = cur ? Math.max(0, (cur.current_stock || 0) - rItem.quantity) : 0;
+          if (!rpcErr && rpcData && rpcData.length > 0 && rpcData[0].success) {
+            newStock = rpcData[0].new_stock;
+          } else {
+            // Direct conditional update fallback
+            const { data: cur } = await supabase
+              .from('items')
+              .select('current_stock')
+              .eq('id', rItem.itemId)
+              .maybeSingle();
 
-          await supabase
-            .from('items')
-            .update({ current_stock: newStock, updated_at: new Date().toISOString() })
-            .eq('id', rItem.itemId);
+            newStock = cur ? Math.max(0, (cur.current_stock || 0) - rItem.quantity) : 0;
+
+            await supabase
+              .from('items')
+              .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+              .eq('id', rItem.itemId);
+          }
 
           await supabase.from('transactions').insert({
             id: `tx-sale-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -353,24 +369,24 @@ export async function POST(request: Request) {
           });
         }
       } catch (sbErr) {
-        console.warn('Supabase sale insert warning:', sbErr);
+        console.error('Supabase sale transaction error:', sbErr);
       }
-    }
-
-    // 4. Safely update local DB as local cache
-    try {
-      for (const rItem of validatedReceiptItems) {
-        const idx = db.items.findIndex(i => i.id === rItem.itemId);
-        if (idx !== -1) {
-          db.items[idx].currentStock = Math.max(0, db.items[idx].currentStock - rItem.quantity);
-          db.items[idx].updatedAt = new Date().toISOString();
+    } else {
+      // 4. Fallback to Local JSON DB if Supabase is not configured
+      try {
+        for (const rItem of validatedReceiptItems) {
+          const idx = db.items.findIndex(i => i.id === rItem.itemId);
+          if (idx !== -1) {
+            db.items[idx].currentStock = Math.max(0, db.items[idx].currentStock - rItem.quantity);
+            db.items[idx].updatedAt = new Date().toISOString();
+          }
         }
+        if (!db.receipts) db.receipts = [];
+        db.receipts.push(newReceipt);
+        writeDb(db);
+      } catch (localErr) {
+        console.warn('Local db write skipped:', localErr);
       }
-      if (!db.receipts) db.receipts = [];
-      db.receipts.push(newReceipt);
-      writeDb(db);
-    } catch (localErr) {
-      console.warn('Local db write skipped:', localErr);
     }
 
     // Record audit log

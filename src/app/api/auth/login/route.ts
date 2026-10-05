@@ -129,19 +129,23 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Built-in accounts fallback (matches by username or email, verified via PBKDF2 hash)
-    const fallbackKey = Object.keys(FALLBACK_USERS).find(
-      k => k.toLowerCase() === cleanInput || FALLBACK_USERS[k].email.toLowerCase() === cleanInput
-    );
-    const fallback = fallbackKey ? FALLBACK_USERS[fallbackKey] : undefined;
-    const resolvedUsername = fallbackKey || (userRow ? userRow.username : cleanInput);
+    // 2. Built-in accounts fallback (Allowed ONLY in development or when Supabase DB is offline/unconfigured)
+    const isEmergencyFallbackAllowed =
+      process.env.NODE_ENV === 'development' ||
+      !isSupabaseConfigured ||
+      process.env.ALLOW_EMERGENCY_FALLBACK === 'true';
 
-    if (fallback) {
-      const isValidFallback =
-        verifyPassword(password, fallback.passwordHash) ||
-        (Boolean(process.env.FALLBACK_ADMIN_PASSWORD) && process.env.FALLBACK_ADMIN_PASSWORD === password);
+    if (isEmergencyFallbackAllowed) {
+      const fallbackKey = Object.keys(FALLBACK_USERS).find(
+        k => k.toLowerCase() === cleanInput || FALLBACK_USERS[k].email.toLowerCase() === cleanInput
+      );
+      const fallback = fallbackKey ? FALLBACK_USERS[fallbackKey] : undefined;
+      const resolvedUsername = fallbackKey || (userRow ? userRow.username : cleanInput);
 
-      if (isValidFallback) {
+      if (fallback) {
+        const isValidFallback = verifyPassword(password, fallback.passwordHash);
+
+        if (isValidFallback) {
         const userRole = normalizeRole(fallback.role);
         const perms = getUserPermissions({
           id: userRow?.id || `usr-${resolvedUsername}`,
@@ -187,7 +191,8 @@ export async function POST(request: Request) {
           maxAge: 60 * 60 * 24 * 7
         });
 
-        return NextResponse.json({ success: true, user: userObj });
+          return NextResponse.json({ success: true, user: userObj });
+        }
       }
     }
 
@@ -203,3 +208,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

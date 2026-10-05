@@ -227,26 +227,15 @@ export async function POST(request: Request) {
         updatedAt: data.updated_at
       };
 
-      // Always sync to local DB cache
-      try {
-        const db = readDb();
-        const existingIdx = db.items.findIndex(i => i.id === createdItem.id || i.code.toLowerCase() === createdItem.code.toLowerCase());
-        if (existingIdx !== -1) {
-          db.items[existingIdx] = createdItem;
-        } else {
-          db.items.push(createdItem);
-        }
-        writeDb(db);
-      } catch (cacheErr) {
-        console.warn('Local cache sync warning in POST /api/items:', cacheErr);
-      }
-
       // Record audit log
+      const actor = (authCheck.user.name || authCheck.user.username || 'Inventory Admin').trim();
+      const actorEmail = authCheck.user.email || undefined;
       logAuditEvent({
         category: 'INVENTORY',
         action: 'CREATE_ITEM',
         details: `Created new item: "${createdItem.name}" (${createdItem.code}) with initial stock ${createdItem.currentStock} ${createdItem.unit}`,
-        actorName: 'Inventory Admin',
+        actorName: actor,
+        actorEmail,
         targetId: createdItem.id,
         targetName: createdItem.name,
         metadata: { code: createdItem.code, stock: createdItem.currentStock, price: createdItem.price }

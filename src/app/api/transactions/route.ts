@@ -34,15 +34,15 @@ export async function GET(request: Request) {
         itemName: row.item_name,
         itemCode: row.item_code,
         type: row.type,
-        quantity: row.quantity,
-        balanceAfter: row.balance_after,
+        quantity: Number(row.quantity) || 0,
+        balanceAfter: Number(row.balance_after) || 0,
         department: row.department,
         departmentId: row.department_id,
         issuedToUserId: row.issued_to_user_id,
         issuedToName: row.issued_to_name,
-        unitCost: row.unit_cost,
-        totalCost: row.total_cost,
-        budgetDeducted: row.budget_deducted,
+        unitCost: Number(row.unit_cost) || 0,
+        totalCost: Number(row.total_cost) || 0,
+        budgetDeducted: Boolean(row.budget_deducted),
         requesterName: row.requester_name,
         note: row.note,
         createdAt: row.created_at
@@ -54,6 +54,7 @@ export async function GET(request: Request) {
       });
     }
 
+    // Offline / local development fallback
     const db = readDb();
     let logs = [...db.transactions].reverse();
 
@@ -66,6 +67,7 @@ export async function GET(request: Request) {
       total: logs.length
     });
   } catch (error) {
+    console.error('Failed to fetch transactions:', error);
     return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 });
   }
 }
@@ -109,6 +111,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Incomplete information or no items provided' }, { status: 400 });
     }
 
+    // Validate quantities
+    for (const item of itemsToProcess) {
+      if (isNaN(item.quantity) || (type !== 'ADJUST' && item.quantity <= 0) || (type === 'ADJUST' && item.quantity < 0)) {
+        return NextResponse.json({ error: `Invalid quantity for item ID ${item.itemId}` }, { status: 400 });
+      }
+    }
+
     // Permission Guard based on transaction type
     const requiredPermission =
       type === 'IN'
@@ -122,101 +131,248 @@ export async function POST(request: Request) {
       return authCheck.errorResponse;
     }
 
-    const db = readDb();
+    const now = new Date().toISOString();
 
-    // 1. Fetch items from Supabase Cloud DB if configured to ensure fresh stock levels
+    // =========================================================================
+    // CASE A: Supabase Production Single Source of Truth
+    // =========================================================================
     if (isSupabaseConfigured && supabase) {
-      try {
-        const itemIdentifiers = itemsToProcess.map(it => it.itemId);
-        const { data: cloudItems, error: sbItemsErr } = await supabase
-          .from('items')
-          .select('*')
-          .in('id', itemIdentifiers);
+      const itemIdentifiers = itemsToProcess.map(it => it.itemId);
+      const { data: dbItems, error: itemsErr } = await supabase
+        .from('items')
+        .select('*')
+        .in('id', itemIdentifiers);
 
-        if (sbItemsErr) {
-          console.warn('Supabase items fetch warning:', sbItemsErr);
-        } else if (cloudItems && cloudItems.length > 0) {
-          for (const row of cloudItems) {
-            const syncedItem = {
-              id: row.id,
-              code: row.code,
-              name: row.name,
-              categoryId: row.category_id,
-              currentStock: Number(row.current_stock) || 0,
-              minStock: Number(row.min_stock) || 5,
-              unit: row.unit || 'pcs',
-              location: row.location || '',
-              price: row.price !== undefined && row.price !== null ? Number(row.price) : 0,
-              cost: row.cost !== undefined && row.cost !== null ? Number(row.cost) : 0,
-              imageUrl: row.image_url || '',
-              isForSale: Boolean(row.is_for_sale),
-              note: row.note || '',
-              isBorrowable: row.is_borrowable,
-              updatedAt: row.updated_at
+      if (itemsErr || !dbItems || dbItems.length === 0) {
+        return NextResponse.json({ error: 'Could not fetch items from database' }, { status: 400 });
+      }
+
+      // Check all items exist
+      for (const reqItem of itemsToProcess) {
+        const found = dbItems.find((i: any) => i.id === reqItem.itemId || i.code === reqItem.itemId);
+        if (!found) {
+          return NextResponse.json({ error: `Item ${reqItem.itemId} not found` }, { status: 404 });
+        }
+      }
+
+      // Pre-check stock for OUT operations
+      let totalBatchCost = 0;
+      for (const reqItem of itemsToProcess) {
+        const found = dbItems.find((i: any) => i.id === reqItem.itemId || i.code === reqItem.itemId)!;
+        const currentStock = Number(found.current_stock) || 0;
+        const itemCost = reqItem.unitCost !== undefined ? reqItem.unitCost : Number(found.cost ?? found.price ?? 0);
+        totalBatchCost += reqItem.quantity * itemCost;
+
+        if (type === 'OUT' && currentStock < reqItem.quantity) {
+          return NextResponse.json(
+            {
+              error: `Insufficient stock for "${found.name}"! Available: ${currentStock} ${found.unit || 'pcs'}, Requested: ${reqItem.quantity} ${found.unit || 'pcs'}`
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Check Department Budget if OUT
+      let targetDept: any = null;
+      let budgetDeducted = false;
+
+      if (type === 'OUT' && (departmentId || department)) {
+        try {
+          let deptQuery = supabase.from('departments').select('*');
+          if (departmentId) {
+            deptQuery = deptQuery.eq('id', departmentId);
+          } else if (department && department !== 'ALL') {
+            deptQuery = deptQuery.eq('name', department);
+          }
+          const { data: deptData } = await deptQuery.maybeSingle();
+          if (deptData) {
+            targetDept = {
+              id: deptData.id,
+              name: deptData.name,
+              allocatedBudget: Number(deptData.allocated_budget || deptData.allocatedBudget) || 0,
+              spentBudget: Number(deptData.spent_budget || deptData.spentBudget) || 0
             };
-            const existingIdx = db.items.findIndex(
-              i => i.id === row.id || i.code.toLowerCase() === (row.code || '').toLowerCase()
-            );
-            if (existingIdx !== -1) {
-              db.items[existingIdx] = syncedItem;
-            } else {
-              db.items.push(syncedItem);
+
+            const remaining = targetDept.allocatedBudget - targetDept.spentBudget;
+            if (totalBatchCost > remaining && !overrideBudget) {
+              return NextResponse.json(
+                {
+                  error: `Department budget exceeded! Available: ฿${remaining.toLocaleString()}, Requisition Total: ฿${totalBatchCost.toLocaleString()}`,
+                  budgetExceeded: true,
+                  allocatedBudget: targetDept.allocatedBudget,
+                  spentBudget: targetDept.spentBudget,
+                  remainingBudget: remaining,
+                  requiredBudget: totalBatchCost
+                },
+                { status: 400 }
+              );
+            }
+
+            // Deduct department budget
+            await supabase
+              .from('departments')
+              .update({ spent_budget: targetDept.spentBudget + totalBatchCost, updated_at: now })
+              .eq('id', targetDept.id);
+            budgetDeducted = true;
+          }
+        } catch (deptErr) {
+          console.warn('Department budget check warning:', deptErr);
+        }
+      }
+
+      // Execute Atomic Stock Updates and Create Transactions
+      const createdTxs: Transaction[] = [];
+
+      for (const reqItem of itemsToProcess) {
+        const found = dbItems.find((i: any) => i.id === reqItem.itemId || i.code === reqItem.itemId)!;
+        const itemCost = reqItem.unitCost !== undefined ? reqItem.unitCost : Number(found.cost ?? found.price ?? 0);
+        let newStock = Number(found.current_stock) || 0;
+
+        if (type === 'OUT') {
+          // Attempt atomic RPC deduction first
+          const { data: rpcData, error: rpcErr } = await supabase.rpc('deduct_item_stock', {
+            p_item_id: found.id,
+            p_quantity: reqItem.quantity
+          });
+
+          if (!rpcErr && rpcData && rpcData.length > 0 && rpcData[0].success) {
+            newStock = rpcData[0].new_stock;
+          } else {
+            // Direct conditional update fallback
+            newStock = Math.max(0, newStock - reqItem.quantity);
+            const { error: updErr } = await supabase
+              .from('items')
+              .update({ current_stock: newStock, updated_at: now })
+              .eq('id', found.id);
+
+            if (updErr) {
+              throw new Error(`Failed to update item ${found.name}: ${updErr.message}`);
             }
           }
+        } else if (type === 'IN') {
+          const { data: rpcData, error: rpcErr } = await supabase.rpc('increase_item_stock', {
+            p_item_id: found.id,
+            p_quantity: reqItem.quantity
+          });
+
+          if (!rpcErr && rpcData && rpcData.length > 0 && rpcData[0].success) {
+            newStock = rpcData[0].new_stock;
+          } else {
+            newStock = newStock + reqItem.quantity;
+            const { error: updErr } = await supabase
+              .from('items')
+              .update({ current_stock: newStock, updated_at: now })
+              .eq('id', found.id);
+
+            if (updErr) {
+              throw new Error(`Failed to update item ${found.name}: ${updErr.message}`);
+            }
+          }
+        } else if (type === 'ADJUST') {
+          newStock = reqItem.quantity;
+          const { error: updErr } = await supabase
+            .from('items')
+            .update({ current_stock: newStock, updated_at: now })
+            .eq('id', found.id);
+
+          if (updErr) {
+            throw new Error(`Failed to update item ${found.name}: ${updErr.message}`);
+          }
         }
-      } catch (syncErr) {
-        console.warn('Transactions item sync warning:', syncErr);
+
+        const newTx: Transaction = {
+          id: `tx-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          itemId: found.id,
+          itemName: found.name,
+          itemCode: found.code,
+          type: type as TransactionType,
+          quantity: reqItem.quantity,
+          balanceAfter: newStock,
+          department: (targetDept ? targetDept.name : (department || 'General Academic Dept')).trim(),
+          departmentId: targetDept ? targetDept.id : departmentId,
+          issuedToUserId,
+          issuedToName: issuedToName || requesterName,
+          requesterName: (requesterName || issuedToName || '').trim(),
+          unitCost: itemCost,
+          totalCost: reqItem.quantity * itemCost,
+          budgetDeducted,
+          note: (note || '').trim(),
+          createdAt: now
+        };
+
+        const { error: txInsErr } = await supabase.from('transactions').insert({
+          id: newTx.id,
+          item_id: newTx.itemId,
+          item_name: newTx.itemName,
+          item_code: newTx.itemCode,
+          type: newTx.type,
+          quantity: newTx.quantity,
+          balance_after: newTx.balanceAfter,
+          department: newTx.department,
+          department_id: newTx.departmentId || null,
+          issued_to_user_id: newTx.issuedToUserId || null,
+          issued_to_name: newTx.issuedToName || null,
+          unit_cost: newTx.unitCost || 0,
+          total_cost: newTx.totalCost || 0,
+          budget_deducted: Boolean(newTx.budgetDeducted),
+          requester_name: newTx.requesterName || null,
+          note: newTx.note || null,
+          created_at: now
+        });
+
+        if (txInsErr) {
+          console.error('Failed to insert transaction in Supabase:', txInsErr);
+        }
+
+        createdTxs.push(newTx);
       }
+
+      // Server-side verified Audit Log
+      const actor = (authCheck.user.name || authCheck.user.username || requesterName || issuedToName || 'Inventory Staff').trim();
+      const actorEmail = authCheck.user.email || undefined;
+      const actionName = type === 'IN' ? 'RECEIVE_STOCK' : type === 'OUT' ? 'ISSUE_STOCK' : 'ADJUST_STOCK';
+      const itemsSummary = createdTxs.map(t => `${t.itemName} (${type === 'OUT' ? '-' : '+'}${t.quantity})`).join(', ');
+
+      logAuditEvent({
+        category: 'STOCK_OPERATION',
+        action: actionName,
+        details: `${type === 'IN' ? 'Received stock' : type === 'OUT' ? 'Issued stock' : 'Adjusted stock'}: ${itemsSummary} | Dept: ${department || 'Central'}`,
+        actorName: actor,
+        actorEmail,
+        targetId: createdTxs[0]?.id,
+        targetName: createdTxs.length === 1 ? createdTxs[0]?.itemName : `${createdTxs.length} items`,
+        metadata: {
+          type,
+          count: createdTxs.length,
+          totalCost: totalBatchCost,
+          items: createdTxs.map(t => ({ id: t.itemId, code: t.itemCode, qty: t.quantity }))
+        }
+      }).catch(e => console.warn('Audit log error:', e));
+
+      return NextResponse.json({
+        success: true,
+        count: createdTxs.length,
+        transactions: createdTxs,
+        transaction: createdTxs[0],
+        totalCost: totalBatchCost,
+        department: targetDept,
+        remainingBudget: targetDept ? (targetDept.allocatedBudget - targetDept.spentBudget) : undefined
+      });
     }
 
-    // 2. Validate all items exist and have enough stock if OUT
+    // =========================================================================
+    // CASE B: Offline Local JSON Fallback Mode
+    // =========================================================================
+    const db = readDb();
     const itemRecords: Array<{ index: number; item: any; qty: number; unitCost: number }> = [];
     let totalBatchCost = 0;
 
     for (const entry of itemsToProcess) {
       const { itemId: itId, quantity: qty } = entry;
-      if (isNaN(qty) || qty <= 0) {
-        return NextResponse.json({ error: `Invalid quantity for item: ${itId}` }, { status: 400 });
-      }
-
-      let itemIndex = db.items.findIndex(
+      const itemIndex = db.items.findIndex(
         i => i.id === itId || i.code.toLowerCase() === itId.toLowerCase()
       );
-
-      // Fallback direct check against Supabase if still not in local db
-      if (itemIndex === -1 && isSupabaseConfigured && supabase) {
-        try {
-          const { data: directSbItem } = await supabase
-            .from('items')
-            .select('*')
-            .or(`id.eq.${itId},code.eq.${itId}`)
-            .maybeSingle();
-
-          if (directSbItem) {
-            const cached = {
-              id: directSbItem.id,
-              code: directSbItem.code,
-              name: directSbItem.name,
-              categoryId: directSbItem.category_id,
-              currentStock: Number(directSbItem.current_stock) || 0,
-              minStock: Number(directSbItem.min_stock) || 5,
-              unit: directSbItem.unit || 'pcs',
-              location: directSbItem.location || '',
-              price: directSbItem.price !== undefined && directSbItem.price !== null ? Number(directSbItem.price) : 0,
-              cost: directSbItem.cost !== undefined && directSbItem.cost !== null ? Number(directSbItem.cost) : 0,
-              imageUrl: directSbItem.image_url || '',
-              isForSale: Boolean(directSbItem.is_for_sale),
-              note: directSbItem.note || '',
-              isBorrowable: directSbItem.is_borrowable,
-              updatedAt: directSbItem.updated_at
-            };
-            db.items.push(cached);
-            itemIndex = db.items.length - 1;
-          }
-        } catch (fetchErr) {
-          console.warn('Direct fetch from Supabase failed:', fetchErr);
-        }
-      }
 
       if (itemIndex === -1) {
         return NextResponse.json({ error: `Item ${itId} not found in system` }, { status: 404 });
@@ -243,7 +399,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. Budget Check for OUT transactions if departmentId or department is specified
     let targetDept: any = null;
     let budgetDeducted = false;
 
@@ -275,15 +430,12 @@ export async function POST(request: Request) {
           );
         }
 
-        // Deduct from budget
         targetDept.spentBudget = spent + totalBatchCost;
         budgetDeducted = true;
       }
     }
 
-    // 4. Apply stock updates and record transactions
     const createdTxs: Transaction[] = [];
-    const now = new Date().toISOString();
 
     for (const record of itemRecords) {
       const { index, item, qty, unitCost: itemCost } = record;
@@ -323,51 +475,10 @@ export async function POST(request: Request) {
 
       createdTxs.push(newTx);
       db.transactions.push(newTx);
-
-      // Also update Supabase Cloud DB if connected
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { error: itemUpErr } = await supabase
-            .from('items')
-            .update({ current_stock: newStock, updated_at: now })
-            .eq('id', item.id);
-
-          if (itemUpErr) {
-            console.error('Failed to update item stock in Supabase:', itemUpErr);
-          }
-
-          const { error: txInsErr } = await supabase.from('transactions').insert({
-            id: newTx.id,
-            item_id: newTx.itemId,
-            item_name: newTx.itemName,
-            item_code: newTx.itemCode,
-            type: newTx.type,
-            quantity: newTx.quantity,
-            balance_after: newTx.balanceAfter,
-            department: newTx.department,
-            department_id: newTx.departmentId || null,
-            issued_to_user_id: newTx.issuedToUserId || null,
-            issued_to_name: newTx.issuedToName || null,
-            unit_cost: newTx.unitCost || 0,
-            total_cost: newTx.totalCost || 0,
-            budget_deducted: Boolean(newTx.budgetDeducted),
-            requester_name: newTx.requesterName || null,
-            note: newTx.note || null,
-            created_at: now
-          });
-
-          if (txInsErr) {
-            console.error('Failed to insert transaction in Supabase:', txInsErr);
-          }
-        } catch (sbUpdateErr) {
-          console.warn('Supabase stock transaction update warning:', sbUpdateErr);
-        }
-      }
     }
 
     writeDb(db);
 
-    // 5. Create audit log
     const actor = (authCheck.user.name || authCheck.user.username || requesterName || issuedToName || 'Inventory Staff').trim();
     const actorEmail = authCheck.user.email || undefined;
     const actionName = type === 'IN' ? 'RECEIVE_STOCK' : type === 'OUT' ? 'ISSUE_STOCK' : 'ADJUST_STOCK';
@@ -393,7 +504,7 @@ export async function POST(request: Request) {
       success: true,
       count: createdTxs.length,
       transactions: createdTxs,
-      transaction: createdTxs[0], // for backwards compatibility
+      transaction: createdTxs[0],
       updatedItem: db.items[itemRecords[0]?.index],
       totalCost: totalBatchCost,
       department: targetDept,
