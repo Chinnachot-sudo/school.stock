@@ -37,6 +37,7 @@ export async function POST(request: Request) {
     // 1. Supabase Cloud DB (All-in-One Atomic Return & Restock RPC)
     if (isSupabaseConfigured && supabase) {
       const { data: retResult, error: retErr } = await supabase.rpc('process_receipt_return', {
+        p_return_id: returnId,
         p_receipt_id: cleanReceiptId,
         p_items: items,
         p_reason: reasonLabel,
@@ -49,10 +50,10 @@ export async function POST(request: Request) {
       }
 
       const returnRecord: ReturnRecord = {
-        id: returnId,
+        id: retResult.returnId || returnId,
         receiptId: retResult.receiptId || cleanReceiptId,
         receiptNumber: retResult.receiptNumber || cleanReceiptId,
-        items,
+        items: retResult.items || items,
         totalRefund: Number(retResult.totalRefund) || totalRefund,
         reason,
         reasonDetail,

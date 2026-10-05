@@ -621,6 +621,8 @@ END;
 $$;
 
 -- 5.4 Production Atomic Process Receipt Return (With Cumulative Return Ledger & True Price Calculation)
+DROP FUNCTION IF EXISTS public.process_receipt_return(TEXT, JSONB, TEXT, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.process_receipt_return(
   p_return_id TEXT,
   p_receipt_id TEXT,
