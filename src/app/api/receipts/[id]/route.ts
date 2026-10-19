@@ -28,7 +28,8 @@ export async function GET(
         .or(`id.eq.${cleanId},receipt_number.eq.${cleanId}`)
         .maybeSingle();
 
-      if (!error && data) {
+      if (error) throw error;
+      if (data) {
         const receipt: Receipt = {
           id: data.id,
           receiptNumber: data.receipt_number,
@@ -52,6 +53,7 @@ export async function GET(
         };
         return NextResponse.json({ receipt });
       }
+      return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
     }
 
     // 2. Local JSON DB

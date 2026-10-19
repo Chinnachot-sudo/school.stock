@@ -717,18 +717,24 @@ export function NotificationsSettingsView() {
 export function BackupMaintenanceView() {
   const [downloading, setDownloading] = useState(false);
   const [lastBackupInfo, setLastBackupInfo] = useState<string | null>(null);
+  const [csvTable, setCsvTable] = useState('items');
 
-  const handleBackupDownload = async () => {
+  const handleBackupDownload = async (format: 'json' | 'csv') => {
     try {
       setDownloading(true);
-      const res = await fetch('/api/backup');
+      setLastBackupInfo(null);
+      const endpoint = format === 'json' ? '/api/backup' : `/api/backup?format=csv&table=${csvTable}`;
+      const res = await fetch(endpoint, { cache: 'no-store' });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to download backup');
       }
 
       const blob = await res.blob();
-      const filename = `backup_rais_inventory_${new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)}.json`;
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      const filename = format === 'json'
+        ? `backup_rais_inventory_${stamp}.json`
+        : `backup_rais_${csvTable}_${stamp}.csv`;
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -757,7 +763,7 @@ export function BackupMaintenanceView() {
             <span>Database Backup & Snapshot Archives</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Create on-demand full database backups and download JSON dumps of school stock
+            Download a verified data export as JSON, or choose one table to export as CSV.
           </p>
         </div>
 
@@ -768,33 +774,51 @@ export function BackupMaintenanceView() {
               <span>Full Database JSON Export</span>
             </div>
             <p className="text-slate-600">
-              Download complete tables including users, categories, departments, items, invoices, receipts, and audit history.
+              Includes inventory, transactions, sales, returns, users (without password hashes), permissions, and audit history.
             </p>
             <div className="pt-1">
-              <a
-                href="/api/backup"
-                download
-                className="px-4 py-2.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold inline-flex items-center gap-2 shadow-sm transition active:scale-95 cursor-pointer text-xs"
+              <button
+                type="button"
+                onClick={() => handleBackupDownload('json')}
+                disabled={downloading}
+                className="px-4 py-2.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold inline-flex items-center gap-2 shadow-sm transition active:scale-95 cursor-pointer text-xs disabled:opacity-60"
               >
                 <Download className="w-4 h-4" />
-                <span>Download Full JSON Snapshot</span>
-              </a>
+                <span>{downloading ? 'Preparing export...' : 'Download JSON Export'}</span>
+              </button>
             </div>
           </div>
 
           <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3 text-xs">
             <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
               <HardDriveDownload className="w-4 h-4 text-blue-700" />
-              <span>Supabase Cloud Automated Backup</span>
+              <span>Export a Table as CSV</span>
             </div>
             <p className="text-slate-600">
-              Automated physical backups are maintained daily on Supabase Cloud infrastructure with point-in-time recovery.
+              Choose a table to open its records in a spreadsheet. Provider backup status must be checked in the Supabase dashboard.
             </p>
-            <div className="text-[11px] font-mono text-blue-800 font-bold">
-              Infrastructure Status: ACTIVE_HEALTHY (Tokyo, ap-northeast-1)
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={csvTable}
+                onChange={event => setCsvTable(event.target.value)}
+                className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs"
+              >
+                {['items', 'categories', 'departments', 'customers', 'invoices', 'receipts', 'receipt_returns', 'transactions', 'audit_logs', 'app_users', 'user_roles', 'roles', 'permissions', 'role_permissions'].map(table => (
+                  <option key={table} value={table}>{table}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => handleBackupDownload('csv')}
+                disabled={downloading}
+                className="rounded-lg bg-blue-700 px-4 py-2 font-bold text-white disabled:opacity-60"
+              >
+                Download CSV
+              </button>
             </div>
           </div>
         </div>
+        {lastBackupInfo && <p className="text-xs text-[#0B6B4F]" role="status">{lastBackupInfo}</p>}
       </div>
     </div>
   );

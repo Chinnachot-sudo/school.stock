@@ -27,6 +27,7 @@ export async function GET(request: Request) {
       if (status && status !== 'ALL') query = query.eq('status', status);
 
       const { data, error } = await query;
+      if (error) throw error;
       if (!error && data) {
         let receipts: Receipt[] = data.map((row: any) => ({
           id: row.id,
@@ -153,10 +154,11 @@ export async function POST(request: Request) {
       const itemIds = items.map((ci: any) => ci.itemId).filter(Boolean);
       const itemCodes = items.map((ci: any) => ci.itemCode).filter(Boolean);
 
-      const { data: sbItems } = await supabase
+      const { data: sbItems, error: itemsError } = await supabase
         .from('items')
         .select('*')
         .in('id', itemIds);
+      if (itemsError) throw itemsError;
 
       if (sbItems) {
         for (const row of sbItems) {
@@ -182,10 +184,11 @@ export async function POST(request: Request) {
       // If any items were not found by id, query by code
       const missingCodes = itemCodes.filter(c => !cloudItems.some(i => i.code === c));
       if (missingCodes.length > 0) {
-        const { data: codeItems } = await supabase
+        const { data: codeItems, error: codeItemsError } = await supabase
           .from('items')
           .select('*')
           .in('code', missingCodes);
+        if (codeItemsError) throw codeItemsError;
 
         if (codeItems) {
           for (const row of codeItems) {
@@ -212,21 +215,20 @@ export async function POST(request: Request) {
       }
     }
 
-    const db = readDb();
+    const db = isSupabaseConfigured && supabase ? null : readDb();
     const date = new Date();
     const yy = date.getFullYear().toString().slice(-2);
     const mm = (date.getMonth() + 1).toString().padStart(2, '0');
 
     let seq = 1;
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { count } = await supabase.from('receipts').select('*', { count: 'exact', head: true });
-        if (typeof count === 'number' && !isNaN(count)) seq = count + 1;
-      } catch {
-        seq = (db.receipts?.length || 0) + 1;
+      const { count, error } = await supabase.from('receipts').select('*', { count: 'exact', head: true });
+      if (error || count === null || count === undefined) {
+        throw new Error(error?.message || 'Could not determine the next receipt number');
       }
+      seq = count + 1;
     } else {
-      seq = (db.receipts?.length || 0) + 1;
+      seq = (db?.receipts?.length || 0) + 1;
     }
 
     const countSeq = seq.toString().padStart(4, '0');
@@ -238,8 +240,8 @@ export async function POST(request: Request) {
 
     // 2. Validate items and stock against cloud or local database
     for (const cartItem of items) {
-      const targetItem = cloudItems.find(i => i.id === cartItem.itemId || i.code === cartItem.itemCode)
-        || db.items.find(i => i.id === cartItem.itemId || i.code === cartItem.itemCode);
+      const targetItem = (isSupabaseConfigured && supabase ? cloudItems : (db?.items || []))
+        .find(i => i.id === cartItem.itemId || i.code === cartItem.itemCode);
 
       if (!targetItem) {
         return NextResponse.json({ error: `Item not found: ${cartItem.itemName || cartItem.itemId}` }, { status: 404 });
@@ -327,20 +329,17 @@ export async function POST(request: Request) {
       }
     } else {
       // 4. Fallback to Local JSON DB if Supabase is not configured
-      try {
-        for (const rItem of validatedReceiptItems) {
-          const idx = db.items.findIndex(i => i.id === rItem.itemId);
-          if (idx !== -1) {
-            db.items[idx].currentStock = Math.max(0, db.items[idx].currentStock - rItem.quantity);
-            db.items[idx].updatedAt = new Date().toISOString();
-          }
+      if (!db) throw new Error('Local database is unavailable');
+      for (const rItem of validatedReceiptItems) {
+        const idx = db.items.findIndex(i => i.id === rItem.itemId);
+        if (idx !== -1) {
+          db.items[idx].currentStock = Math.max(0, db.items[idx].currentStock - rItem.quantity);
+          db.items[idx].updatedAt = new Date().toISOString();
         }
-        if (!db.receipts) db.receipts = [];
-        db.receipts.push(newReceipt);
-        writeDb(db);
-      } catch (localErr) {
-        console.warn('Local db write skipped:', localErr);
       }
+      if (!db.receipts) db.receipts = [];
+      db.receipts.push(newReceipt);
+      writeDb(db);
     }
 
     // Record audit log

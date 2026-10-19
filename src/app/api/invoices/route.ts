@@ -17,12 +17,12 @@ export async function GET(request: Request) {
 
     // 1. Try Supabase Cloud DB first if configured
     if (isSupabaseConfigured && supabase) {
-      try {
         let query = supabase.from('invoices').select('*').order('created_at', { ascending: false });
         if (status && status !== 'ALL') query = query.eq('status', status);
 
         const { data, error } = await query;
-        if (!error && data) {
+        if (error) throw error;
+        if (data) {
           let invoices: Invoice[] = data.map((row: any) => ({
             id: row.id,
             invoiceNumber: row.invoice_number,
@@ -74,9 +74,6 @@ export async function GET(request: Request) {
             }
           });
         }
-      } catch (sbErr) {
-        console.warn('Supabase fetch invoices warning, falling back to local DB:', sbErr);
-      }
     }
 
     // 2. Fallback to Local JSON DB
@@ -150,21 +147,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Please specify at least 1 line item' }, { status: 400 });
     }
 
-    const db = readDb();
+    const useCloud = isSupabaseConfigured && supabase;
+    const db = useCloud ? null : readDb();
     const date = new Date();
     const yy = date.getFullYear().toString().slice(-2);
     const mm = (date.getMonth() + 1).toString().padStart(2, '0');
 
     let seq = 1;
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { count } = await supabase.from('invoices').select('*', { count: 'exact', head: true });
-        if (typeof count === 'number' && !isNaN(count)) seq = count + 1;
-      } catch {
-        seq = (db.invoices?.length || 0) + 1;
+    if (useCloud) {
+      const { count, error } = await supabase.from('invoices').select('*', { count: 'exact', head: true });
+      if (error || count === null || count === undefined) {
+        throw new Error(error?.message || 'Could not determine the next invoice number');
       }
+      seq = count + 1;
     } else {
-      seq = (db.invoices?.length || 0) + 1;
+      seq = (db?.invoices?.length || 0) + 1;
     }
 
     const countSeq = seq.toString().padStart(4, '0');
@@ -223,41 +220,35 @@ export async function POST(request: Request) {
     };
 
     // 1. Supabase Cloud DB insert (if table exists)
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('invoices').insert({
-          id: newInvoice.id,
-          invoice_number: newInvoice.invoiceNumber,
-          customer_name: newInvoice.customerName,
-          customer_type: newInvoice.customerType,
-          student_class: newInvoice.studentClass,
-          student_id: newInvoice.studentId,
-          parent_name: newInvoice.parentName,
-          phone: newInvoice.phone,
-          due_date: newInvoice.dueDate,
-          items: JSON.stringify(newInvoice.items),
-          subtotal: newInvoice.subtotal,
-          discount: newInvoice.discount,
-          total_amount: newInvoice.totalAmount,
-          creator_name: newInvoice.creatorName,
-          creator_email: newInvoice.creatorEmail,
-          note: newInvoice.note,
-          status: 'PENDING',
-          created_at: newInvoice.createdAt,
-          updated_at: newInvoice.updatedAt
-        });
-      } catch (sbErr) {
-        console.warn('Supabase invoice insert warning:', sbErr);
-      }
+    if (useCloud) {
+      const { error } = await supabase.from('invoices').insert({
+        id: newInvoice.id,
+        invoice_number: newInvoice.invoiceNumber,
+        customer_name: newInvoice.customerName,
+        customer_type: newInvoice.customerType,
+        student_class: newInvoice.studentClass,
+        student_id: newInvoice.studentId,
+        parent_name: newInvoice.parentName,
+        phone: newInvoice.phone,
+        due_date: newInvoice.dueDate,
+        items: JSON.stringify(newInvoice.items),
+        subtotal: newInvoice.subtotal,
+        discount: newInvoice.discount,
+        total_amount: newInvoice.totalAmount,
+        creator_name: newInvoice.creatorName,
+        creator_email: newInvoice.creatorEmail,
+        note: newInvoice.note,
+        status: 'PENDING',
+        created_at: newInvoice.createdAt,
+        updated_at: newInvoice.updatedAt
+      });
+      if (error) throw new Error(`Could not save invoice: ${error.message}`);
     } else {
-      // 2. Local DB update when Supabase is unconfigured
-      try {
-        if (!db.invoices) db.invoices = [];
-        db.invoices.push(newInvoice);
-        writeDb(db);
-      } catch (localErr) {
-        console.warn('Local db invoice write skipped:', localErr);
-      }
+      // Local mode is available only for development.
+      if (!db) throw new Error('Local database is unavailable');
+      if (!db.invoices) db.invoices = [];
+      db.invoices.push(newInvoice);
+      writeDb(db);
     }
 
     return NextResponse.json({

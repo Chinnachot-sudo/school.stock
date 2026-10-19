@@ -13,8 +13,7 @@ interface DatabaseSchema {
   auditLogs?: AuditLog[];
 }
 
-const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const DATA_DIR = isVercel ? '/tmp' : path.join(process.cwd(), 'data');
+const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'inventory_db.json');
 
 const INITIAL_DATA: DatabaseSchema = {
@@ -259,17 +258,6 @@ function ensureDbExists(): void {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     if (!fs.existsSync(DB_FILE)) {
-      // If on Vercel, copy existing bundled data from app bundle if present
-      const bundledFile = path.join(process.cwd(), 'data', 'inventory_db.json');
-      if (isVercel && fs.existsSync(bundledFile)) {
-        try {
-          const content = fs.readFileSync(bundledFile, 'utf-8');
-          fs.writeFileSync(DB_FILE, content, 'utf-8');
-          return;
-        } catch {
-          // fall through to INITIAL_DATA
-        }
-      }
       fs.writeFileSync(DB_FILE, JSON.stringify(INITIAL_DATA, null, 2), 'utf-8');
     }
   } catch (err) {
@@ -278,6 +266,9 @@ function ensureDbExists(): void {
 }
 
 export function readDb(): DatabaseSchema {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Local JSON database is disabled in production; Supabase is required.');
+  }
   ensureDbExists();
   try {
     if (!fs.existsSync(DB_FILE)) {
@@ -308,12 +299,15 @@ export function readDb(): DatabaseSchema {
 }
 
 export function writeDb(data: DatabaseSchema): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Local JSON database is disabled in production; Supabase is required.');
+  }
   try {
     ensureDbExists();
     const tempFile = `${DB_FILE}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
     fs.renameSync(tempFile, DB_FILE);
   } catch (err) {
-    console.warn('writeDb: Could not write to local filesystem:', err);
+    throw new Error('Could not persist local database changes', { cause: err });
   }
 }

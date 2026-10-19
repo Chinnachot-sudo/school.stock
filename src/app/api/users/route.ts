@@ -92,7 +92,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ users: DEFAULT_USERS });
     }
 
-    return NextResponse.json({ users: [] });
+    return NextResponse.json({ error: 'User database is unavailable.' }, { status: 503 });
   } catch (err: unknown) {
     console.error('GET /api/users error:', err);
     return NextResponse.json(

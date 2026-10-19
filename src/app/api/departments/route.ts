@@ -13,6 +13,7 @@ export async function GET(request: Request) {
 
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('departments').select('*').order('name');
+      if (error) throw error;
       if (!error && data) {
         const departments: Department[] = data.map((row: any) => ({
           id: row.id,

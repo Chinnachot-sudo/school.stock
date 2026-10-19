@@ -97,25 +97,12 @@ export async function PUT(
       if (body.note !== undefined) updateData.note = body.note.trim();
       if (body.isBorrowable !== undefined) updateData.is_borrowable = Boolean(body.isBorrowable);
 
-      let updateRes = await supabase
+      const updateRes = await supabase
         .from('items')
         .update(updateData)
         .eq('id', id)
         .select()
         .single();
-
-      if (updateRes.error && updateRes.error.message?.includes('column')) {
-        delete updateData.price;
-        delete updateData.cost;
-        delete updateData.is_for_sale;
-        delete updateData.image_url;
-        updateRes = await supabase
-          .from('items')
-          .update(updateData)
-          .eq('id', id)
-          .select()
-          .single();
-      }
 
       if (updateRes.error) throw updateRes.error;
       const data = updateRes.data;
@@ -126,7 +113,7 @@ export async function PUT(
         name: data.name,
         categoryId: data.category_id,
         currentStock: Number(data.current_stock) || 0,
-        minStock: Number(data.min_stock) || 5,
+        minStock: Number(data.min_stock ?? 5),
         unit: data.unit,
         location: data.location,
         price: data.price !== undefined ? Number(data.price) : body.price !== undefined ? Number(body.price) : 0,
@@ -217,8 +204,9 @@ export async function DELETE(
       const { data: itemRow } = await supabase.from('items').select('name').eq('id', id).maybeSingle();
       if (itemRow) deletedName = itemRow.name;
 
-      const { error } = await supabase.from('items').delete().eq('id', id);
+      const { data: deleted, error } = await supabase.from('items').delete().eq('id', id).select('id').maybeSingle();
       if (error) throw error;
+      if (!deleted) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
 
       logAuditEvent({
         category: 'INVENTORY',

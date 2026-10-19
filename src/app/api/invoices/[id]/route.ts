@@ -22,14 +22,14 @@ export async function GET(
 
     // 1. Supabase
     if (isSupabaseConfigured && supabase) {
-      try {
         const { data, error } = await supabase
           .from('invoices')
           .select('*')
           .or(`id.eq.${cleanId},invoice_number.eq.${cleanId}`)
           .maybeSingle();
 
-        if (!error && data) {
+        if (error) throw error;
+        if (data) {
           const invoice: Invoice = {
             id: data.id,
             invoiceNumber: data.invoice_number,
@@ -55,9 +55,7 @@ export async function GET(
           };
           return NextResponse.json({ invoice });
         }
-      } catch (err) {
-        console.warn('Supabase get invoice warning:', err);
-      }
+        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
     // 2. Local DB
@@ -93,9 +91,6 @@ export async function PATCH(
     const body = await request.json();
     const { status, receiptId, paidAt, note } = body;
 
-    const db = readDb();
-    const idx = (db.invoices || []).findIndex(i => i.id === cleanId || i.invoiceNumber === cleanId);
-
     const now = new Date().toISOString();
     const updates: Partial<Invoice> = {
       updatedAt: now
@@ -125,17 +120,21 @@ export async function PATCH(
         throw error;
       }
 
+      if (!data) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+
       return NextResponse.json({ success: true, invoice: data });
     }
 
     // 2. Local DB
+    const db = readDb();
+    const idx = (db.invoices || []).findIndex(i => i.id === cleanId || i.invoiceNumber === cleanId);
     if (idx !== -1) {
       db.invoices[idx] = { ...db.invoices[idx], ...updates };
       writeDb(db);
       return NextResponse.json({ success: true, invoice: db.invoices[idx] });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
   } catch (error: any) {
     console.error('Error updating invoice:', error);
     return NextResponse.json({ error: error.message || 'Failed to update invoice' }, { status: 500 });
@@ -179,6 +178,8 @@ export async function DELETE(
         throw error;
       }
 
+      if (!data) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+
       return NextResponse.json({ success: true, invoice: data });
     }
 
@@ -193,7 +194,7 @@ export async function DELETE(
       return NextResponse.json({ success: true, invoice: db.invoices[idx] });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
   } catch (error: any) {
     console.error('Error cancelling invoice:', error);
     return NextResponse.json({ error: error.message || 'Failed to cancel invoice' }, { status: 500 });

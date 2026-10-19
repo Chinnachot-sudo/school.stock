@@ -69,7 +69,7 @@ export async function DELETE(
 
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('categories').delete().eq('id', id);
+      const { data: deleted, error } = await supabase.from('categories').delete().eq('id', id).select('id').maybeSingle();
       if (error) {
         // If items are referencing this category
         if (error.message?.includes('violates foreign key')) {
@@ -80,6 +80,7 @@ export async function DELETE(
         }
         throw error;
       }
+      if (!deleted) return NextResponse.json({ error: 'Category not found' }, { status: 404 });
       return NextResponse.json({ success: true });
     }
 

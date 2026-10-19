@@ -126,10 +126,12 @@ export async function DELETE(
 
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase
+      const { data: deleted, error } = await supabase
         .from('customers')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (error) {
         let msg = error.message;
@@ -138,15 +140,18 @@ export async function DELETE(
         }
         return NextResponse.json({ error: msg }, { status: 500 });
       }
+      if (!deleted) return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
 
       return NextResponse.json({ success: true });
     }
 
     // 2. Local JSON DB
     const db = readDb();
-    if (db.customers) {
+    if (db.customers?.some(c => c.id === id)) {
       db.customers = db.customers.filter(c => c.id !== id);
       writeDb(db);
+    } else {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });

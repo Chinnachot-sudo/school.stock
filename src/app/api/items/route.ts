@@ -29,6 +29,8 @@ export async function GET(request: Request) {
       ]);
 
       if (itemsRes.error) throw itemsRes.error;
+      if (catRes.error) throw catRes.error;
+      if (deptRes.error) throw deptRes.error;
 
       let items: Item[] = (itemsRes.data || []).map((row: any) => ({
         id: row.id,
@@ -119,11 +121,12 @@ export async function POST(request: Request) {
 
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('items')
         .select('id, name')
         .ilike('code', trimmedCode)
         .maybeSingle();
+      if (existingError) throw existingError;
 
       if (existing) {
         return NextResponse.json(
@@ -132,27 +135,12 @@ export async function POST(request: Request) {
         );
       }
 
-      // Ensure category_id exists in Supabase to satisfy foreign key constraints
-      let targetCatId = categoryId || 'cat-uniform';
-      try {
-        const { data: catCheck } = await supabase.from('categories').select('id').eq('id', targetCatId).maybeSingle();
-        if (!catCheck) {
-          // If specified category doesn't exist, check if there are any categories
-          const { data: anyCat } = await supabase.from('categories').select('id').limit(1).maybeSingle();
-          if (anyCat) {
-            targetCatId = anyCat.id;
-          } else {
-            // Auto-create category to satisfy FK
-            const { data: createdCat } = await supabase
-              .from('categories')
-              .insert({ id: targetCatId, name: 'General Supplies & Items', icon: '📦' })
-              .select('id')
-              .maybeSingle();
-            if (createdCat) targetCatId = createdCat.id;
-          }
-        }
-      } catch (catErr) {
-        console.warn('Category verification warning:', catErr);
+      const targetCatId = categoryId || 'cat-uniform';
+      const { data: category, error: categoryError } = await supabase
+        .from('categories').select('id').eq('id', targetCatId).maybeSingle();
+      if (categoryError) throw categoryError;
+      if (!category) {
+        return NextResponse.json({ error: 'Selected category does not exist' }, { status: 400 });
       }
 
       const newItemData: any = {
@@ -161,7 +149,7 @@ export async function POST(request: Request) {
         name: trimmedName,
         category_id: targetCatId,
         current_stock: Number(currentStock) || 0,
-        min_stock: Number(minStock) || 5,
+        min_stock: Number(minStock ?? 5),
         unit: unit.trim(),
         location: (location || 'Central Storage').trim(),
         price: Number(price) || 0,
@@ -173,28 +161,7 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString()
       };
 
-      let insertRes = await supabase.from('items').insert(newItemData).select().single();
-
-      // If Supabase schema does not have price/cost/is_for_sale columns, gracefully retry without them
-      if (insertRes.error) {
-        const errMsg = (insertRes.error.message || '').toLowerCase();
-        const errCode = insertRes.error.code || '';
-        if (
-          errMsg.includes('column') ||
-          errMsg.includes('schema cache') ||
-          errMsg.includes('price') ||
-          errMsg.includes('is_for_sale') ||
-          errMsg.includes('image_url') ||
-          errCode === 'PGRST204' ||
-          errCode === '42703'
-        ) {
-          delete newItemData.price;
-          delete newItemData.cost;
-          delete newItemData.is_for_sale;
-          delete newItemData.image_url;
-          insertRes = await supabase.from('items').insert(newItemData).select().single();
-        }
-      }
+      const insertRes = await supabase.from('items').insert(newItemData).select().single();
 
       if (insertRes.error) {
         console.error('Supabase item insertion failed:', insertRes.error);
@@ -215,7 +182,7 @@ export async function POST(request: Request) {
         name: data.name,
         categoryId: data.category_id,
         currentStock: Number(data.current_stock) || 0,
-        minStock: Number(data.min_stock) || 5,
+        minStock: Number(data.min_stock ?? 5),
         unit: data.unit,
         location: data.location,
         price: data.price !== undefined ? Number(data.price) : Number(price) || 0,

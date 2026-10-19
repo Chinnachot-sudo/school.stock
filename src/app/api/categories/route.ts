@@ -28,28 +28,12 @@ export async function GET(request: Request) {
         supabase.from('categories').select('*').order('name'),
         supabase.from('departments').select('*').order('name')
       ]);
-
-      let categories = catRes.data || [];
-
-      // If Supabase categories table is empty, auto-seed defaults so dropdowns are never blank!
-      if (categories.length === 0) {
-        try {
-          const { data: seeded, error: seedErr } = await supabase
-            .from('categories')
-            .insert(DEFAULT_CATEGORIES.map(c => ({ id: c.id, name: c.name, icon: c.icon })))
-            .select();
-          if (!seedErr && seeded) {
-            categories = seeded;
-          } else {
-            categories = DEFAULT_CATEGORIES;
-          }
-        } catch (e) {
-          categories = DEFAULT_CATEGORIES;
-        }
+      if (catRes.error || deptRes.error) {
+        throw new Error(catRes.error?.message || deptRes.error?.message || 'Failed to load categories');
       }
 
       return NextResponse.json({
-        categories,
+        categories: catRes.data || [],
         departments: deptRes.data || []
       });
     }
@@ -61,10 +45,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error('Error fetching categories:', error);
-    return NextResponse.json({
-      categories: DEFAULT_CATEGORIES,
-      departments: []
-    });
+    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
   }
 }
 

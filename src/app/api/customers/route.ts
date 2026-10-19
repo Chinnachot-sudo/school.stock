@@ -82,8 +82,8 @@ export async function GET(request: Request) {
             phone: row.phone,
             email: row.email,
             guardians,
-            points: row.points !== undefined ? Number(row.points) : (120 + ((row.name.charCodeAt(0) || 10) % 8) * 25),
-            tier: row.tier || (((row.name.charCodeAt(0) || 10) % 2 === 0) ? 'GOLD' : 'SILVER'),
+            points: row.points == null ? undefined : Number(row.points),
+            tier: row.tier || undefined,
             note: cleanNote,
             createdAt: row.created_at,
             updatedAt: row.updated_at
