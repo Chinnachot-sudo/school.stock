@@ -8,6 +8,7 @@ export interface SessionPayload {
   role: string;
   roles?: string[];
   permissions?: string[];
+  source?: 'database' | 'emergency';
   iat: number;
   exp: number;
 }

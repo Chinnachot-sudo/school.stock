@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     const verifiedCashierName = authCheck.user.name || authCheck.user.username || 'Store Cashier';
-    const totalRefund = items.reduce((sum: number, it: any) => sum + (Number(it.refundAmount) || (Number(it.unitPrice) * Number(it.quantity))), 0);
+    const requestedTotalRefund = items.reduce((sum: number, it: any) => sum + (Number(it.refundAmount) || (Number(it.unitPrice) * Number(it.quantity))), 0);
     const returnId = `ret-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const reasonLabel = RETURN_REASON_LABELS[reason as ReturnReason] || reason;
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         receiptId: retResult.receiptId || cleanReceiptId,
         receiptNumber: retResult.receiptNumber || cleanReceiptId,
         items: retResult.items || items,
-        totalRefund: Number(retResult.totalRefund) || totalRefund,
+        totalRefund: Number(retResult.totalRefund) || requestedTotalRefund,
         reason,
         reasonDetail,
         cashierName: verifiedCashierName,
@@ -70,48 +70,92 @@ export async function POST(request: Request) {
 
     // 2. Local JSON DB Fallback
     const db = readDb();
-    const receipt = db.receipts?.find(r => r.id === receiptId || r.receiptNumber.toLowerCase() === receiptId.toLowerCase());
+    const receipt = db.receipts?.find(r => r.id === cleanReceiptId || r.receiptNumber.toLowerCase() === cleanReceiptId.toLowerCase());
 
     if (!receipt) {
       return NextResponse.json({ error: 'Original receipt not found' }, { status: 404 });
     }
 
-    for (const it of items) {
-      const qty = Number(it.quantity) || 1;
-      const idx = db.items.findIndex(i => i.id === it.itemId || i.code === it.itemCode);
-      if (idx !== -1) {
-        db.items[idx].currentStock = (db.items[idx].currentStock || 0) + qty;
-        db.items[idx].updatedAt = new Date().toISOString();
-
-        if (!db.transactions) db.transactions = [];
-        db.transactions.push({
-          id: `tx-ret-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          itemId: db.items[idx].id,
-          itemName: db.items[idx].name,
-          itemCode: db.items[idx].code,
-          type: 'RETURN_RESTOCK',
-          quantity: qty,
-          balanceAfter: db.items[idx].currentStock,
-          department: 'School Store & Co-op',
-          requesterName: `Return (Receipt #${receipt.receiptNumber})`,
-          note: `Item returned: ${reasonLabel} - ${reasonDetail || 'No remarks'}`,
-          receiptId: receipt.id,
-          createdAt: new Date().toISOString()
-        });
-      }
+    if (receipt.status === 'VOIDED') {
+      return NextResponse.json({ error: 'Cannot return items from a voided receipt' }, { status: 409 });
     }
 
+    const aggregated = new Map<string, number>();
+    for (const requested of items) {
+      const key = String(requested.itemId || requested.itemCode || '').trim();
+      const qty = Number(requested.quantity);
+      if (!key || !Number.isInteger(qty) || qty <= 0) {
+        return NextResponse.json({ error: 'Every returned item must have a valid positive whole-number quantity' }, { status: 400 });
+      }
+      aggregated.set(key, (aggregated.get(key) || 0) + qty);
+    }
+
+    if (!Array.isArray(db.transactions)) db.transactions = [];
+    const validatedItems: ReturnRecord['items'] = [];
+    for (const [key, qty] of aggregated) {
+      const original = receipt.items.find(line => line.itemId === key || line.itemCode === key);
+      if (!original) {
+        return NextResponse.json({ error: `Item ${key} was not sold on this receipt` }, { status: 400 });
+      }
+
+      const previouslyReturned = (db.transactions || [])
+        .filter(tx => tx.type === 'RETURN_RESTOCK' && tx.receiptId === receipt.id && tx.itemId === original.itemId)
+        .reduce((sum, tx) => sum + Number(tx.quantity || 0), 0);
+      const remaining = Number(original.quantity) - previouslyReturned;
+      if (qty > remaining) {
+        return NextResponse.json(
+          { error: `Cannot return ${qty} of ${original.itemName}; only ${Math.max(remaining, 0)} remain returnable` },
+          { status: 409 }
+        );
+      }
+
+      const inventoryIndex = db.items.findIndex(i => i.id === original.itemId || i.code === original.itemCode);
+      if (inventoryIndex === -1) {
+        return NextResponse.json({ error: `Inventory item ${original.itemCode} no longer exists` }, { status: 409 });
+      }
+
+      validatedItems.push({
+        itemId: original.itemId,
+        itemCode: original.itemCode,
+        itemName: original.itemName,
+        quantity: qty,
+        unitPrice: Number(original.unitPrice),
+        refundAmount: qty * Number(original.unitPrice)
+      });
+    }
+
+    const totalRefund = validatedItems.reduce((sum, item) => sum + item.refundAmount, 0);
+    const now = new Date().toISOString();
+    for (const returned of validatedItems) {
+      const idx = db.items.findIndex(i => i.id === returned.itemId || i.code === returned.itemCode);
+      db.items[idx].currentStock = (db.items[idx].currentStock || 0) + returned.quantity;
+      db.items[idx].updatedAt = now;
+      db.transactions.push({
+        id: `tx-ret-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+        itemId: db.items[idx].id,
+        itemName: db.items[idx].name,
+        itemCode: db.items[idx].code,
+        type: 'RETURN_RESTOCK',
+        quantity: returned.quantity,
+        balanceAfter: db.items[idx].currentStock,
+        department: 'School Store & Co-op',
+        requesterName: `Return (Receipt #${receipt.receiptNumber})`,
+        note: `Item returned: ${reasonLabel} - ${reasonDetail || 'No remarks'}`,
+        receiptId: receipt.id,
+        createdAt: now
+      });
+    }
     writeDb(db);
 
     const returnRecord: ReturnRecord = {
       id: returnId,
       receiptId: receipt.id,
       receiptNumber: receipt.receiptNumber,
-      items,
+      items: validatedItems,
       totalRefund,
       reason,
       reasonDetail,
-      cashierName,
+      cashierName: verifiedCashierName,
       createdAt: new Date().toISOString()
     };
 

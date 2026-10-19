@@ -103,6 +103,10 @@ export function getUserRole(emailOrRole?: string | null): UserRole {
   const clean = emailOrRole.toLowerCase().trim();
   if (clean === 'super_admin' || clean === 'superadmin') return 'super_admin';
   if (clean === 'admin' || clean === 'legacy_admin' || clean === 'inventory_manager') return 'legacy_admin';
+  if (clean === 'warehouse') return 'warehouse';
+  if (clean === 'cashier') return 'cashier';
+  if (clean === 'accountant') return 'accountant';
+  if (clean === 'teacher' || clean === 'staff') return 'teacher';
   return 'teacher';
 }
 

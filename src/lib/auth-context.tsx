@@ -71,35 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const loadUserFromStorage = useCallback(() => {
+  const loadUserFromStorage = useCallback(async () => {
     try {
-      let userData: any = null;
-      const stored = localStorage.getItem('school_auth_user');
-      if (stored) {
-        try {
-          userData = JSON.parse(stored);
-        } catch {
-          userData = null;
-        }
-      }
-      
-      if (!userData && typeof document !== 'undefined') {
-        const match = document.cookie.match(/(?:^|; )school_user=([^;]+)/);
-        if (match) {
-          const raw = decodeURIComponent(match[1]);
-          try {
-            if (raw.includes('.')) {
-              const b64 = raw.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
-              const jsonStr = decodeURIComponent(escape(atob(b64)));
-              userData = JSON.parse(jsonStr);
-            } else {
-              userData = JSON.parse(raw);
-            }
-          } catch {
-            userData = null;
-          }
-        }
-      }
+      const response = await fetch('/api/auth/session', { cache: 'no-store' });
+      const payload = response.ok ? await response.json() : null;
+      const userData = payload?.user;
 
       if (userData && (userData.username || userData.id)) {
         const cleanRole = getUserRole(userData.role || userData.email);
@@ -114,19 +90,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         setAppUser(appUserObj);
         setUser(formatUserObject(appUserObj));
+        localStorage.setItem('school_auth_user', JSON.stringify(appUserObj));
+        return;
       }
+      setAppUser(null);
+      setUser(null);
+      setSession(null);
+      localStorage.removeItem('school_auth_user');
     } catch (err) {
-      console.warn('Failed to parse cached auth user:', err);
+      console.warn('Failed to verify current session:', err);
+      setAppUser(null);
+      setUser(null);
+      setSession(null);
+      localStorage.removeItem('school_auth_user');
     }
   }, []);
 
   useEffect(() => {
-    loadUserFromStorage();
-    setLoading(false);
+    loadUserFromStorage().finally(() => setLoading(false));
   }, [loadUserFromStorage]);
 
   const refreshUser = async () => {
-    loadUserFromStorage();
+    await loadUserFromStorage();
   };
 
   const signIn = async (username: string, password: string) => {

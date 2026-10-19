@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { getUserPermissions } from '@/lib/auth/permissions';
 import { signSession } from '@/lib/session';
 import { logAuditEvent } from '@/lib/audit';
+import crypto from 'crypto';
 
 // In-memory rate limiting and account lockout store
 interface LoginAttemptRecord {
@@ -22,10 +23,10 @@ const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 function getClientIdentifier(request: Request, username: string): string {
   const forwarded = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '127.0.0.1';
   const ip = forwarded.split(',')[0].trim();
-  return `${ip}:${username.toLowerCase()}`;
+  return crypto.createHash('sha256').update(`${ip}:${username.toLowerCase()}`).digest('hex');
 }
 
-function checkRateLimit(key: string): { isLocked: boolean; remainingMinutes?: number } {
+function checkMemoryRateLimit(key: string): { isLocked: boolean; remainingMinutes?: number } {
   const record = loginAttempts.get(key);
   if (!record) return { isLocked: false };
 
@@ -46,7 +47,7 @@ function checkRateLimit(key: string): { isLocked: boolean; remainingMinutes?: nu
   return { isLocked: false };
 }
 
-function recordFailedAttempt(key: string): { isNowLocked: boolean; attemptsLeft: number } {
+function recordMemoryFailedAttempt(key: string): { isNowLocked: boolean; attemptsLeft: number } {
   const now = Date.now();
   const record = loginAttempts.get(key) || { failedAttempts: 0, firstAttemptTime: now };
 
@@ -68,8 +69,48 @@ function recordFailedAttempt(key: string): { isNowLocked: boolean; attemptsLeft:
   return { isNowLocked: false, attemptsLeft: MAX_FAILED_ATTEMPTS - record.failedAttempts };
 }
 
-function clearFailedAttempts(key: string) {
+function clearMemoryFailedAttempts(key: string) {
   loginAttempts.delete(key);
+}
+
+async function checkRateLimit(key: string): Promise<{ isLocked: boolean; remainingMinutes?: number }> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.rpc('check_login_rate_limit', { p_identifier_hash: key });
+    if (!error && data) {
+      return {
+        isLocked: Boolean(data.isLocked),
+        remainingMinutes: data.remainingMinutes ? Number(data.remainingMinutes) : undefined
+      };
+    }
+    console.warn('Persistent login rate-limit check unavailable; using process-local fallback:', error?.message);
+  }
+  return checkMemoryRateLimit(key);
+}
+
+async function recordFailedAttempt(key: string): Promise<{ isNowLocked: boolean; attemptsLeft: number }> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.rpc('record_failed_login', { p_identifier_hash: key });
+    if (!error && data) {
+      return {
+        isNowLocked: Boolean(data.isNowLocked),
+        attemptsLeft: Number(data.attemptsLeft ?? 0)
+      };
+    }
+    console.warn('Persistent login failure record unavailable; using process-local fallback:', error?.message);
+  }
+  return recordMemoryFailedAttempt(key);
+}
+
+async function clearFailedAttempts(key: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.rpc('clear_login_attempts', { p_identifier_hash: key });
+    if (!error) {
+      clearMemoryFailedAttempts(key);
+      return;
+    }
+    console.warn('Persistent login rate-limit clear unavailable; clearing process-local fallback:', error.message);
+  }
+  clearMemoryFailedAttempts(key);
 }
 
 // Cryptographically hashed credentials for emergency offline fallback (Zero plaintext passwords in code)
@@ -120,7 +161,7 @@ export async function POST(request: Request) {
     const clientKey = getClientIdentifier(request, cleanInput);
 
     // Check rate limit / account lockout
-    const rateCheck = checkRateLimit(clientKey);
+    const rateCheck = await checkRateLimit(clientKey);
     if (rateCheck.isLocked) {
       logAuditEvent({
         category: 'SECURITY',
@@ -161,7 +202,7 @@ export async function POST(request: Request) {
           userRow = row;
           const isValid = verifyPassword(password, row.password_hash);
           if (isValid) {
-            clearFailedAttempts(clientKey);
+            await clearFailedAttempts(clientKey);
             const userRole = normalizeRole(row.role || 'teacher');
             const perms = getUserPermissions({
               id: row.id,
@@ -187,7 +228,8 @@ export async function POST(request: Request) {
               email: userObj.email,
               role: userObj.role,
               roles: userObj.roles,
-              permissions: userObj.permissions
+              permissions: userObj.permissions,
+              source: 'database'
             });
 
             const cookieStore = await cookies();
@@ -197,14 +239,6 @@ export async function POST(request: Request) {
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
               maxAge: 60 * 60 * 24 * 7 // 7 days
-            });
-
-            cookieStore.set('school_user', encodeURIComponent(JSON.stringify(userObj)), {
-              path: '/',
-              httpOnly: false,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              maxAge: 60 * 60 * 24 * 7
             });
 
             logAuditEvent({
@@ -242,7 +276,7 @@ export async function POST(request: Request) {
         const isValidFallback = verifyPassword(password, fallback.passwordHash);
 
         if (isValidFallback) {
-          clearFailedAttempts(clientKey);
+          await clearFailedAttempts(clientKey);
           const userRole = normalizeRole(fallback.role);
           const perms = getUserPermissions({
             id: userRow?.id || `usr-${resolvedUsername}`,
@@ -268,21 +302,14 @@ export async function POST(request: Request) {
             email: userObj.email,
             role: userObj.role,
             roles: userObj.roles,
-            permissions: userObj.permissions
+            permissions: userObj.permissions,
+            source: 'emergency'
           });
 
           const cookieStore = await cookies();
           cookieStore.set('school_session', sessionToken, {
             path: '/',
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7
-          });
-
-          cookieStore.set('school_user', encodeURIComponent(JSON.stringify(userObj)), {
-            path: '/',
-            httpOnly: false,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7
@@ -304,7 +331,7 @@ export async function POST(request: Request) {
     }
 
     // Record failed login and evaluate lockout
-    const failureResult = recordFailedAttempt(clientKey);
+    const failureResult = await recordFailedAttempt(clientKey);
 
     logAuditEvent({
       category: 'SECURITY',

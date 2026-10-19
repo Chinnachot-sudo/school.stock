@@ -33,8 +33,7 @@ export async function logAuditEvent(params: LogAuditParams): Promise<AuditLog> {
 
   // 1. Try persisting to Supabase Cloud DB if available
   if (isSupabaseConfigured && supabase) {
-    try {
-      await supabase.from('audit_logs').insert({
+    const { error } = await supabase.from('audit_logs').insert({
         id: newLog.id,
         category: newLog.category,
         action: newLog.action,
@@ -48,13 +47,11 @@ export async function logAuditEvent(params: LogAuditParams): Promise<AuditLog> {
         after: newLog.after ? JSON.stringify(newLog.after) : null,
         created_at: newLog.createdAt
       });
-    } catch (sbErr) {
-      // Table might not exist yet in Supabase, silently fallback to local DB
-      console.warn('Supabase audit_logs insert skipped:', sbErr);
-    }
+    if (error) throw new Error(`Failed to persist audit log: ${error.message}`);
+    return newLog;
   }
 
-  // 2. Always persist to Local JSON DB as reliable cache
+  // Local storage is only used when Supabase is intentionally not configured.
   try {
     const db = readDb();
     if (!Array.isArray(db.auditLogs)) {

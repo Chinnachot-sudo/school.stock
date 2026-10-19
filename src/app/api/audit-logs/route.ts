@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { readDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { AuditLog } from '@/types/inventory';
-import { logAuditEvent } from '@/lib/audit';
-import { requireAuth, requirePermission } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
   try {
@@ -25,7 +24,7 @@ export async function GET(request: Request) {
           query = query.eq('category', category);
         }
         const { data, error } = await query.limit(limit);
-        if (!error && Array.isArray(data) && data.length > 0) {
+        if (!error && Array.isArray(data)) {
           let logs: AuditLog[] = data.map((row: any) => ({
             id: row.id,
             category: row.category,
@@ -87,34 +86,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  try {
-    const authCheck = await requireAuth(request);
-    if (authCheck.errorResponse) {
-      return authCheck.errorResponse;
-    }
-
-    const body = await request.json();
-    const { category, action, details, actorName, actorEmail, targetId, targetName, metadata, before, after } = body;
-
-    if (!category || !action || !details) {
-      return NextResponse.json({ error: 'category, action, and details are required' }, { status: 400 });
-    }
-
-    const newLog = await logAuditEvent({
-      category,
-      action,
-      details,
-      actorName: actorName || authCheck.user.username || authCheck.user.name,
-      actorEmail: actorEmail || authCheck.user.email,
-      targetId,
-      targetName,
-      metadata,
-      before,
-      after
-    });
-
-    return NextResponse.json({ success: true, log: newLog });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Failed to create audit log' }, { status: 500 });
-  }
+  void request;
+  return NextResponse.json(
+    { error: 'Audit logs are append-only and may only be created by trusted server operations.' },
+    { status: 405, headers: { Allow: 'GET' } }
+  );
 }

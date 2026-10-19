@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 import { AppUser, UserRole } from '@/types/inventory';
 import { can, canAny, getUserPermissions, PermissionKey } from '@/lib/auth/permissions';
 import { verifySessionToken } from '@/lib/session';
+import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { toUiRole } from '@/lib/auth/roles';
 
 export function hashPassword(password: string, customSalt?: string): { hash: string; salt: string } {
   const salt = customSalt || crypto.randomBytes(16).toString('hex');
@@ -47,7 +49,7 @@ export async function getServerUser(request?: Request): Promise<AppUser | null> 
     // 1. Try reading from Next.js cookieStore
     try {
       const cookieStore = await cookies();
-      rawToken = cookieStore.get('school_session')?.value || cookieStore.get('school_user')?.value;
+      rawToken = cookieStore.get('school_session')?.value;
     } catch {
       // Ignore when not in request cookie context
     }
@@ -56,11 +58,8 @@ export async function getServerUser(request?: Request): Promise<AppUser | null> 
     if (!rawToken && request) {
       const cookieHeader = request.headers.get('cookie') || '';
       const sessionMatch = cookieHeader.match(/school_session=([^;]+)/);
-      const userMatch = cookieHeader.match(/school_user=([^;]+)/);
       if (sessionMatch) {
         rawToken = decodeURIComponent(sessionMatch[1]);
-      } else if (userMatch) {
-        rawToken = decodeURIComponent(userMatch[1]);
       } else {
         const authHeader = request.headers.get('authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -74,6 +73,36 @@ export async function getServerUser(request?: Request): Promise<AppUser | null> 
     // 3. Cryptographically verify HMAC-signed session token
     const verified = verifySessionToken(rawToken);
     if (verified) {
+      const emergencyAllowed =
+        process.env.NODE_ENV === 'development' ||
+        !isSupabaseConfigured ||
+        process.env.ALLOW_EMERGENCY_FALLBACK === 'true';
+
+      if (verified.source === 'emergency') {
+        if (!emergencyAllowed) return null;
+      } else if (isSupabaseConfigured && supabase) {
+        const { data: currentUser, error } = await supabase
+          .from('app_users')
+          .select('id, username, name, email, role')
+          .eq('id', verified.userId)
+          .maybeSingle();
+
+        // Fail closed: deleted users, database errors, and stale identities must not retain access.
+        if (error || !currentUser) return null;
+
+        const currentRole = toUiRole(currentUser.role) as UserRole;
+        const currentUserObj: AppUser = {
+          id: currentUser.id,
+          username: currentUser.username,
+          name: currentUser.name,
+          email: currentUser.email || undefined,
+          role: currentRole,
+          roles: [currentRole]
+        };
+        currentUserObj.permissions = getUserPermissions(currentUserObj);
+        return currentUserObj;
+      }
+
       const userObj: AppUser = {
         id: verified.userId,
         username: verified.username,

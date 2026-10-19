@@ -103,9 +103,15 @@ DROP POLICY IF EXISTS customers_write_policy ON public.customers;
 DROP POLICY IF EXISTS user_roles_modify_policy ON public.user_roles;
 DROP POLICY IF EXISTS user_roles_read_policy ON public.user_roles;
 DROP POLICY IF EXISTS user_roles_all_policy ON public.user_roles;
+DROP POLICY IF EXISTS user_roles_select_policy ON public.user_roles;
+DROP POLICY IF EXISTS user_roles_insert_policy ON public.user_roles;
+DROP POLICY IF EXISTS user_roles_delete_policy ON public.user_roles;
 DROP POLICY IF EXISTS permissions_read_policy ON public.permissions;
+DROP POLICY IF EXISTS permissions_select_policy ON public.permissions;
 DROP POLICY IF EXISTS roles_read_policy ON public.roles;
+DROP POLICY IF EXISTS roles_select_policy ON public.roles;
 DROP POLICY IF EXISTS role_permissions_read_policy ON public.role_permissions;
+DROP POLICY IF EXISTS role_permissions_select_policy ON public.role_permissions;
 
 DO $$
 BEGIN
