@@ -248,9 +248,9 @@ export default function StockRestockPage() {
           <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-1">
             <Link href="/" className="hover:text-[#0B6B4F] transition">Dashboard</Link>
             <span>/</span>
-            <span className="text-[#111827] font-medium">Operations</span>
+            <Link href="/inventory" className="text-[#111827] font-medium hover:text-[#0B6B4F]">Inventory</Link>
             <span>/</span>
-            <span className="text-[#0B6B4F] font-semibold">Receive Stock</span>
+            <span className="text-[#0B6B4F] font-semibold">Stock In / Restock</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#111827] flex items-center gap-2">
             <PackageCheck className="w-6 h-6 text-[#0B6B4F]" />

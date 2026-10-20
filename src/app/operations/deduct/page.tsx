@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { Item, Department, Transaction } from '@/types/inventory';
 import { useAuth } from '@/lib/auth-context';
 import ScannerModal from '@/components/ScannerModal';
@@ -42,6 +43,8 @@ const DEDUCT_REASONS = [
 ];
 
 export default function StockDeductPage() {
+  const pathname = usePathname();
+  const isAdjustmentRoute = pathname === '/operations/deduct';
   const { user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -294,16 +297,18 @@ export default function StockDeductPage() {
           <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-1">
             <Link href="/" className="hover:text-[#0B6B4F] transition">Dashboard</Link>
             <span>/</span>
-            <span className="text-[#111827] font-medium">Operations</span>
+            <Link href="/inventory" className="text-[#111827] font-medium hover:text-[#0B6B4F]">Inventory</Link>
             <span>/</span>
-            <span className="text-[#0B6B4F] font-semibold">Issue Stock</span>
+            <span className="text-[#0B6B4F] font-semibold">{isAdjustmentRoute ? 'Stock Adjustment / Write-off' : 'Issue Stock'}</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#111827] flex items-center gap-2">
             <Scissors className="w-6 h-6 text-[#0B6B4F]" />
-            <span>Stock Issue & Department Requisition</span>
+            <span>{isAdjustmentRoute ? 'Stock Adjustment / Write-off' : 'Issue Stock'}</span>
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">
-            Multi-item batch issuance with real-time department budget tracking and validation.
+            {isAdjustmentRoute
+              ? 'Note: This route still uses the existing stock-issue workflow; it does not record write-offs separately.'
+              : 'Multi-item stock issue with real-time department budget tracking and validation.'}
           </p>
         </div>
 

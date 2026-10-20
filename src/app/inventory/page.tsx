@@ -319,7 +319,7 @@ function InventoryContent() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {can('label:print') && (
+          {(currentTab === 'all' || currentTab === 'dashboard') && can('label:print') && (
             <Link
               href="/print-qr"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] text-xs font-medium transition"
@@ -329,7 +329,7 @@ function InventoryContent() {
             </Link>
           )}
 
-          {can('inventory:item:create') && (
+          {(currentTab === 'all' || currentTab === 'dashboard') && can('inventory:item:create') && (
             <button
               onClick={() => setIsCategoryModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#E5E0D8] bg-white hover:bg-[#F7F4EF] text-[#1A1A1A] text-xs font-medium transition"
@@ -339,7 +339,7 @@ function InventoryContent() {
             </button>
           )}
 
-          {can('inventory:item:create') && (
+          {(currentTab === 'all' || currentTab === 'dashboard') && can('inventory:item:create') && (
             <button
               onClick={() => {
                 if (categories.length > 0 && !formData.categoryId) {

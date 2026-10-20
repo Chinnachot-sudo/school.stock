@@ -162,7 +162,7 @@ function HistoryContent() {
             Reports & Activity History
           </h1>
           <p className="text-xs text-[#6B6560] mt-0.5">
-            View stock issue/receipt transactions and complete system audit trails of all user activities.
+            View stock movements, sales and finance summaries, and system audit logs.
           </p>
         </div>
 
@@ -178,7 +178,7 @@ function HistoryContent() {
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>Sales</span>
+              <span>Sales / Finance Summary</span>
             </Link>
 
             <Link
@@ -190,7 +190,7 @@ function HistoryContent() {
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Stock Balance ({transactions.length})</span>
+              <span>Stock Movements ({transactions.length})</span>
             </Link>
 
             <Link
@@ -202,7 +202,7 @@ function HistoryContent() {
               }`}
             >
               <ArrowLeftRight className="w-3.5 h-3.5" />
-              <span>Issue & Receipt</span>
+              <span>Receipts & Issues</span>
             </Link>
 
             <Link
@@ -239,7 +239,7 @@ function HistoryContent() {
                 }`}
               >
                 <Activity className="w-3.5 h-3.5" />
-                <span>Audit Log ({auditLogs.length})</span>
+                <span>System Audit Logs ({auditLogs.length})</span>
               </Link>
             )}
           </div>

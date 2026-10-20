@@ -116,7 +116,7 @@ export default function TopHeader({ onToggleSidebar, onOpenMobileDrawer, onOpenS
             type="button"
             onClick={onOpenScanner}
             className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#0B6B4F] bg-[#E6F5EF] hover:bg-[#d6f0e4] transition"
-            title="Open Barcode Scanner"
+          title="Open QR / barcode scanner"
           >
             <ScanLine className="w-3.5 h-3.5" />
             <span>Scan</span>

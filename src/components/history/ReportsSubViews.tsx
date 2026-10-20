@@ -293,9 +293,7 @@ export function IssueReceiptReportView({ transactions = [] }: { transactions: Tr
 
       {/* Department Requisition Ledger */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-3">
-        <h3 className="text-sm font-bold text-slate-900">
-          Supplies Requisition by Department
-        </h3>
+        <h3 className="text-sm font-bold text-slate-900">Supplies Requisition by Department</h3>
 
         {departmentUsage.length === 0 ? (
           <div className="py-12 text-center text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">

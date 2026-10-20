@@ -3,24 +3,25 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ScanLine, Store, Boxes, History } from 'lucide-react';
+import { LayoutDashboard, ScanLine, Store, Boxes, UserRound } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { canAny } = useAuth();
 
   if (pathname === '/login' || pathname === '/auth/callback') {
     return null;
   }
 
   const items = [
-    { label: 'Scan', href: '/?action=scan', icon: ScanLine, isHome: true },
-    { label: 'POS', href: '/pos', icon: Store },
-    { label: 'Inventory', href: '/inventory', icon: Boxes },
-    { label: 'History', href: '/history', icon: History },
-  ];
+    { label: 'Home', href: '/', icon: LayoutDashboard, isHome: true },
+    { label: 'Inventory', href: '/inventory', icon: Boxes, permission: 'inventory:item:read' as const },
+    { label: 'Scan', href: '/?action=scan', icon: ScanLine, isScanner: true },
+    { label: 'POS', href: '/pos', icon: Store, permission: 'pos:receipt:read' as const },
+    { label: 'My Space', href: '/my-space', icon: UserRound },
+  ].filter(item => !item.permission || canAny([item.permission]));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] px-3 flex items-center justify-around shadow-sm select-none">
@@ -29,7 +30,9 @@ export default function MobileBottomNav() {
         let isActive = false;
 
         if (item.isHome) {
-          isActive = pathname === '/' || searchParams.get('action') === 'scan';
+          isActive = pathname === '/' && searchParams.get('action') !== 'scan';
+        } else if (item.isScanner) {
+          isActive = searchParams.get('action') === 'scan';
         } else {
           isActive = pathname === item.href;
         }

@@ -13,20 +13,18 @@ import {
   Clock,
   CalendarDays,
   RotateCcw,
-  History,
   Boxes,
   PackagePlus,
   PackageMinus,
   ArrowLeftRight,
   ClipboardCheck as StockCountIcon,
+  FileSpreadsheet,
   FileText,
   FilePlus,
   CreditCard,
   Briefcase,
   Trash2,
   Repeat,
-  CheckCircle2,
-  BarChart3,
   TrendingUp,
   Layers,
   DollarSign,
@@ -42,7 +40,7 @@ import {
   Truck,
   MapPin,
   Calendar,
-  Sparkles
+  AlertTriangle
 } from 'lucide-react';
 
 export interface FeatureFlags {
@@ -84,281 +82,141 @@ export interface NavigationGroup {
   subGroups?: NavigationSubGroup[];
 }
 
+const adminRoles = ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN'];
+const stockManagerRoles = [...adminRoles, 'admin', 'INVENTORY_MANAGER', 'WAREHOUSE', 'warehouse'];
+const posRoles = [...adminRoles, 'admin', 'INVENTORY_MANAGER', 'CASHIER', 'cashier'];
+const financeRoles = [...adminRoles, 'admin', 'ACCOUNTANT', 'accountant', 'CASHIER', 'cashier'];
+const reportRoles = [...adminRoles, 'admin', 'INVENTORY_MANAGER', 'ACCOUNTANT', 'accountant', 'WAREHOUSE', 'warehouse'];
+const settingsAccess = {
+  permissions: ['iam:settings:configure'],
+  roles: adminRoles
+};
+
 export const navigationConfig: NavigationGroup[] = [
-  // 1. Dashboard
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: 'overview_personal',
+    label: 'Overview & My Space',
     icon: LayoutDashboard,
-    subItems: [
-      { label: 'Overview', href: '/', icon: LayoutDashboard },
+    subGroups: [
       {
-        label: 'Approvals',
-        href: '/?tab=approvals',
-        icon: ClipboardCheck,
-        permissions: ['inventory:stock:issue', 'inventory:stock:restock', 'iam:user:read'],
-        roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN', 'INVENTORY_MANAGER']
+        id: 'overview',
+        label: 'Overview',
+        items: [
+          { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+          {
+            label: 'Approvals', href: '/?tab=approvals', icon: ClipboardCheck,
+            permissions: ['inventory:stock:issue', 'inventory:stock:restock', 'iam:user:read'],
+            roles: [...adminRoles, 'INVENTORY_MANAGER']
+          },
+          { label: 'Inbox', href: '/?tab=inbox', icon: Bell },
+          { label: 'Calendar', href: '/?tab=calendar', icon: Calendar, featureFlag: 'calendar' }
+        ]
       },
       {
-        label: 'Inbox',
-        href: '/?tab=inbox',
-        icon: Bell
-      },
-      {
-        label: 'Calendar',
-        href: '/?tab=calendar',
-        icon: Calendar,
-        featureFlag: 'calendar'
+        id: 'personal_space',
+        label: 'My Space',
+        items: [
+          { label: 'My Requests & Assets', href: '/my-space', icon: UserCheck },
+          { label: 'New Request', href: '/my-space?tab=new-request', icon: PlusCircle },
+          { label: 'My Requests', href: '/my-space?tab=my-requests', icon: ClipboardList },
+          { label: 'My Receipts & Invoices', href: '/my-space?tab=my-receipts', icon: Receipt },
+          { label: 'Report an Issue', href: '/my-space?tab=report-issue', icon: AlertCircle },
+          { label: 'Search Stock', href: '/my-space?tab=search-stock', icon: Search }
+        ]
       }
     ]
   },
-
-  // 2. My Space (Self-Service for all teachers & staff)
-  {
-    id: 'my_space',
-    label: 'My Space',
-    icon: UserCheck,
-    subItems: [
-      { label: 'New Request', href: '/my-space?tab=new-request', icon: PlusCircle },
-      { label: 'My Requests', href: '/my-space?tab=my-requests', icon: ClipboardList },
-      { label: 'My Receipts & Invoices', href: '/my-space?tab=my-receipts', icon: Receipt },
-      { label: 'Report Issue', href: '/my-space?tab=report-issue', icon: AlertCircle },
-      { label: 'Search Stock', href: '/my-space?tab=search-stock', icon: Search }
-    ]
-  },
-
-  // 3. Point of Sale
-  {
-    id: 'pos',
-    label: 'Point of Sale',
-    icon: Store,
-    permissions: ['pos:receipt:read', 'pos:receipt:create'],
-    roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN', 'INVENTORY_MANAGER', 'CASHIER', 'cashier'],
-    subItems: [
-      { label: 'Sell', href: '/pos', icon: ShoppingCart },
-      { label: 'Shift', href: '/pos?tab=shift', icon: Clock },
-      { label: "Today's Sales", href: '/pos?tab=today', icon: CalendarDays },
-      {
-        label: 'Return / Exchange',
-        href: '/pos?tab=return',
-        icon: RotateCcw,
-        permissions: ['pos:receipt:void', 'pos:receipt:refund'],
-        roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN', 'CASHIER', 'cashier']
-      },
-      { label: 'Sales History', href: '/history?tab=sales', icon: History }
-    ]
-  },
-
-  // 4. Inventory
   {
     id: 'inventory',
     label: 'Inventory',
     icon: Boxes,
-    permissions: ['inventory:item:read'],
-    roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN', 'INVENTORY_MANAGER', 'WAREHOUSE', 'warehouse'],
     subItems: [
-      {
-        label: 'Goods Receipt',
-        href: '/operations/restock',
-        icon: PackagePlus,
-        permissions: ['inventory:stock:restock'],
-        roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN', 'INVENTORY_MANAGER', 'WAREHOUSE', 'warehouse']
-      },
-      {
-        label: 'Issue',
-        href: '/operations/issue',
-        icon: PackageMinus,
-        permissions: ['inventory:stock:issue'],
-        roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN', 'INVENTORY_MANAGER', 'WAREHOUSE', 'warehouse']
-      },
-      {
-        label: 'Borrow & Return',
-        href: '/inventory?tab=borrow',
-        icon: ArrowLeftRight,
-        permissions: ['inventory:stock:issue'],
-        roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN', 'INVENTORY_MANAGER', 'WAREHOUSE', 'warehouse']
-      },
-      {
-        label: 'Transfer',
-        href: '/inventory?tab=transfer',
-        icon: Truck,
-        featureFlag: 'multiStore'
-      },
-      {
-        label: 'Stock Count',
-        href: '/inventory?tab=stock-count',
-        icon: StockCountIcon
-      },
-      {
-        label: 'Item Master',
-        href: '/inventory?tab=all',
-        icon: Boxes
-      },
-      {
-        label: 'Locations',
-        href: '/inventory?tab=locations',
-        icon: MapPin,
-        featureFlag: 'multiStore'
-      }
+      { label: 'Inventory Catalog', href: '/inventory?tab=all', icon: Boxes, permissions: ['inventory:item:read'], roles: stockManagerRoles },
+      { label: 'Stock In / Restock', href: '/operations/restock', icon: PackagePlus, permissions: ['inventory:stock:restock'], roles: stockManagerRoles },
+      { label: 'Issue Stock', href: '/operations/issue', icon: PackageMinus, permissions: ['inventory:stock:issue'], roles: stockManagerRoles },
+      { label: 'Stock Adjustment / Write-off', href: '/operations/deduct', icon: Trash2, permissions: ['inventory:stock:adjust'], roles: stockManagerRoles },
+      { label: 'Borrow & Return', href: '/inventory?tab=borrow', icon: ArrowLeftRight, permissions: ['inventory:stock:issue'], roles: stockManagerRoles },
+      { label: 'Stock Count', href: '/inventory?tab=stock-count', icon: StockCountIcon, permissions: ['inventory:item:read'], roles: stockManagerRoles },
+      { label: 'Purchase Requests', href: '/inventory?tab=pr', icon: FileSpreadsheet, permissions: ['inventory:item:read'], roles: stockManagerRoles },
+      { label: 'Reorder Points', href: '/inventory?tab=low', icon: AlertTriangle, permissions: ['inventory:item:read'], roles: stockManagerRoles },
+      { label: 'Stock Transfer', href: '/inventory?tab=transfer', icon: Truck, featureFlag: 'multiStore', permissions: ['inventory:item:read'], roles: stockManagerRoles },
+      { label: 'Storage Locations', href: '/inventory?tab=locations', icon: MapPin, featureFlag: 'multiStore', permissions: ['inventory:item:read'], roles: stockManagerRoles }
     ]
   },
-
-  // 5. Invoicing & Receivables
-  {
-    id: 'invoicing',
-    label: 'Invoicing & Receivables',
-    icon: FileText,
-    permissions: ['pos:receipt:read', 'pos:receipt:create'],
-    roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'accountant', 'CASHIER', 'cashier'],
-    subItems: [
-      { label: 'Create Invoice', href: '/finance?tab=invoices&action=new', icon: FilePlus },
-      {
-        label: 'Billing Note',
-        href: '/finance?tab=billing',
-        icon: FileText,
-        featureFlag: 'billingNote'
-      },
-      { label: 'Record Payment', href: '/finance?tab=receipts', icon: CreditCard },
-      { label: 'Outstanding / Aging', href: '/finance?tab=aging', icon: Clock }
-    ]
-  },
-
-  // 6. Assets
   {
     id: 'assets',
-    label: 'Assets',
+    label: 'Asset Management',
     icon: Briefcase,
-    permissions: ['inventory:item:read'],
-    roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN'],
     subItems: [
-      { label: 'Asset Register', href: '/assets', icon: Briefcase },
-      { label: 'Register / Dispose', href: '/assets?tab=dispose', icon: Trash2 },
-      { label: 'Asset Borrow', href: '/assets?tab=borrow', icon: Repeat }
+      { label: 'Asset Register & Borrowing', href: '/assets', icon: Briefcase, permissions: ['inventory:item:read'], roles: adminRoles },
+      { label: 'Asset Borrow & Return', href: '/assets?tab=borrow', icon: Repeat, permissions: ['inventory:item:read'], roles: adminRoles },
+      { label: 'Maintenance / Write-off', href: '/assets?tab=dispose', icon: Trash2, permissions: ['inventory:item:read'], roles: adminRoles }
     ]
   },
-
-  // 7. Reports
   {
-    id: 'reports',
-    label: 'Reports',
-    icon: BarChart3,
-    permissions: ['report:read', 'report:export', 'audit:log:read'],
-    roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN', 'INVENTORY_MANAGER', 'ACCOUNTANT', 'accountant', 'WAREHOUSE', 'warehouse'],
-    subItems: [
-      { label: 'Sales', href: '/history?tab=sales', icon: TrendingUp },
-      { label: 'Stock Balance', href: '/history?tab=movements', icon: Layers },
-      { label: 'Issue & Receipt', href: '/history?tab=issue-receipt', icon: ArrowLeftRight },
-      { label: 'Receivables', href: '/history?tab=receivables', icon: DollarSign },
+    id: 'pos_finance',
+    label: 'Sales & Finance',
+    icon: Store,
+    subGroups: [
       {
-        label: 'Audit Log',
-        href: '/history?tab=audit',
-        icon: Activity,
-        permissions: ['audit:log:read'],
-        roles: ['super_admin', 'legacy_admin', 'admin', 'SUPER_ADMIN', 'ADMIN']
+        id: 'point_of_sale',
+        label: 'Point of Sale (POS)',
+        items: [
+          { label: 'Sell', href: '/pos', icon: ShoppingCart, permissions: ['pos:receipt:read', 'pos:receipt:create'], roles: posRoles },
+          { label: 'Shift Management', href: '/pos?tab=shift', icon: Clock, permissions: ['pos:receipt:read', 'pos:receipt:create'], roles: posRoles },
+          { label: "Today's Sales", href: '/pos?tab=today', icon: CalendarDays, permissions: ['pos:receipt:read', 'pos:receipt:create'], roles: posRoles },
+          { label: 'Returns / Exchanges', href: '/pos?tab=return', icon: RotateCcw, permissions: ['pos:receipt:void', 'pos:receipt:refund'], roles: [...adminRoles, 'admin', 'CASHIER', 'cashier'] }
+        ]
+      },
+      {
+        id: 'finance_documents',
+        label: 'Billing & Finance',
+        items: [
+          { label: 'Invoices', href: '/finance?tab=invoices', icon: FilePlus, permissions: ['pos:receipt:read', 'pos:receipt:create'], roles: financeRoles },
+          { label: 'Billing Notes', href: '/finance?tab=billing', icon: FileText, featureFlag: 'billingNote', permissions: ['pos:receipt:read'], roles: financeRoles },
+          { label: 'Receipts', href: '/finance?tab=receipts', icon: CreditCard, permissions: ['pos:receipt:read'], roles: financeRoles },
+          { label: 'Outstanding / Aging', href: '/finance?tab=aging', icon: Clock, permissions: ['pos:receipt:read'], roles: financeRoles }
+        ]
+      },
+      {
+        id: 'contacts',
+        label: 'Customers & Contacts',
+        items: [
+          { label: 'Customers & Contacts', href: '/customers', icon: UserCheck, permissions: ['customer:read'], roles: financeRoles }
+        ]
       }
     ]
   },
-
-  // 8. Settings
   {
-    id: 'settings',
-    label: 'Settings',
+    id: 'system_reports',
+    label: 'Reports & System Settings',
     icon: Settings,
-    permissions: ['iam:user:read', 'iam:settings:configure'],
-    roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN'],
     subGroups: [
       {
-        id: 'people_access',
-        label: 'People & Access',
+        id: 'reports',
+        label: 'Reports & Activity History',
         items: [
-          {
-            label: 'Users & Roles',
-            href: '/settings?tab=users',
-            icon: ShieldCheck,
-            permissions: ['iam:user:read'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          },
-          {
-            label: 'Departments / Classes',
-            href: '/settings?tab=departments',
-            icon: School,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          }
+          { label: 'Stock Movements', href: '/history?tab=movements', icon: Layers, permissions: ['report:read', 'report:export'], roles: reportRoles },
+          { label: 'Sales / Finance Summary', href: '/history?tab=sales', icon: TrendingUp, permissions: ['report:read', 'report:export'], roles: reportRoles },
+          { label: 'Receipts & Issues', href: '/history?tab=issue-receipt', icon: ArrowLeftRight, permissions: ['report:read', 'report:export'], roles: reportRoles },
+          { label: 'Receivables & Budgets', href: '/history?tab=receivables', icon: DollarSign, permissions: ['report:read', 'report:export'], roles: reportRoles },
+          { label: 'System Audit Logs', href: '/history?tab=audit', icon: Activity, permissions: ['audit:log:read'], roles: adminRoles }
         ]
       },
       {
-        id: 'master_data',
-        label: 'Master Data',
+        id: 'settings',
+        label: 'System Settings',
         items: [
-          {
-            label: 'Categories & Units',
-            href: '/settings?tab=master',
-            icon: Database,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          },
-          {
-            label: 'Storage Locations',
-            href: '/settings?tab=locations',
-            icon: MapPin,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          },
-          {
-            label: 'Units of Measure',
-            href: '/settings?tab=uom',
-            icon: Hash,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          }
-        ]
-      },
-      {
-        id: 'commerce',
-        label: 'Commerce',
-        items: [
-          {
-            label: 'Pricing & Promotions',
-            href: '/settings?tab=pricing',
-            icon: Tag,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          },
-          {
-            label: 'Approval Workflow',
-            href: '/settings?tab=workflow',
-            icon: GitPullRequest,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          },
-          {
-            label: 'Document Numbering',
-            href: '/settings?tab=numbering',
-            icon: Hash,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          }
-        ]
-      },
-      {
-        id: 'system',
-        label: 'System',
-        items: [
-          {
-            label: 'Notifications',
-            href: '/settings?tab=notifications',
-            icon: Bell,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          },
-          {
-            label: 'Backup & Restore',
-            href: '/settings?tab=backup',
-            icon: HardDriveDownload,
-            permissions: ['iam:settings:configure'],
-            roles: ['super_admin', 'legacy_admin', 'SUPER_ADMIN', 'ADMIN']
-          }
+          { label: 'Users & Roles', href: '/settings?tab=users', icon: ShieldCheck, permissions: ['iam:user:read'], roles: adminRoles },
+          { label: 'Departments / Classes', href: '/settings?tab=departments', icon: School, ...settingsAccess },
+          { label: 'Categories & Units', href: '/settings?tab=master', icon: Database, ...settingsAccess },
+          { label: 'Storage Locations', href: '/settings?tab=locations', icon: MapPin, ...settingsAccess },
+          { label: 'Units of Measure', href: '/settings?tab=uom', icon: Hash, ...settingsAccess },
+          { label: 'Pricing & Promotions', href: '/settings?tab=pricing', icon: Tag, ...settingsAccess },
+          { label: 'Approval Workflow', href: '/settings?tab=workflow', icon: GitPullRequest, ...settingsAccess },
+          { label: 'Document Numbering', href: '/settings?tab=numbering', icon: Hash, ...settingsAccess },
+          { label: 'Notifications', href: '/settings?tab=notifications', icon: Bell, ...settingsAccess },
+          { label: 'Backup & Restore', href: '/settings?tab=backup', icon: HardDriveDownload, ...settingsAccess }
         ]
       }
     ]
