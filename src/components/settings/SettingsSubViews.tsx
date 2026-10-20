@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   School,
   Tag,
@@ -28,43 +28,39 @@ import {
 } from 'lucide-react';
 import { Department } from '@/types/inventory';
 
+function DemoDataNotice() {
+  return (
+    <div role="note" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+      Demo configuration only. These values are not loaded from or saved to Supabase.
+    </div>
+  );
+}
+
 // ============================================================================
 // 1. DEPARTMENTS & CLASSES VIEW (Departments & Classes Master)
 // ============================================================================
 export function DepartmentsView() {
-  const [departments, setDepartments] = useState([
-    { id: 'dept-1', code: 'PYP', name: 'Primary Years Programme (PYP)', head: 'Ms. Sarah Jenkins', budget: 250000, staffCount: 24 },
-    { id: 'dept-2', code: 'MYP', name: 'Middle Years Programme (MYP)', head: 'Mr. David Clark', budget: 300000, staffCount: 18 },
-    { id: 'dept-3', code: 'DP', name: 'Diploma Programme (DP)', head: 'Dr. Robert Miller', budget: 350000, staffCount: 15 },
-    { id: 'dept-4', code: 'SCI', name: 'Science & Laboratories', head: 'Kru Prasert S.', budget: 200000, staffCount: 8 },
-    { id: 'dept-5', code: 'PE', name: 'Physical Education & Athletics', head: 'Coach Marcus T.', budget: 150000, staffCount: 6 },
-    { id: 'dept-6', code: 'ADM', name: 'School Administration & IT', head: 'Mr. Panyawut S.', budget: 180000, staffCount: 12 },
-  ]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newCode, setNewCode] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newHead, setNewHead] = useState('');
-  const [newBudget, setNewBudget] = useState(100000);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/departments', { cache: 'no-store' })
+      .then(async response => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Unable to load departments.');
+        if (active) setDepartments(Array.isArray(payload.departments) ? payload.departments : []);
+      })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load departments.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
-  const handleAddDept = (e: React.FormEvent) => {
-    e.preventDefault();
-    setDepartments(prev => [
-      ...prev,
-      {
-        id: `dept-${Date.now()}`,
-        code: newCode.toUpperCase(),
-        name: newName,
-        head: newHead || 'Department Head',
-        budget: newBudget,
-        staffCount: 5
-      }
-    ]);
-    setIsAddOpen(false);
-    setNewCode('');
-    setNewName('');
-    setNewHead('');
-  };
+    return () => { active = false; };
+  }, []);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -75,16 +71,13 @@ export function DepartmentsView() {
             <span>Academic Departments & Classes</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Configure school faculties, cost centers, and departmental requisition budgets
+            Names are loaded from Supabase. Head, staff count, and budget are not stored in the connected department table.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAddOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-        >
+        <button type="button" disabled title="Department creation is not connected to a save API." className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-300 text-slate-600 text-xs font-bold cursor-not-allowed">
           <Plus className="w-4 h-4" />
-          <span>Add Department</span>
+          <span>Add Department (Unavailable)</span>
         </button>
       </div>
 
@@ -93,29 +86,18 @@ export function DepartmentsView() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
-                <th className="py-3 px-4">Code</th>
-                <th className="py-3 px-4">Department / Faculty Name</th>
-                <th className="py-3 px-4">Head of Department</th>
-                <th className="py-3 px-4 text-center">Faculty Staff</th>
-                <th className="py-3 px-4 text-right">Annual Budget Allocation (฿)</th>
-                <th className="py-3 px-4 text-center">Status</th>
+                <th className="py-3 px-4">Database ID</th>
+                <th className="py-3 px-4">Department Name (Supabase)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {departments.map(d => (
+              {loading && <tr><td colSpan={2} className="py-8 text-center text-slate-500">Loading departments…</td></tr>}
+              {!loading && loadError && <tr><td colSpan={2} className="py-8 text-center text-rose-700">{loadError}</td></tr>}
+              {!loading && !loadError && departments.length === 0 && <tr><td colSpan={2} className="py-8 text-center text-slate-500">No department records found in Supabase.</td></tr>}
+              {!loading && !loadError && departments.map(d => (
                 <tr key={d.id} className="hover:bg-slate-50/70 transition">
-                  <td className="py-3 px-4 font-mono font-bold text-[#0B6B4F]">{d.code}</td>
+                  <td className="py-3 px-4 font-mono text-slate-500">{d.id}</td>
                   <td className="py-3 px-4 font-bold text-slate-900">{d.name}</td>
-                  <td className="py-3 px-4 text-slate-600">{d.head}</td>
-                  <td className="py-3 px-4 text-center font-bold">{d.staffCount} teachers</td>
-                  <td className="py-3 px-4 text-right font-black text-slate-900 font-mono">
-                    ฿{d.budget.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                      Active
-                    </span>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -123,83 +105,6 @@ export function DepartmentsView() {
         </div>
       </div>
 
-      {isAddOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="px-6 py-4 bg-[#0B6B4F] text-white flex items-center justify-between">
-              <h3 className="font-bold text-base flex items-center gap-2">
-                <School className="w-5 h-5 text-emerald-300" />
-                <span>Add Department</span>
-              </h3>
-              <button onClick={() => setIsAddOpen(false)} className="text-white/80 hover:text-white">✕</button>
-            </div>
-            <form onSubmit={handleAddDept} className="p-6 space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Department Code:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. ART, MUS, LIB"
-                  value={newCode}
-                  onChange={e => setNewCode(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold uppercase"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Department Name:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Visual Arts & Media Studio"
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Head of Department:</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Kru Somchai"
-                  value={newHead}
-                  onChange={e => setNewHead(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Annual Budget:</label>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  value={newBudget}
-                  onChange={e => setNewBudget(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-black text-slate-900"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold"
-                >
-                  Save Department
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -222,6 +127,7 @@ export function PricingPromotionsView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <DemoDataNotice />
       {/* Tier Pricing Cards */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div>
@@ -260,7 +166,8 @@ export function PricingPromotionsView() {
             <p className="text-xs text-slate-500">Promotions active in school store register</p>
           </div>
           <button
-            onClick={() => alert('New promotion code creation')}
+            type="button"
+            disabled
             className="px-3.5 py-1.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold text-xs shadow-sm transition"
           >
             + Create Promotion
@@ -349,6 +256,7 @@ export function ApprovalWorkflowView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <DemoDataNotice />
       {/* 1. Approval Thresholds */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div>
@@ -428,7 +336,8 @@ export function ApprovalWorkflowView() {
 
           <div className="pt-2 flex justify-end">
             <button
-              onClick={handleSave}
+              type="button"
+              disabled
               className="px-5 py-2.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold transition shadow-sm cursor-pointer"
             >
               Save Workflow Settings
@@ -451,7 +360,8 @@ export function ApprovalWorkflowView() {
           </div>
 
           <button
-            onClick={() => setIsAddReasonOpen(true)}
+            type="button"
+            disabled
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold transition shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -472,7 +382,7 @@ export function ApprovalWorkflowView() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleDeleteReason(r.id)}
+                  disabled
                   className="p-1 text-slate-400 hover:text-rose-600 transition"
                   title="Delete Reason"
                 >
@@ -552,6 +462,7 @@ export function DocumentNumberingView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <DemoDataNotice />
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -587,7 +498,8 @@ export function DocumentNumberingView() {
                   <td className="py-3 px-4 text-center font-mono font-bold text-slate-600">#{f.nextSeq}</td>
                   <td className="py-3 px-4 text-center">
                     <button
-                      onClick={() => alert(`Reset sequence for ${f.type}`)}
+                      type="button"
+                      disabled
                       className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold"
                     >
                       Configure
@@ -615,6 +527,7 @@ export function NotificationsSettingsView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <DemoDataNotice />
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -645,7 +558,7 @@ export function NotificationsSettingsView() {
               />
               <button
                 type="button"
-                onClick={() => alert('Test message sent to school LINE group!')}
+                disabled
                 className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 border border-slate-300"
               >
                 Send Test Alert
@@ -696,10 +609,7 @@ export function NotificationsSettingsView() {
           <div className="pt-3 flex justify-end">
             <button
               type="button"
-              onClick={() => {
-                setSaved(true);
-                setTimeout(() => setSaved(false), 3000);
-              }}
+              disabled
               className="px-5 py-2.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-bold transition shadow-sm cursor-pointer"
             >
               Save Notification Preferences
@@ -896,6 +806,7 @@ export function StorageLocationsView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <DemoDataNotice />
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -1145,6 +1056,7 @@ export function UnitsOfMeasureView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <DemoDataNotice />
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -1357,6 +1269,7 @@ export function CategoriesView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <DemoDataNotice />
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -1504,9 +1417,8 @@ export function SystemIntegrationsView() {
             Overview and status of cloud database, authentication providers, and third-party APIs
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-[#0B6B4F] border border-emerald-200">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>All Services Operational</span>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+          <span>Configuration Summary — Not a Live Health Check</span>
         </span>
       </div>
 
@@ -1524,15 +1436,15 @@ export function SystemIntegrationsView() {
               </div>
             </div>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-[#0B6B4F]">
-              Connected
+              Project Connected
             </span>
           </div>
           <p className="text-xs text-slate-600">
-            Real-time synchronization for catalog items, transactions, receipts, and staff roles with Row-Level Security (RLS) enforcement.
+            The Supabase project stores application data. This screen does not check live app connectivity or verify every table policy.
           </p>
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
             <span>Region: ap-northeast-1 (Tokyo)</span>
-            <span className="font-mono text-[10px] bg-slate-50 px-2 py-0.5 rounded">v17.6 PostgreSql</span>
+            <span className="font-mono text-[10px] bg-slate-50 px-2 py-0.5 rounded">PostgreSQL 17.6</span>
           </div>
         </div>
 
@@ -1553,11 +1465,11 @@ export function SystemIntegrationsView() {
             </span>
           </div>
           <p className="text-xs text-slate-600">
-            Zero-plaintext password policy with 1,000 iterations PBKDF2 hashing, signed session cookies, and 3-Tier RBAC permission evaluation.
+            This app currently uses its own password-hash and signed-cookie flow; this is not Supabase Auth. Verify security details in the server implementation.
           </p>
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Privilege Escalation Guard: Enabled</span>
-            <span className="font-semibold text-emerald-700">Strict</span>
+            <span>Authorization model</span>
+            <span className="font-semibold text-blue-700">App-defined RBAC</span>
           </div>
         </div>
 
@@ -1574,15 +1486,15 @@ export function SystemIntegrationsView() {
               </div>
             </div>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700">
-              Synchronized
+              Development Fallback Only
             </span>
           </div>
           <p className="text-xs text-slate-600">
-            Secondary high-resilience cache stored on server disk to guarantee POS checkout uptime even during temporary network interruptions.
+            Local JSON is a development fallback. It is disabled in production and is not synchronized with Supabase.
           </p>
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
             <span>Storage: data/inventory_db.json</span>
-            <span className="font-semibold text-purple-700">Zero Latency</span>
+            <span className="font-semibold text-purple-700">Not Production Storage</span>
           </div>
         </div>
 
@@ -1606,8 +1518,8 @@ export function SystemIntegrationsView() {
             API endpoints for items, users, receipts, audit logs, and stock transactions operating on Node.js runtime.
           </p>
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>REST API Boundary: Standardized</span>
-            <span className="font-semibold text-amber-700">Healthy</span>
+            <span>REST API Boundary: Present</span>
+            <span className="font-semibold text-amber-700">Not Health-Checked</span>
           </div>
         </div>
       </div>

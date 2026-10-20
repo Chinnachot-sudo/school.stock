@@ -366,9 +366,9 @@ function HomeContent() {
           {approvals.filter(a => approvalFilter === 'ALL' || a.status === approvalFilter).length === 0 ? (
             <div className="py-14 text-center bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 space-y-2">
               <ClipboardCheck className="w-10 h-10 text-slate-300 mx-auto" />
-              <h3 className="text-sm font-semibold text-slate-700">No approval requests found</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                There are currently no supply requests pending approval or matching the selected filter.
+              <h3 className="text-sm font-semibold text-slate-700">Approval data is not connected</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                This screen does not load approval requests from Supabase. No approval status is being changed here.
               </p>
             </div>
           ) : (

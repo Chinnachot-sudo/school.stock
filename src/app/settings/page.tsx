@@ -334,50 +334,7 @@ function SettingsContent() {
       'mother_email'
     ];
 
-    const sampleRows = [
-      [
-        'Sarah',
-        'Jenkins',
-        'Sarah',
-        'STD-2024-001',
-        'MYP',
-        'Grade 7 (MYP 2)',
-        'David Jenkins',
-        '081-234-5678',
-        'david.j@example.com',
-        'Mary Jenkins',
-        '082-345-6789',
-        'mary.j@example.com'
-      ],
-      [
-        'Alexander',
-        'Smith',
-        'Alex',
-        'STD-2024-002',
-        'DP',
-        'Grade 11 (DP 1)',
-        'John Smith',
-        '089-111-2222',
-        'john.s@example.com',
-        'Elena Smith',
-        '089-333-4444',
-        'elena.s@example.com'
-      ],
-      [
-        'Somchai',
-        'Prasert',
-        'Chai',
-        'STD-2024-003',
-        'CP',
-        'Grade 11 (CP 1)',
-        'Vichai Prasert',
-        '086-555-6677',
-        'vichai@example.com',
-        'Anong Prasert',
-        '086-777-8899',
-        'anong@example.com'
-      ]
-    ];
+    const sampleRows: string[][] = [];
 
     const csvContent =
       '\uFEFF' +
@@ -537,13 +494,7 @@ function SettingsContent() {
       'role'
     ];
 
-    const sampleRows = [
-      ['Somchai', 'Sukjai', 'Chai', 'somchai.s', 'Password123!', 'somchai@roong-aroon.ac.th', 'ADMIN'],
-      ['Malee', 'Rakdee', 'Lee', 'malee.r', 'Password123!', 'malee@roong-aroon.ac.th', 'TEACHER'],
-      ['Wichai', 'Klangkaew', 'Klang', 'wichai.k', 'Password123!', 'wichai@roong-aroon.ac.th', 'WAREHOUSE'],
-      ['Narumon', 'Srichai', 'Mon', 'narumon.s', 'Password123!', 'narumon@roong-aroon.ac.th', 'CASHIER'],
-      ['Prasert', 'Panyasart', 'Sert', 'prasert.p', 'Password123!', 'prasert@roong-aroon.ac.th', 'ACCOUNTANT']
-    ];
+    const sampleRows: string[][] = [];
 
     const csvContent =
       '\uFEFF' +

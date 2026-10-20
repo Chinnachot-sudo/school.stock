@@ -33,12 +33,12 @@ function AssetsContent() {
     }
   }, [searchParams]);
 
-  // Overall Asset Statistics (Starts at 0 for fresh system)
+  // The connected Supabase project has no assets table; do not present these as live totals.
   const stats = [
-    { label: 'Total Assets', value: '0', icon: Briefcase, color: 'text-emerald-700 bg-emerald-50' },
-    { label: 'Active in Use', value: '0', icon: CheckCircle2, color: 'text-blue-700 bg-blue-50' },
-    { label: 'On Loan / Borrowed', value: '0', icon: Repeat, color: 'text-amber-700 bg-amber-50' },
-    { label: 'Pending Dispose', value: '0', icon: Trash2, color: 'text-rose-700 bg-rose-50' },
+    { label: 'Total Assets', value: '—', icon: Briefcase, color: 'text-emerald-700 bg-emerald-50' },
+    { label: 'Active in Use', value: '—', icon: CheckCircle2, color: 'text-blue-700 bg-blue-50' },
+    { label: 'On Loan / Borrowed', value: '—', icon: Repeat, color: 'text-amber-700 bg-amber-50' },
+    { label: 'Pending Dispose', value: '—', icon: Trash2, color: 'text-rose-700 bg-rose-50' },
   ];
 
   const tabs: { key: AssetTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -70,13 +70,18 @@ function AssetsContent() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => alert('Exporting full asset & depreciation ledger to CSV/Excel...')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#E5E7EB] hover:bg-slate-50 text-[#111827] text-xs font-semibold rounded-xl shadow-2xs transition cursor-pointer"
+            disabled
+            title="Asset records are not connected to a database."
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 border border-[#E5E7EB] text-slate-500 text-xs font-semibold rounded-xl cursor-not-allowed"
           >
             <Download className="w-4 h-4 text-slate-500" />
             <span>Export Report</span>
           </button>
         </div>
+      </div>
+
+      <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+        Asset management is not connected to Supabase. No asset register exists in the connected database; actions and totals on this page are unavailable and must not be used as operational records.
       </div>
 
       {/* Stats Cards */}
@@ -122,7 +127,8 @@ function AssetsContent() {
         })}
       </div>
 
-      {/* Dedicated Tab Views */}
+      {/* The prototype views are intentionally read-only until persistence is implemented. */}
+      <fieldset disabled aria-label="Asset management is not connected" className="min-w-0 border-0 p-0 m-0 space-y-4">
       {activeTab === 'register' && (
         <AssetRegisterView
           onRunVerification={() => setActiveTab('verification')}
@@ -155,6 +161,7 @@ function AssetsContent() {
           <AssetVerificationView />
         </div>
       )}
+      </fieldset>
     </div>
   );
 }

@@ -61,13 +61,11 @@ export default function MySpacePage() {
   const [requestQty, setRequestQty] = useState<number>(1);
   const [targetDepartment, setTargetDepartment] = useState<string>('');
   const [requestPurpose, setRequestPurpose] = useState<string>('');
-  const [requestSubmitted, setRequestSubmitted] = useState<boolean>(false);
 
   // Form: Report Issue
   const [issueItemName, setIssueItemName] = useState('');
   const [issueType, setIssueType] = useState('DAMAGED');
   const [issueDetails, setIssueDetails] = useState('');
-  const [issueSubmitted, setIssueSubmitted] = useState(false);
 
   // User Requests & Receipts State
   const [myRequests, setMyRequests] = useState<MyRequestItem[]>([]);
@@ -93,45 +91,8 @@ export default function MySpacePage() {
     });
   }, []);
 
-  const handleRequestSubmit = (e: React.FormEvent) => {
+  const preventUnconnectedSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedItem || requestQty <= 0) return;
-
-    const itemObj = items.find(i => i.id === selectedItem);
-    const deptObj = departments.find(d => d.id === targetDepartment);
-
-    const newReq: MyRequestItem = {
-      id: `REQ-${new Date().getFullYear()}-${String(myRequests.length + 1).padStart(3, '0')}`,
-      itemName: itemObj?.name || 'School Material',
-      qty: requestQty,
-      unit: itemObj?.unit || 'Units',
-      department: deptObj?.name || 'General Instruction',
-      status: 'PENDING',
-      createdAt: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      purpose: requestPurpose || 'Instructional activity'
-    };
-
-    setMyRequests(prev => [newReq, ...prev]);
-    setRequestSubmitted(true);
-    setTimeout(() => {
-      setSelectedItem('');
-      setRequestQty(1);
-      setRequestPurpose('');
-      setRequestSubmitted(false);
-      setActiveTab('my-requests');
-    }, 1500);
-  };
-
-  const handleIssueSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!issueItemName.trim()) return;
-    setIssueSubmitted(true);
-    setTimeout(() => {
-      setIssueItemName('');
-      setIssueDetails('');
-      setIssueSubmitted(false);
-      alert('Issue reported successfully. The Warehouse Team has been notified.');
-    }, 1200);
   };
 
   const filteredItems = items.filter(
@@ -209,16 +170,10 @@ export default function MySpacePage() {
               </p>
             </div>
 
-            {requestSubmitted ? (
-              <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-2 animate-in fade-in">
-                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                <h3 className="text-sm font-bold text-emerald-800">Requisition Submitted Successfully!</h3>
-                <p className="text-xs text-emerald-700">
-                  Your request has been routed to the Warehouse & Department Head for approval (Status: PENDING)
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleRequestSubmit} className="space-y-4">
+              <form onSubmit={preventUnconnectedSubmit} className="space-y-4">
+                <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  Request submission is unavailable: this form is not connected to a database or approval workflow.
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Select Material / Item <span className="text-rose-500">*</span>
@@ -288,14 +243,15 @@ export default function MySpacePage() {
                 <div className="pt-2 flex justify-end">
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-[#0B6B4F] hover:bg-[#084D39] text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-98"
+                    disabled
+                    title="Request submission is not connected to a save API."
+                    className="px-6 py-2.5 bg-slate-300 text-slate-600 text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-not-allowed"
                   >
                     <Send className="w-4 h-4" />
                     <span>Submit Request</span>
                   </button>
                 </div>
               </form>
-            )}
           </div>
 
           {/* Quick Guide / Policies Card */}
@@ -353,8 +309,9 @@ export default function MySpacePage() {
             </div>
             <button
               type="button"
-              onClick={() => setActiveTab('new-request')}
-              className="px-4 py-2 bg-[#0B6B4F] hover:bg-[#084D39] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition"
+              disabled
+              title="Request submission is not connected."
+              className="px-4 py-2 bg-slate-300 text-slate-600 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs cursor-not-allowed"
             >
               <PlusCircle className="w-4 h-4" />
               <span>+ New Request</span>
@@ -379,7 +336,7 @@ export default function MySpacePage() {
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
                       <ClipboardList className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                      <span>No requisition records found. Click &quot;+ New Request&quot; to create one.</span>
+                      <span>No request records are available. This page is not connected to a requisition database.</span>
                     </td>
                   </tr>
                 ) : (
@@ -437,10 +394,14 @@ export default function MySpacePage() {
             </p>
           </div>
 
+          <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            Receipt history is not connected to the signed-in user. The list below is not a verified personal ledger.
+          </div>
+
           {myReceipts.length === 0 ? (
             <div className="py-12 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
               <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <span>No receipt history found for your account.</span>
+              <span>No linked receipt records are available.</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -482,7 +443,10 @@ export default function MySpacePage() {
             </p>
           </div>
 
-          <form onSubmit={handleIssueSubmit} className="space-y-4">
+          <form onSubmit={preventUnconnectedSubmit} className="space-y-4">
+            <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              Issue reporting is unavailable: this form is not connected to a database or notification service.
+            </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Item / Equipment Name <span className="text-rose-500">*</span>
@@ -528,7 +492,9 @@ export default function MySpacePage() {
             <div className="pt-2 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-98"
+                disabled
+                title="Issue reporting is not connected to a save API."
+                className="px-6 py-2.5 bg-slate-300 text-slate-600 text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-not-allowed"
               >
                 <Send className="w-4 h-4" />
                 <span>Submit Incident Report</span>

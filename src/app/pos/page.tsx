@@ -307,6 +307,12 @@ function PosContent() {
       return;
     }
 
+    const unitPrice = item.price;
+    if (typeof unitPrice !== 'number' || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+      showToast(`Cannot sell "${item.name}": no valid price is configured in the database.`);
+      return;
+    }
+
     setCart(prev => {
       const existing = prev.find(ci => ci.item.id === item.id);
       if (existing) {
@@ -317,8 +323,7 @@ function PosContent() {
         }
         return prev.map(ci => (ci.item.id === item.id ? { ...ci, quantity: newQty } : ci));
       } else {
-        const defaultPrice = item.price !== undefined && item.price > 0 ? item.price : 20;
-        return [...prev, { item, quantity: Math.min(qtyToAdd, item.currentStock), unitPrice: defaultPrice }];
+        return [...prev, { item, quantity: Math.min(qtyToAdd, item.currentStock), unitPrice }];
       }
     });
   };
