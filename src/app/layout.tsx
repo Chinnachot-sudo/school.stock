@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th">
+    <html lang="en">
       <body className="min-h-screen bg-[#F3F4F6] text-[#111827] antialiased selection:bg-[#E6F5EF] selection:text-[#0B6B4F]">
         <AuthProvider>
           <AuthGuard>

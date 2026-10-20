@@ -242,7 +242,7 @@ export function AssetRegisterView({
             className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-[#095740] text-white text-xs font-bold shadow-sm transition shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Register New Asset</span>
+            <span>Add Asset</span>
           </button>
         </div>
       </div>

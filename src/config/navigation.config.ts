@@ -95,7 +95,7 @@ const settingsAccess = {
 export const navigationConfig: NavigationGroup[] = [
   {
     id: 'overview_personal',
-    label: 'Overview & My Space',
+    label: 'Overview & Personal',
     icon: LayoutDashboard,
     subGroups: [
       {
@@ -114,9 +114,9 @@ export const navigationConfig: NavigationGroup[] = [
       },
       {
         id: 'personal_space',
-        label: 'My Space',
+        label: 'Personal',
         items: [
-          { label: 'My Requests & Assets', href: '/my-space', icon: UserCheck },
+          { label: 'My Items & Requests', href: '/my-space', icon: UserCheck },
           { label: 'New Request', href: '/my-space?tab=new-request', icon: PlusCircle },
           { label: 'My Requests', href: '/my-space?tab=my-requests', icon: ClipboardList },
           { label: 'My Receipts & Invoices', href: '/my-space?tab=my-receipts', icon: Receipt },
@@ -128,29 +128,41 @@ export const navigationConfig: NavigationGroup[] = [
   },
   {
     id: 'inventory',
-    label: 'Inventory',
+    label: 'Inventory Management',
     icon: Boxes,
-    subItems: [
-      { label: 'Inventory Catalog', href: '/inventory?tab=all', icon: Boxes, permissions: ['inventory:item:read'], roles: stockManagerRoles },
-      { label: 'Stock In / Restock', href: '/operations/restock', icon: PackagePlus, permissions: ['inventory:stock:restock'], roles: stockManagerRoles },
-      { label: 'Issue Stock', href: '/operations/issue', icon: PackageMinus, permissions: ['inventory:stock:issue'], roles: stockManagerRoles },
-      { label: 'Stock Adjustment / Write-off', href: '/operations/deduct', icon: Trash2, permissions: ['inventory:stock:adjust'], roles: stockManagerRoles },
-      { label: 'Borrow & Return', href: '/inventory?tab=borrow', icon: ArrowLeftRight, permissions: ['inventory:stock:issue'], roles: stockManagerRoles },
-      { label: 'Stock Count', href: '/inventory?tab=stock-count', icon: StockCountIcon, permissions: ['inventory:item:read'], roles: stockManagerRoles },
-      { label: 'Purchase Requests', href: '/inventory?tab=pr', icon: FileSpreadsheet, permissions: ['inventory:item:read'], roles: stockManagerRoles },
-      { label: 'Reorder Points', href: '/inventory?tab=low', icon: AlertTriangle, permissions: ['inventory:item:read'], roles: stockManagerRoles },
-      { label: 'Stock Transfer', href: '/inventory?tab=transfer', icon: Truck, featureFlag: 'multiStore', permissions: ['inventory:item:read'], roles: stockManagerRoles },
-      { label: 'Storage Locations', href: '/inventory?tab=locations', icon: MapPin, featureFlag: 'multiStore', permissions: ['inventory:item:read'], roles: stockManagerRoles }
+    subGroups: [
+      {
+        id: 'inventory_catalog',
+        label: 'Catalog & Control',
+        items: [
+          { label: 'Inventory Catalog', href: '/inventory?tab=all', icon: Boxes, permissions: ['inventory:item:read'], roles: stockManagerRoles },
+          { label: 'Reorder Points', href: '/inventory?tab=low', icon: AlertTriangle, permissions: ['inventory:item:read'], roles: stockManagerRoles },
+          { label: 'Storage Locations', href: '/inventory?tab=locations', icon: MapPin, featureFlag: 'multiStore', permissions: ['inventory:item:read'], roles: stockManagerRoles }
+        ]
+      },
+      {
+        id: 'stock_operations',
+        label: 'Stock Operations',
+        items: [
+          { label: 'Stock In / Restock', href: '/operations/restock', icon: PackagePlus, permissions: ['inventory:stock:restock'], roles: stockManagerRoles },
+          { label: 'Requisition / Stock Issue', href: '/operations/issue', icon: PackageMinus, permissions: ['inventory:stock:issue'], roles: stockManagerRoles },
+          { label: 'Stock Adjustment', href: '/operations/deduct', icon: Trash2, permissions: ['inventory:stock:adjust'], roles: stockManagerRoles },
+          { label: 'Borrow & Return', href: '/inventory?tab=borrow', icon: ArrowLeftRight, permissions: ['inventory:stock:issue'], roles: stockManagerRoles },
+          { label: 'Stock Count', href: '/inventory?tab=stock-count', icon: StockCountIcon, permissions: ['inventory:item:read'], roles: stockManagerRoles },
+          { label: 'Purchase Requests', href: '/inventory?tab=pr', icon: FileSpreadsheet, permissions: ['inventory:item:read'], roles: stockManagerRoles },
+          { label: 'Stock Transfer', href: '/inventory?tab=transfer', icon: Truck, featureFlag: 'multiStore', permissions: ['inventory:item:read'], roles: stockManagerRoles }
+        ]
+      }
     ]
   },
   {
     id: 'assets',
-    label: 'Asset Management',
+    label: 'Fixed Assets',
     icon: Briefcase,
     subItems: [
-      { label: 'Asset Register & Borrowing', href: '/assets', icon: Briefcase, permissions: ['inventory:item:read'], roles: adminRoles },
-      { label: 'Asset Borrow & Return', href: '/assets?tab=borrow', icon: Repeat, permissions: ['inventory:item:read'], roles: adminRoles },
-      { label: 'Maintenance / Write-off', href: '/assets?tab=dispose', icon: Trash2, permissions: ['inventory:item:read'], roles: adminRoles }
+      { label: 'Asset Management', href: '/assets', icon: Briefcase, permissions: ['inventory:item:read'], roles: adminRoles },
+      { label: 'Borrow & Return', href: '/assets?tab=borrow', icon: Repeat, permissions: ['inventory:item:read'], roles: adminRoles },
+      { label: 'Maintenance & Disposal', href: '/assets?tab=dispose', icon: Trash2, permissions: ['inventory:item:read'], roles: adminRoles }
     ]
   },
   {
@@ -189,12 +201,12 @@ export const navigationConfig: NavigationGroup[] = [
   },
   {
     id: 'system_reports',
-    label: 'Reports & System Settings',
+    label: 'System & Administration',
     icon: Settings,
     subGroups: [
       {
         id: 'reports',
-        label: 'Reports & Activity History',
+        label: 'Reports & Audit Logs',
         items: [
           { label: 'Stock Movements', href: '/history?tab=movements', icon: Layers, permissions: ['report:read', 'report:export'], roles: reportRoles },
           { label: 'Sales / Finance Summary', href: '/history?tab=sales', icon: TrendingUp, permissions: ['report:read', 'report:export'], roles: reportRoles },

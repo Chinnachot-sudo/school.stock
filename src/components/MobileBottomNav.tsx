@@ -20,7 +20,7 @@ export default function MobileBottomNav() {
     { label: 'Inventory', href: '/inventory', icon: Boxes, permission: 'inventory:item:read' as const },
     { label: 'Scan', href: '/?action=scan', icon: ScanLine, isScanner: true },
     { label: 'POS', href: '/pos', icon: Store, permission: 'pos:receipt:read' as const },
-    { label: 'My Space', href: '/my-space', icon: UserRound },
+    { label: 'My Items', href: '/my-space', icon: UserRound },
   ].filter(item => !item.permission || canAny([item.permission]));
 
   return (

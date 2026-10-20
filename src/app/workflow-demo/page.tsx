@@ -3,10 +3,15 @@
 import React, { useState } from 'react';
 import WorkflowStepper, { DocumentStatus } from '@/components/workflow/WorkflowStepper';
 import DocumentActions from '@/components/workflow/DocumentActions';
-import { ArrowLeft, CheckCircle2, Shield, Sparkles } from 'lucide-react';
+import { ArrowLeft, Shield, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export default function WorkflowDemoPage() {
+  const { loading, role } = useAuth();
+  const normalizedRole = String(role || '').toUpperCase();
+  const canViewDemo = process.env.NODE_ENV !== 'production' || ['ADMIN', 'SUPER_ADMIN'].includes(normalizedRole);
+
   const statuses: DocumentStatus[] = [
     'SUBMITTED',
     'PENDING_APPROVAL',
@@ -26,6 +31,22 @@ export default function WorkflowDemoPage() {
   // Interactive live tester state
   const [liveStatus, setLiveStatus] = useState<DocumentStatus>('PENDING_APPROVAL');
   const [liveReason, setLiveReason] = useState<string | undefined>(undefined);
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-500">Checking access…</div>;
+  }
+
+  if (!canViewDemo) {
+    return (
+      <div className="max-w-xl mx-auto mt-12 p-6 bg-white border border-slate-200 rounded-2xl text-center">
+        <h1 className="text-lg font-bold text-slate-900">Access Restricted</h1>
+        <p className="mt-2 text-sm text-slate-600">This workflow demonstration is available to administrators only.</p>
+        <Link href="/" className="inline-flex mt-4 text-sm font-semibold text-emerald-700 hover:underline">
+          Back to Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 p-4 sm:p-6 lg:p-8 animate-in fade-in duration-200">

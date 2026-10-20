@@ -2,32 +2,20 @@
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Item, Category, Department, Transaction, Receipt } from '@/types/inventory';
+import { Item, Department, Transaction } from '@/types/inventory';
 import ScannerModal from '@/components/ScannerModal';
 import QuickDeductModal from '@/components/QuickDeductModal';
 import QuickRestockModal from '@/components/QuickRestockModal';
 import {
   ScanLine,
-  Search,
   AlertCircle,
-  Scissors,
-  Plus,
-  ArrowRight,
   Clock,
-  MapPin,
   CheckCircle2,
   RefreshCw,
   Boxes,
-  ChevronRight,
-  User,
   ArrowDownRight,
   ArrowUpRight,
-  Filter,
-  FileSpreadsheet,
   TrendingUp,
-  PackageCheck,
-  PackagePlus,
-  PackageMinus,
   ClipboardCheck,
   Bell,
   Calendar,
@@ -37,9 +25,8 @@ import {
   X,
   ShieldAlert,
   CalendarDays,
-  Truck,
-  Activity,
-  AlertTriangle
+  AlertTriangle,
+  Truck
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -49,35 +36,18 @@ function HomeContent() {
   const { user, can, role, appUser } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Role-aware Stock Overview visibility
-  const isWarehouseOrFinanceOrAdmin = useMemo(() => {
-    const userRole = (role || appUser?.role || user?.role || '').toUpperCase();
-    const allowed = ['ADMIN', 'SUPER_ADMIN', 'WAREHOUSE_STAFF', 'ACCOUNTANT', 'INVENTORY_MANAGER', 'LEGACY_ADMIN'];
-    return allowed.includes(userRole) || can('inventory:item:create') || can('inventory:stock:issue');
-  }, [role, appUser, user, can]);
-
-  // Stock Overview Metrics
-  const stockValuation = useMemo(() => {
-    return items.reduce((acc, it) => acc + (it.currentStock * (it.price || 0)), 0);
-  }, [items]);
-
-  const healthyStockCount = useMemo(() => {
-    return items.filter(it => it.currentStock > it.minStock).length;
-  }, [items]);
+  const currentRole = String(role || appUser?.role || user?.role || 'teacher').toUpperCase();
+  const isWarehouseOrAdmin = useMemo(() => (
+    ['ADMIN', 'SUPER_ADMIN', 'LEGACY_ADMIN', 'WAREHOUSE', 'INVENTORY_MANAGER'].includes(currentRole) ||
+    can('inventory:stock:restock') || can('inventory:stock:adjust')
+  ), [currentRole, can]);
 
   const outOfStockCount = useMemo(() => {
     return items.filter(it => it.currentStock <= 0).length;
   }, [items]);
-
-  // Search & Filter
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [lowStockOnly, setLowStockOnly] = useState(false);
 
   // Modals state
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -118,24 +88,17 @@ function HomeContent() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [itemsRes, txRes, receiptsRes] = await Promise.all([
+      const [itemsRes, txRes] = await Promise.all([
         fetch('/api/items'),
-        fetch('/api/transactions?limit=30'),
-        fetch('/api/receipts').catch(() => null)
+        fetch('/api/transactions?limit=30')
       ]);
 
       const itemsData = await itemsRes.json();
       const txData = await txRes.json();
 
       setItems(itemsData.items || []);
-      setCategories(itemsData.categories || []);
       setDepartments(itemsData.departments || []);
       setRecentTransactions(txData.transactions || []);
-
-      if (receiptsRes && receiptsRes.ok) {
-        const rcData = await receiptsRes.json();
-        setReceipts(rcData.receipts || []);
-      }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
     } finally {
@@ -212,18 +175,18 @@ function HomeContent() {
   }, [items]);
 
   const todayRequisitions = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const isToday = (value: string) => new Date(value).toDateString() === new Date().toDateString();
     const outTxs = recentTransactions.filter(
-      tx => (tx.type === 'OUT' || tx.type === 'SALE') && tx.createdAt.slice(0, 10) === todayStr
+      tx => (tx.type === 'OUT' || tx.type === 'SALE') && isToday(tx.createdAt)
     );
     const totalQty = outTxs.reduce((sum, tx) => sum + tx.quantity, 0);
     return { count: outTxs.length, totalQty };
   }, [recentTransactions]);
 
   const todayRestocks = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const isToday = (value: string) => new Date(value).toDateString() === new Date().toDateString();
     const inTxs = recentTransactions.filter(
-      tx => tx.type === 'IN' && tx.createdAt.slice(0, 10) === todayStr
+      tx => tx.type === 'IN' && isToday(tx.createdAt)
     );
     const totalQty = inTxs.reduce((sum, tx) => sum + tx.quantity, 0);
     return { count: inTxs.length, totalQty };
@@ -262,20 +225,6 @@ function HomeContent() {
     return max;
   }, [last7DaysTrends]);
 
-  // Filtered items
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      const matchCategory = selectedCategory === 'ALL' || item.categoryId === selectedCategory;
-      const matchLowStock = !lowStockOnly || item.currentStock <= item.minStock;
-      const matchSearch =
-        searchQuery === '' ||
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.location.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCategory && matchLowStock && matchSearch;
-    });
-  }, [items, selectedCategory, lowStockOnly, searchQuery]);
-
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -286,43 +235,35 @@ function HomeContent() {
         </div>
       )}
 
-      {/* 1. TOP DASHBOARD HEADER & ACTIONS (Donezo Style) */}
+      {/* Dashboard header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#111827] tracking-tight">
-            Dashboard
+            Roong Aroon International School
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">
-            Daily inventory movements and warehouse overview • Roong Aroon International School
+            Inventory & School Store Dashboard
           </p>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {can('inventory:stock:restock') && (
-            <Link
-              href="/operations/restock"
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#0B6B4F] hover:bg-[#0F3D2E] active:scale-98 shadow-xs transition"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Receive Stock</span>
-            </Link>
-          )}
-
-          <Link
-            href="/operations/deduct"
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#111827] bg-white hover:bg-[#F3F4F6] border border-[#E5E7EB] active:scale-98 transition shadow-2xs"
-          >
-            <Scissors className="w-3.5 h-3.5 text-[#0B6B4F]" />
-            <span>Issue Stock</span>
-          </Link>
-
           <button
+            type="button"
+            onClick={() => setIsScannerOpen(true)}
+            title="Quick Scan"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#E5E7EB] text-[#0B6B4F] hover:bg-[#F3F4F6] transition shadow-2xs text-xs font-medium"
+          >
+            <ScanLine className="w-4 h-4" />
+            <span>Quick Scan</span>
+          </button>
+          <button
+            type="button"
             onClick={fetchData}
             title="Refresh Data"
-            className="p-2.5 rounded-xl bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition shadow-2xs"
+            className="p-2 rounded-xl bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition shadow-2xs"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Refresh</span>
           </button>
         </div>
       </div>
@@ -631,224 +572,57 @@ function HomeContent() {
       {/* VIEW: OVERVIEW (Existing Main Content) */}
       {activeTab === 'overview' && (
         <>
-          {/* 3. 4 DONEZO KPI CARDS (Card 1: Solid Green #0B6B4F, Cards 2-4: Surface White) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* KPI 1: Low Stock Alert (Warning Color) */}
-        <div
-          onClick={() => setLowStockOnly(!lowStockOnly)}
-          className={`rounded-2xl p-5 shadow-2xs flex flex-col justify-between relative overflow-hidden cursor-pointer transition border ${
-            lowStockItems.length > 0
-              ? 'bg-[#FFFBEB] text-[#92400E] border-[#FDE68A] hover:border-[#F59E0B]'
-              : 'bg-white text-[#111827] border-[#E5E7EB]'
-          }`}
-          title="Click to filter low stock items in table below"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#92400E]">Low Stock Alert</span>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-              lowStockItems.length > 0 ? 'bg-[#FEF3C7] text-[#D97706]' : 'bg-slate-100 text-slate-500'
-            }`}>
-              <AlertCircle className="w-4 h-4" />
-            </div>
-          </div>
-
-          <div className="my-3">
-            <span className="text-3xl font-extrabold font-mono tracking-tight block text-[#B45309]">
-              {loading ? '-' : lowStockItems.length}
-            </span>
-            <span className="text-[11px] text-[#92400E]/80 block mt-1">
-              {lowStockItems.length > 0
-                ? 'Items need restock or reordering soon'
-                : 'All inventory within safety stock levels'}
-            </span>
-          </div>
-
-          <div className="pt-2 border-t border-[#FDE68A] flex items-center justify-between text-[11px]">
-            <span className="text-[#92400E]/70 font-medium">Safety Threshold</span>
-            <span className="text-[#B45309] font-bold">
-              {lowStockOnly ? '✓ Filtering Low Stock' : 'Click to Filter Table'}
-            </span>
-          </div>
-        </div>
-
-        {/* KPI 2: Requisitions Today (White Card) */}
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#6B7280]">Dispatched Today</span>
-            <div className="w-7 h-7 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#B54708]">
-              <ArrowDownRight className="w-4 h-4" />
-            </div>
-          </div>
-
-          <div className="my-3">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold font-mono text-[#111827] tracking-tight">
-                {loading ? '-' : todayRequisitions.totalQty}
-              </span>
-              <span className="text-xs text-[#6B7280]">units</span>
-            </div>
-            <span className="text-[11px] text-[#6B7280] block mt-1">
-              From {todayRequisitions.count} transactions (Deduct & POS)
-            </span>
-          </div>
-
-          <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
-            <span>Warehouse Outflow</span>
-            <Link href="/history?type=OUT" className="text-[#0B6B4F] font-medium hover:underline">
-              View History
+            <Link href="/inventory?filter=low" className="bg-amber-50 border border-amber-200 hover:border-amber-400 rounded-2xl p-5 shadow-2xs flex flex-col justify-between transition">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-900">Low / Out of Stock</span>
+                <AlertCircle className="w-4 h-4 text-amber-700" />
+              </div>
+              <div className="my-3">
+                <span className="text-3xl font-extrabold font-mono text-amber-900">{loading ? '-' : lowStockItems.length}</span>
+                <p className="text-[11px] text-amber-800 mt-1">{outOfStockCount} out of stock · {Math.max(0, lowStockItems.length - outOfStockCount)} below minimum</p>
+              </div>
+              <span className="text-[11px] text-amber-800 font-medium">View critical items</span>
             </Link>
-          </div>
-        </div>
 
-        {/* KPI 3: Restocks Today (White Card) */}
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#6B7280]">Received Today</span>
-            <div className="w-7 h-7 rounded-lg bg-[#E6F5EF] flex items-center justify-center text-[#027A48]">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-          </div>
-
-          <div className="my-3">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold font-mono text-[#027A48] tracking-tight">
-                {loading ? '-' : todayRestocks.totalQty}
-              </span>
-              <span className="text-xs text-[#6B7280]">units</span>
-            </div>
-            <span className="text-[11px] text-[#6B7280] block mt-1">
-              From {todayRestocks.count} receiving batches
-            </span>
-          </div>
-
-          <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
-            <span>Inward Inflow</span>
-            <span className="text-[#027A48] font-medium font-mono text-[10px]">
-              +{todayRestocks.totalQty} units
-            </span>
-          </div>
-        </div>
-
-        {/* KPI 4: Total Items in System (White Card) */}
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#6B7280]">Total Registered Items</span>
-            <div className="w-7 h-7 rounded-lg bg-[#E6F5EF] flex items-center justify-center text-[#0B6B4F]">
-              <Boxes className="w-4 h-4" />
-            </div>
-          </div>
-
-          <div className="my-3">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold font-mono text-[#111827] tracking-tight">
-                {loading ? '-' : items.length}
-              </span>
-              <span className="text-xs text-[#6B7280]">items</span>
-            </div>
-            <span className="text-[11px] text-[#6B7280] block mt-1">
-              Across {categories.length} school categories
-            </span>
-          </div>
-
-          <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] text-[#6B7280]">
-            <span>Roong Aroon Inventory</span>
-            <Link href="/inventory" className="text-[#0B6B4F] font-medium hover:underline">
-              Manage Stock
+            <Link href="/my-space?tab=my-requests" className="bg-white border border-[#E5E7EB] hover:border-[#0B6B4F]/40 rounded-2xl p-5 shadow-2xs flex flex-col justify-between transition">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#6B7280]">Pending Requests</span>
+                <ClipboardCheck className="w-4 h-4 text-[#0B6B4F]" />
+              </div>
+              <div className="my-3">
+                <span className="text-3xl font-bold font-mono text-[#111827]">—</span>
+                <p className="text-[11px] text-[#6B7280] mt-1">Request tracking is not connected yet</p>
+              </div>
+              <span className="text-[11px] text-[#0B6B4F] font-medium">View my requests</span>
             </Link>
-          </div>
-        </div>
-      </div>
 
-      {/* ROLE-AWARE STOCK OVERVIEW (Merged from Inventory > Dashboard) */}
-      {isWarehouseOrFinanceOrAdmin && (
-        <div className="bg-gradient-to-r from-emerald-950 via-[#0B6B4F] to-emerald-900 rounded-2xl p-5 text-white shadow-md space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-emerald-300 shrink-0">
-                <Boxes className="w-5 h-5" />
+            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#6B7280]">Received Today</span>
+                <ArrowUpRight className="w-4 h-4 text-emerald-700" />
               </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base font-bold text-white">Stock Overview & Operational Health</h2>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
-                    Warehouse Staff • Accountant • Admin
-                  </span>
-                </div>
-                <p className="text-xs text-emerald-100/80">
-                  Comprehensive live catalog valuation, inventory health indicators, and warehouse fast actions
-                </p>
+              <div className="my-3">
+                <div className="flex items-baseline gap-1.5"><span className="text-3xl font-bold font-mono text-emerald-700">{loading ? '-' : todayRestocks.totalQty}</span><span className="text-xs text-[#6B7280]">units</span></div>
+                <p className="text-[11px] text-[#6B7280] mt-1">{todayRestocks.count} receiving transactions</p>
               </div>
+              <span className="text-[11px] text-emerald-700 font-medium">Stock in</span>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link
-                href="/inventory?tab=receipt"
-                className="px-3 py-1.5 rounded-xl bg-white text-[#0B6B4F] hover:bg-emerald-50 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
-              >
-                <PackagePlus className="w-3.5 h-3.5" />
-                <span>Goods Receipt</span>
-              </Link>
-              <Link
-                href="/inventory?tab=issue"
-                className="px-3 py-1.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center gap-1.5 border border-emerald-700/60"
-              >
-                <PackageMinus className="w-3.5 h-3.5" />
-                <span>Issue Goods</span>
-              </Link>
-              <Link
-                href="/inventory?tab=stock-count"
-                className="px-3 py-1.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center gap-1.5 border border-emerald-700/60"
-              >
-                <ClipboardCheck className="w-3.5 h-3.5" />
-                <span>Stock Count</span>
-              </Link>
-              <Link
-                href="/inventory"
-                className="px-3 py-1.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center gap-1.5 border border-emerald-700/60"
-              >
-                <span>Item Master</span>
-                <ArrowRight className="w-3 h-3" />
-              </Link>
+            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#6B7280]">Dispatched Today</span>
+                <ArrowDownRight className="w-4 h-4 text-rose-700" />
+              </div>
+              <div className="my-3">
+                <div className="flex items-baseline gap-1.5"><span className="text-3xl font-bold font-mono text-[#111827]">{loading ? '-' : todayRequisitions.totalQty}</span><span className="text-xs text-[#6B7280]">units</span></div>
+                <p className="text-[11px] text-[#6B7280] mt-1">{todayRequisitions.count} issue and POS transactions</p>
+              </div>
+              <Link href="/history?type=OUT" className="text-[11px] text-[#0B6B4F] font-medium hover:underline">View stock history</Link>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-            <div className="p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
-              <span className="text-[11px] text-emerald-200/80 font-medium">Estimated Catalog Valuation</span>
-              <div className="text-xl font-bold font-mono text-white mt-1">
-                ฿{stockValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <span className="text-[10px] text-emerald-300/80 mt-1 block">Based on registered unit costs</span>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
-              <span className="text-[11px] text-emerald-200/80 font-medium">Healthy Stock Items</span>
-              <div className="text-xl font-bold font-mono text-emerald-300 mt-1">
-                {healthyStockCount} <span className="text-xs font-normal text-emerald-100">SKUs</span>
-              </div>
-              <span className="text-[10px] text-emerald-300/80 mt-1 block">Stock level above minimum safety threshold</span>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
-              <span className="text-[11px] text-amber-200/80 font-medium">Low Stock Warning</span>
-              <div className="text-xl font-bold font-mono text-amber-300 mt-1">
-                {lowStockItems.length} <span className="text-xs font-normal text-emerald-100">SKUs</span>
-              </div>
-              <span className="text-[10px] text-amber-300/80 mt-1 block">Reorder point reached or approaching</span>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
-              <span className="text-[11px] text-rose-200/80 font-medium">Out of Stock</span>
-              <div className="text-xl font-bold font-mono text-rose-300 mt-1">
-                {outOfStockCount} <span className="text-xs font-normal text-emerald-100">SKUs</span>
-              </div>
-              <span className="text-[10px] text-rose-300/80 mt-1 block">Critical zero inventory requiring PO</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. STOCK MOVEMENT TREND CHART (Donezo Style Weekly Visual) */}
+      {isWarehouseOrAdmin && (
       <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -933,237 +707,103 @@ function HomeContent() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* 5. HIGH DENSITY INVENTORY TABLE & LIVE STREAM (Donezo 2-column or full layout) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Table (2 Columns on Large Desktop) */}
-        <div className="lg:col-span-2 bg-white border border-[#E5E7EB] rounded-2xl shadow-2xs overflow-hidden flex flex-col">
-          {/* Table Header / Toolbar */}
-          <div className="p-4 border-b border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F9FAFB]">
-            <div className="flex items-center gap-2">
-              <Boxes className="w-4 h-4 text-[#0B6B4F]" />
-              <h3 className="text-sm font-bold text-[#111827]">
-                Warehouse Inventory ({filteredItems.length})
-              </h3>
+      {isWarehouseOrAdmin ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <section className="bg-white border border-[#E5E7EB] rounded-2xl shadow-2xs overflow-hidden">
+            <div className="p-4 border-b border-[#E5E7EB] flex items-center justify-between bg-[#F9FAFB]">
+              <div>
+                <h2 className="text-sm font-bold text-[#111827]">Action Required: Critical Low Stock</h2>
+                <p className="text-[11px] text-[#6B7280] mt-0.5">Items at or below their minimum stock level</p>
+              </div>
+              <Link href="/inventory?filter=low" className="text-xs text-[#0B6B4F] font-semibold hover:underline">View all</Link>
             </div>
-
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedCategory}
-                onChange={e => setSelectedCategory(e.target.value)}
-                className="px-3 py-1.5 bg-white border border-[#E5E7EB] rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#0B6B4F]"
-              >
-                <option value="ALL">All Categories ({items.length})</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-
-              <Link
-                href="/inventory"
-                className="px-3 py-1.5 bg-white hover:bg-[#F3F4F6] border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#6B7280] hover:text-[#111827] flex items-center gap-1 transition"
-              >
-                <span>Manage</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-
-          {/* Table Body (High Density) */}
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB] text-[#6B7280] font-medium text-[11px]">
-                <tr>
-                  <th className="py-2.5 px-3.5 w-28">SKU Code</th>
-                  <th className="py-2.5 px-3 min-w-[160px]">Item Description</th>
-                  <th className="py-2.5 px-3 hidden sm:table-cell w-28">Category</th>
-                  <th className="py-2.5 px-3 w-24">Status</th>
-                  <th className="py-2.5 px-3.5 w-24 text-right">Stock</th>
-                  <th className="py-2.5 px-3.5 w-24 text-right">Actions</th>
-                </tr>
-              </thead>
-
-              {loading ? (
-                <tbody className="divide-y divide-[#E5E7EB]">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <tr key={i} className="animate-pulse">
-                      <td className="py-2.5 px-3.5"><div className="h-3 w-16 bg-[#E5E7EB] rounded"></div></td>
-                      <td className="py-2.5 px-3"><div className="h-3 w-32 bg-[#E5E7EB] rounded"></div></td>
-                      <td className="py-2.5 px-3 hidden sm:table-cell"><div className="h-3 w-20 bg-[#E5E7EB]/60 rounded"></div></td>
-                      <td className="py-2.5 px-3"><div className="h-4 w-14 bg-[#E5E7EB]/60 rounded"></div></td>
-                      <td className="py-2.5 px-3.5 text-right"><div className="h-3 w-8 bg-[#E5E7EB] rounded ml-auto"></div></td>
-                      <td className="py-2.5 px-3.5 text-right"><div className="h-4 w-12 bg-[#E5E7EB] rounded ml-auto"></div></td>
-                    </tr>
-                  ))}
-                </tbody>
-              ) : filteredItems.length === 0 ? (
-                <tbody>
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-[#6B7280]">
-                      <p className="text-xs font-medium">No items found</p>
-                      <p className="text-[11px] mt-0.5">Try adjusting your filters or search keywords</p>
-                    </td>
-                  </tr>
-                </tbody>
-              ) : (
-                <tbody className="divide-y divide-[#E5E7EB]">
-                  {filteredItems.slice(0, 10).map(item => {
-                    const isLow = item.currentStock <= item.minStock;
-                    const isOut = item.currentStock <= 0;
-                    const cat = categories.find(c => c.id === item.categoryId);
-
-                    return (
-                      <tr key={item.id} className="hover:bg-[#F9FAFB] transition">
-                        {/* SKU (font-mono) */}
-                        <td className="py-2.5 px-3.5 font-mono text-xs text-[#6B7280] whitespace-nowrap">
-                          {item.code}
-                        </td>
-
-                        {/* Name */}
-                        <td className="py-2.5 px-3">
-                          <div className="font-medium text-[#111827] leading-tight">
-                            {item.name}
-                          </div>
-                          <div className="text-[10px] text-[#6B7280] mt-0.5 sm:hidden">
-                            {cat?.name}
-                          </div>
-                        </td>
-
-                        {/* Category */}
-                        <td className="py-2.5 px-3 hidden sm:table-cell text-[#6B7280] text-[11px] whitespace-nowrap">
-                          {cat?.name || 'General'}
-                        </td>
-
-                        {/* Muted Status Badge with Thin Border */}
-                        <td className="py-2.5 px-3 whitespace-nowrap">
-                          {isOut ? (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#FEE4E2] text-[#B42318] border border-[#B42318]/20">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#B42318]"></span>
-                              <span>Out</span>
-                            </span>
-                          ) : isLow ? (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#FEF0C7] text-[#B54708] border border-[#B54708]/30">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#B54708]"></span>
-                              <span>Low</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E6F5EF] text-[#0B6B4F] border border-[#0B6B4F]/20">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#027A48]"></span>
-                              <span>In Stock</span>
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Stock (font-mono) */}
-                        <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
-                          <span className={`font-mono text-xs font-bold ${isLow ? 'text-[#B54708]' : 'text-[#111827]'}`}>
-                            {item.currentStock}
-                          </span>
-                          <span className="text-[10px] text-[#6B7280] ml-1">
-                            {item.unit}
-                          </span>
-                        </td>
-
-                        {/* Action Buttons */}
-                        <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1">
-                            {can('inventory:stock:restock') && (
-                              <button
-                                onClick={() => setSelectedItemForRestock(item)}
-                                className="px-2 py-0.5 bg-[#E6F5EF] hover:bg-[#d6f0e4] text-[#0B6B4F] rounded text-[10px] font-medium transition"
-                                title="Receive Stock"
-                              >
-                                +In
-                              </button>
-                            )}
-
-                            {can('inventory:stock:issue') && (
-                              <button
-                                onClick={() => setSelectedItemForDeduct(item)}
-                                disabled={isOut}
-                                className="px-2 py-0.5 bg-[#0B6B4F] hover:bg-[#0F3D2E] disabled:opacity-40 text-white rounded text-[10px] font-medium transition"
-                                title="Deduct Stock"
-                              >
-                                Deduct
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              )}
-            </table>
-          </div>
-
-          {/* Table Footer */}
-          <div className="p-3 bg-[#F9FAFB] border-t border-[#E5E7EB] text-[11px] text-[#6B7280] flex items-center justify-between">
-            <span>Showing {filteredItems.slice(0, 10).length} of {filteredItems.length} items</span>
-            <Link href="/inventory" className="text-[#0B6B4F] font-semibold hover:underline flex items-center gap-1">
-              <span>View All Inventory</span>
-              <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Live Activity Stream (1 Column on Large Desktop) */}
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl shadow-2xs p-5 space-y-4 flex flex-col">
-          <div className="flex items-center justify-between pb-1 border-b border-[#E5E7EB]">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#0B6B4F]" />
-              <h3 className="text-sm font-bold text-[#111827]">
-                Recent Activity Stream
-              </h3>
-            </div>
-            <Link href="/history" className="text-xs text-[#0B6B4F] font-medium hover:underline">
-              View All
-            </Link>
-          </div>
-
-          {/* Activity List */}
-          <div className="space-y-2.5 flex-1 overflow-y-auto">
-            {recentTransactions.length === 0 ? (
-              <p className="text-xs text-[#6B7280] text-center py-6">
-                No recent activity recorded yet
-              </p>
+            {loading ? (
+              <p className="p-6 text-center text-xs text-[#6B7280]">Loading stock status…</p>
+            ) : lowStockItems.length === 0 ? (
+              <p className="p-6 text-center text-xs text-[#6B7280]">No critical stock items.</p>
             ) : (
-              recentTransactions.slice(0, 8).map(tx => {
+              <div className="divide-y divide-[#E5E7EB]">
+                {lowStockItems.slice(0, 8).map(item => (
+                  <div key={item.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-[#111827] truncate">{item.name}</p>
+                      <p className="text-[10px] text-[#6B7280] font-mono mt-0.5">{item.code}</p>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-amber-800 shrink-0">
+                      {item.currentStock} / {item.minStock} {item.unit}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="bg-white border border-[#E5E7EB] rounded-2xl shadow-2xs p-5 space-y-4 flex flex-col">
+            <div className="flex items-center justify-between pb-1 border-b border-[#E5E7EB]">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#0B6B4F]" />
+                <h2 className="text-sm font-bold text-[#111827]">Recent Activity Stream</h2>
+              </div>
+              <Link href="/history" className="text-xs text-[#0B6B4F] font-medium hover:underline">View All</Link>
+            </div>
+            <div className="space-y-2.5 flex-1 overflow-y-auto">
+              {recentTransactions.length === 0 ? (
+                <p className="text-xs text-[#6B7280] text-center py-6">No recent activity recorded yet</p>
+              ) : recentTransactions.slice(0, 8).map(tx => {
                 const isOut = tx.type === 'OUT' || tx.type === 'SALE';
                 return (
-                  <div
-                    key={tx.id}
-                    className="p-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-between gap-2.5"
-                  >
+                  <div key={tx.id} className="p-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-between gap-2.5">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-[#111827] truncate">
-                          {tx.itemName}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-[#6B7280] flex items-center gap-1.5 mt-0.5">
+                      <p className="text-xs font-semibold text-[#111827] truncate">{tx.itemName}</p>
+                      <p className="text-[10px] text-[#6B7280] flex items-center gap-1.5 mt-0.5">
                         <span>{tx.requesterName || tx.userName || tx.department || 'Staff'}</span>
                         <span>•</span>
                         <span>{new Date(tx.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
+                      </p>
                     </div>
-
-                    <span
-                      className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                        isOut
-                          ? 'bg-[#FEE4E2] text-[#B42318]'
-                          : 'bg-[#E6F5EF] text-[#027A48]'
-                      }`}
-                    >
+                    <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${isOut ? 'bg-[#FEE4E2] text-[#B42318]' : 'bg-[#E6F5EF] text-[#027A48]'}`}>
                       {isOut ? `-${tx.quantity}` : `+${tx.quantity}`}
                     </span>
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          </section>
         </div>
-      </div>
+      ) : (
+        <section className="bg-white border border-[#E5E7EB] rounded-2xl shadow-2xs overflow-hidden">
+          <div className="p-4 border-b border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F9FAFB]">
+            <div>
+              <h2 className="text-sm font-bold text-[#111827]">My Recent Requisitions</h2>
+              <p className="text-[11px] text-[#6B7280] mt-0.5">Track request status and pickup readiness</p>
+            </div>
+            <Link href="/my-space?tab=new-request" className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0B6B4F] hover:bg-[#0F3D2E] text-white text-xs font-semibold transition">
+              <span>+ Request Items</span>
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-white border-b border-[#E5E7EB] text-[#6B7280] text-[11px]">
+                <tr>
+                  <th className="py-3 px-4">Item</th>
+                  <th className="py-3 px-4">Requested Date</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Pickup</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={4} className="py-8 px-4 text-center text-[#6B7280]">
+                    Request history is unavailable because requisitions are not stored by the system yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
       </>
       )}
 

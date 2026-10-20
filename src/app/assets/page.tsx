@@ -44,7 +44,7 @@ function AssetsContent() {
   const tabs: { key: AssetTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: 'register', label: 'Asset Register', icon: Briefcase },
     { key: 'borrow', label: 'Borrow & Return', icon: Repeat },
-    { key: 'dispose', label: 'Maintenance / Write-off', icon: Trash2 }
+    { key: 'dispose', label: 'Maintenance & Disposal', icon: Trash2 }
   ];
 
   return (
