@@ -70,6 +70,11 @@ export default function MySpacePage() {
   // User Requests & Receipts State
   const [myRequests, setMyRequests] = useState<MyRequestItem[]>([]);
   const [myReceipts, setMyReceipts] = useState<MyReceiptItem[]>([]);
+  const [requestsLoadError, setRequestsLoadError] = useState<string | null>(null);
+  const [requestFeedback, setRequestFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [issueFeedback, setIssueFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [submittingIssue, setSubmittingIssue] = useState(false);
 
   // Sync tab with URL
   useEffect(() => {
@@ -82,17 +87,69 @@ export default function MySpacePage() {
   // Load items and departments
   useEffect(() => {
     Promise.all([
-      fetch('/api/items').then(r => r.json()).catch(() => ({ items: [] })),
-      fetch('/api/departments').then(r => r.json()).catch(() => ({ departments: [] }))
-    ]).then(([itemsData, deptData]) => {
+      fetch('/api/items', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ items: [] })),
+      fetch('/api/departments', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ departments: [] })),
+      fetch('/api/requisitions', { cache: 'no-store' }).then(async response => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Unable to load requests.');
+        return payload;
+      }).catch(error => ({ loadError: error instanceof Error ? error.message : 'Unable to load requests.' }))
+    ]).then(([itemsData, deptData, requestsData]) => {
       if (itemsData?.items) setItems(itemsData.items);
       if (deptData?.departments) setDepartments(deptData.departments);
+      if (requestsData?.requests) setMyRequests(requestsData.requests);
+      if (requestsData?.loadError) setRequestsLoadError(requestsData.loadError);
       setLoading(false);
     });
   }, []);
 
-  const preventUnconnectedSubmit = (e: React.FormEvent) => {
+  const submitRequest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setRequestFeedback(null);
+    setSubmittingRequest(true);
+    try {
+      const response = await fetch('/api/requisitions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: selectedItem, quantity: requestQty, departmentId: targetDepartment, purpose: requestPurpose })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to submit request.');
+      const refreshed = await fetch('/api/requisitions', { cache: 'no-store' }).then(r => r.json());
+      setMyRequests(Array.isArray(refreshed.requests) ? refreshed.requests : []);
+      setSelectedItem('');
+      setRequestQty(1);
+      setTargetDepartment('');
+      setRequestPurpose('');
+      setRequestFeedback({ type: 'success', message: 'Request saved to Supabase and is pending review.' });
+    } catch (error) {
+      setRequestFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Unable to submit request.' });
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
+  const submitIssueReport = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIssueFeedback(null);
+    setSubmittingIssue(true);
+    try {
+      const response = await fetch('/api/issue-reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemName: issueItemName, issueType, details: issueDetails })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to submit issue report.');
+      setIssueItemName('');
+      setIssueType('DAMAGED');
+      setIssueDetails('');
+      setIssueFeedback({ type: 'success', message: 'Issue report saved to Supabase.' });
+    } catch (error) {
+      setIssueFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Unable to submit issue report.' });
+    } finally {
+      setSubmittingIssue(false);
+    }
   };
 
   const filteredItems = items.filter(
@@ -170,10 +227,8 @@ export default function MySpacePage() {
               </p>
             </div>
 
-              <form onSubmit={preventUnconnectedSubmit} className="space-y-4">
-                <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                  Request submission is unavailable: this form is not connected to a database or approval workflow.
-                </div>
+              <form onSubmit={submitRequest} className="space-y-4">
+                {requestFeedback && <div role="status" className={`rounded-xl border p-3 text-xs ${requestFeedback.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}>{requestFeedback.message}</div>}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Select Material / Item <span className="text-rose-500">*</span>
@@ -243,12 +298,11 @@ export default function MySpacePage() {
                 <div className="pt-2 flex justify-end">
                   <button
                     type="submit"
-                    disabled
-                    title="Request submission is not connected to a save API."
-                    className="px-6 py-2.5 bg-slate-300 text-slate-600 text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-not-allowed"
+                    disabled={submittingRequest || loading || !selectedItem}
+                    className="px-6 py-2.5 bg-[#0B6B4F] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 disabled:bg-slate-300 disabled:text-slate-600"
                   >
                     <Send className="w-4 h-4" />
-                    <span>Submit Request</span>
+                    <span>{submittingRequest ? 'Submitting…' : 'Submit Request'}</span>
                   </button>
                 </div>
               </form>
@@ -263,15 +317,15 @@ export default function MySpacePage() {
             <ul className="text-xs text-[#6B7280] space-y-2.5 leading-relaxed">
               <li className="flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#0B6B4F] mt-1.5 shrink-0" />
-                <span>Standard requisitions are reviewed and approved within 24 hours.</span>
+                <span>Submitted requests are recorded with a pending-review status.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#0B6B4F] mt-1.5 shrink-0" />
-                <span>Once approved, items can be picked up at the Central Storage (Floor 1).</span>
+                <span>Approval routing and pickup arrangements are not configured in the database yet.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#0B6B4F] mt-1.5 shrink-0" />
-                <span>For borrowed equipment, please return promptly on the specified date.</span>
+                <span>Submitting a request does not reserve stock or deduct inventory.</span>
               </li>
             </ul>
 
@@ -309,9 +363,8 @@ export default function MySpacePage() {
             </div>
             <button
               type="button"
-              disabled
-              title="Request submission is not connected."
-              className="px-4 py-2 bg-slate-300 text-slate-600 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs cursor-not-allowed"
+              onClick={() => setActiveTab('new-request')}
+              className="px-4 py-2 bg-[#0B6B4F] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs"
             >
               <PlusCircle className="w-4 h-4" />
               <span>+ New Request</span>
@@ -332,11 +385,13 @@ export default function MySpacePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {myRequests.length === 0 ? (
+                {requestsLoadError ? (
+                  <tr><td colSpan={7} className="py-12 text-center text-rose-700 text-xs">{requestsLoadError}</td></tr>
+                ) : myRequests.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
                       <ClipboardList className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                      <span>No request records are available. This page is not connected to a requisition database.</span>
+                      <span>No requests have been submitted from this account.</span>
                     </td>
                   </tr>
                 ) : (
@@ -354,7 +409,7 @@ export default function MySpacePage() {
                         {req.status === 'PENDING' && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                             <Clock className="w-3 h-3" />
-                            <span>Pending Approval</span>
+                            <span>Pending Review</span>
                           </span>
                         )}
                         {req.status === 'APPROVED' && (
@@ -367,6 +422,12 @@ export default function MySpacePage() {
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" />
                             <span>Dispensed</span>
+                          </span>
+                        )}
+                        {req.status === 'REJECTED' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <XCircle className="w-3 h-3" />
+                            <span>Rejected</span>
                           </span>
                         )}
                       </td>
@@ -443,10 +504,8 @@ export default function MySpacePage() {
             </p>
           </div>
 
-          <form onSubmit={preventUnconnectedSubmit} className="space-y-4">
-            <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              Issue reporting is unavailable: this form is not connected to a database or notification service.
-            </div>
+          <form onSubmit={submitIssueReport} className="space-y-4">
+            {issueFeedback && <div role="status" className={`rounded-xl border p-3 text-xs ${issueFeedback.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}>{issueFeedback.message}</div>}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Item / Equipment Name <span className="text-rose-500">*</span>
@@ -492,12 +551,11 @@ export default function MySpacePage() {
             <div className="pt-2 flex justify-end">
               <button
                 type="submit"
-                disabled
-                title="Issue reporting is not connected to a save API."
-                className="px-6 py-2.5 bg-slate-300 text-slate-600 text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-not-allowed"
+                disabled={submittingIssue}
+                className="px-6 py-2.5 bg-[#0B6B4F] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 disabled:bg-slate-300 disabled:text-slate-600"
               >
                 <Send className="w-4 h-4" />
-                <span>Submit Incident Report</span>
+                <span>{submittingIssue ? 'Submitting…' : 'Submit Incident Report'}</span>
               </button>
             </div>
           </form>

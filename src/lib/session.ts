@@ -13,9 +13,9 @@ export interface SessionPayload {
   exp: number;
 }
 
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!SESSION_SECRET) {
-  console.error('CRITICAL: SESSION_SECRET environment variable is not set. Using a random secret — sessions will not persist across restarts.');
+const SESSION_SECRET = process.env.SESSION_SECRET?.trim();
+if (!SESSION_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('SESSION_SECRET must be set in production; do not reuse a Supabase API key for session signing.');
 }
 const EFFECTIVE_SECRET = SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 

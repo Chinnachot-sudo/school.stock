@@ -16,6 +16,12 @@ interface DatabaseSchema {
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'inventory_db.json');
 
+function assertLocalDatabaseEnabled(): void {
+  if (process.env.NODE_ENV === 'production' || process.env.ALLOW_LOCAL_JSON_DB !== 'true') {
+    throw new Error('Local JSON database is disabled. Configure Supabase server access; local JSON requires ALLOW_LOCAL_JSON_DB=true in non-production only.');
+  }
+}
+
 const INITIAL_DATA: DatabaseSchema = {
   categories: [],
   departments: [],
@@ -41,9 +47,7 @@ function ensureDbExists(): void {
 }
 
 export function readDb(): DatabaseSchema {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Local JSON database is disabled in production; Supabase is required.');
-  }
+  assertLocalDatabaseEnabled();
   ensureDbExists();
   try {
     if (!fs.existsSync(DB_FILE)) {
@@ -74,9 +78,7 @@ export function readDb(): DatabaseSchema {
 }
 
 export function writeDb(data: DatabaseSchema): void {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Local JSON database is disabled in production; Supabase is required.');
-  }
+  assertLocalDatabaseEnabled();
   try {
     ensureDbExists();
     const tempFile = `${DB_FILE}.tmp`;

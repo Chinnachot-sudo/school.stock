@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { isServiceRoleConfigured, isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { hashPassword, requirePermission } from '@/lib/auth-server';
 import { can } from '@/lib/auth/permissions';
 import { toDbRole, toUiRole, DbRole, UiRole } from '@/lib/auth/roles';
@@ -23,35 +23,14 @@ interface ValidatedUser {
   uiRole: UiRole;
 }
 
-const DEFAULT_USERS: AppUser[] = [
-  {
-    id: 'usr-superadmin',
-    username: 'superadmin',
-    name: 'Super Administrator',
-    email: 'superadmin@roong-aroon.ac.th',
-    role: 'SUPER_ADMIN'
-  },
-  {
-    id: 'usr-admin',
-    username: 'admin',
-    name: 'Store Administrator',
-    email: 'admin@roong-aroon.ac.th',
-    role: 'ADMIN'
-  },
-  {
-    id: 'usr-chinnachot',
-    username: 'chinnachot',
-    name: 'Chinnachot',
-    email: 'chinnachot@roong-aroon.ac.th',
-    role: 'SUPER_ADMIN'
-  }
-];
-
 export async function GET(request: Request) {
   try {
     const authCheck = await requirePermission(request, 'iam:user:read');
     if (authCheck.errorResponse) {
       return authCheck.errorResponse;
+    }
+    if (!isServiceRoleConfigured || !supabase) {
+      return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
     }
 
     if (isSupabaseConfigured && supabase) {
@@ -87,11 +66,6 @@ export async function GET(request: Request) {
       }
     }
 
-    // Only fall back to mock users in non-production environments when Supabase is not configured
-    if (!isSupabaseConfigured && process.env.NODE_ENV !== 'production') {
-      return NextResponse.json({ users: DEFAULT_USERS });
-    }
-
     return NextResponse.json({ error: 'User database is unavailable.' }, { status: 503 });
   } catch (err: unknown) {
     console.error('GET /api/users error:', err);
@@ -109,6 +83,9 @@ export async function POST(request: Request) {
       return authCheck.errorResponse;
     }
     const caller = authCheck.user;
+    if (!isServiceRoleConfigured || !supabase) {
+      return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
+    }
 
     const body: unknown = await request.json();
 

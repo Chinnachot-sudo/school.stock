@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 function getSanitizedConfig() {
   let url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim().replace(/^["']|["']$/g, '');
   let key = (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
     ''
   ).trim().replace(/^["']|["']$/g, '');
 
@@ -41,7 +41,14 @@ function getSanitizedConfig() {
 
 const { url: supabaseUrl, key: supabaseKey } = getSanitizedConfig();
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
+const serverApiKey = (
+  process.env.SUPABASE_SECRET_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  ''
+).trim().replace(/^["']|["']$/g, '');
+
+export const isSupabaseConfigured = Boolean(supabaseUrl && (supabaseKey || serverApiKey));
 
 let client: any = null;
 if (supabaseUrl && supabaseKey) {
@@ -61,16 +68,10 @@ if (supabaseUrl && supabaseKey) {
 export const supabase = client;
 
 // Service role client for server API routes (bypasses Row-Level Security)
-const serviceRoleKey = (
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY ||
-  ''
-).trim().replace(/^["']|["']$/g, '');
-
 let adminClient: any = null;
-if (supabaseUrl && serviceRoleKey) {
+if (supabaseUrl && serverApiKey) {
   try {
-    adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    adminClient = createClient(supabaseUrl, serverApiKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false
@@ -81,5 +82,6 @@ if (supabaseUrl && serviceRoleKey) {
   }
 }
 
-export const supabaseAdmin = adminClient || client;
+// Never silently use the public/anon client for privileged server operations.
+export const supabaseAdmin = adminClient;
 export const isServiceRoleConfigured = Boolean(adminClient);

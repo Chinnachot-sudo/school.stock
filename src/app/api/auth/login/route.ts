@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { isServiceRoleConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { verifyPassword } from '@/lib/auth-server';
 import { UserRole } from '@/types/inventory';
 import { cookies } from 'next/headers';
@@ -74,7 +74,7 @@ function clearMemoryFailedAttempts(key: string) {
 }
 
 async function checkRateLimit(key: string): Promise<{ isLocked: boolean; remainingMinutes?: number }> {
-  if (isSupabaseConfigured && supabase) {
+  if (isServiceRoleConfigured && supabase) {
     const { data, error } = await supabase.rpc('check_login_rate_limit', { p_identifier_hash: key });
     if (!error && data) {
       return {
@@ -88,7 +88,7 @@ async function checkRateLimit(key: string): Promise<{ isLocked: boolean; remaini
 }
 
 async function recordFailedAttempt(key: string): Promise<{ isNowLocked: boolean; attemptsLeft: number }> {
-  if (isSupabaseConfigured && supabase) {
+  if (isServiceRoleConfigured && supabase) {
     const { data, error } = await supabase.rpc('record_failed_login', { p_identifier_hash: key });
     if (!error && data) {
       return {
@@ -102,7 +102,7 @@ async function recordFailedAttempt(key: string): Promise<{ isNowLocked: boolean;
 }
 
 async function clearFailedAttempts(key: string): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
+  if (isServiceRoleConfigured && supabase) {
     const { error } = await supabase.rpc('clear_login_attempts', { p_identifier_hash: key });
     if (!error) {
       clearMemoryFailedAttempts(key);
@@ -147,6 +147,13 @@ function normalizeRole(role: string): UserRole {
 
 export async function POST(request: Request) {
   try {
+    const emergencyFallbackAllowed =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ALLOW_EMERGENCY_FALLBACK === 'true';
+    if ((!isServiceRoleConfigured || !supabase) && !emergencyFallbackAllowed) {
+      return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
+    }
+
     const body = await request.json();
     const { username, password } = body;
 
@@ -189,7 +196,7 @@ export async function POST(request: Request) {
       updated_at?: string;
     } | null = null;
 
-    if (isSupabaseConfigured && supabase) {
+    if (isServiceRoleConfigured && supabase) {
       try {
         const { data: userRows } = await supabase
           .from('app_users')
@@ -259,11 +266,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Built-in accounts fallback (Allowed ONLY in development or when Supabase DB is offline/unconfigured)
-    const isEmergencyFallbackAllowed =
-      process.env.NODE_ENV === 'development' ||
-      !isSupabaseConfigured ||
-      process.env.ALLOW_EMERGENCY_FALLBACK === 'true';
+    // 2. Built-in accounts are disabled unless explicitly enabled for non-production development.
+    const isEmergencyFallbackAllowed = emergencyFallbackAllowed;
 
     if (isEmergencyFallbackAllowed) {
       const fallbackKey = Object.keys(FALLBACK_USERS).find(

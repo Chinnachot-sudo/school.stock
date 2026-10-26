@@ -43,6 +43,10 @@ export function DepartmentsView() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newDepartmentName, setNewDepartmentName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -62,6 +66,28 @@ export function DepartmentsView() {
     return () => { active = false; };
   }, []);
 
+  const createDepartment = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const response = await fetch('/api/departments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newDepartmentName })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to save department.');
+      setDepartments(current => [...current, payload.department].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewDepartmentName('');
+      setShowAddForm(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save department.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -75,11 +101,22 @@ export function DepartmentsView() {
           </p>
         </div>
 
-        <button type="button" disabled title="Department creation is not connected to a save API." className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-300 text-slate-600 text-xs font-bold cursor-not-allowed">
+        <button type="button" onClick={() => { setShowAddForm(value => !value); setSaveError(null); }} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] text-white text-xs font-bold">
           <Plus className="w-4 h-4" />
-          <span>Add Department (Unavailable)</span>
+          <span>{showAddForm ? 'Cancel' : 'Add Department'}</span>
         </button>
       </div>
+
+      {showAddForm && (
+        <form onSubmit={createDepartment} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <label htmlFor="new-department-name" className="block text-xs font-bold text-slate-700">Department name</label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input id="new-department-name" value={newDepartmentName} onChange={event => setNewDepartmentName(event.target.value)} maxLength={120} required className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm" placeholder="Enter the actual department name" />
+            <button type="submit" disabled={isSaving} className="px-4 py-2 rounded-xl bg-[#0B6B4F] text-white text-xs font-bold disabled:opacity-60">{isSaving ? 'Saving…' : 'Save to Supabase'}</button>
+          </div>
+          {saveError && <p role="alert" className="text-xs text-rose-700">{saveError}</p>}
+        </form>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">

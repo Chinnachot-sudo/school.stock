@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { AppUser, UserRole } from '@/types/inventory';
 import { can, canAny, getUserPermissions, PermissionKey } from '@/lib/auth/permissions';
 import { verifySessionToken } from '@/lib/session';
-import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { isServiceRoleConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { toUiRole } from '@/lib/auth/roles';
 
 export function hashPassword(password: string, customSalt?: string): { hash: string; salt: string } {
@@ -74,13 +74,12 @@ export async function getServerUser(request?: Request): Promise<AppUser | null> 
     const verified = verifySessionToken(rawToken);
     if (verified) {
       const emergencyAllowed =
-        process.env.NODE_ENV === 'development' ||
-        !isSupabaseConfigured ||
+        process.env.NODE_ENV !== 'production' &&
         process.env.ALLOW_EMERGENCY_FALLBACK === 'true';
 
       if (verified.source === 'emergency') {
         if (!emergencyAllowed) return null;
-      } else if (isSupabaseConfigured && supabase) {
+      } else if (isServiceRoleConfigured && supabase) {
         const { data: currentUser, error } = await supabase
           .from('app_users')
           .select('id, username, name, email, role')
@@ -101,6 +100,10 @@ export async function getServerUser(request?: Request): Promise<AppUser | null> 
         };
         currentUserObj.permissions = getUserPermissions(currentUserObj);
         return currentUserObj;
+      } else {
+        // Database-backed sessions must be revalidated against the database.
+        // Fail closed when the server-only Supabase key is unavailable.
+        return null;
       }
 
       const userObj: AppUser = {
