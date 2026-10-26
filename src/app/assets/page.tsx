@@ -18,13 +18,36 @@ import {
   AssetBorrowView,
   AssetVerificationView
 } from '@/components/assets/AssetsSubViews';
+import type { AssetItem } from '@/components/assets/AssetsSubViews';
+import { useAuth } from '@/lib/auth-context';
 
 type AssetTab = 'register' | 'depreciation' | 'dispose' | 'borrow' | 'verification';
 
 function AssetsContent() {
+  const { can } = useAuth();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get('tab') as AssetTab) || 'register';
   const [activeTab, setActiveTab] = useState<AssetTab>(initialTab);
+  const [assets, setAssets] = useState<AssetItem[]>([]);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(true);
+  const [assetLoadError, setAssetLoadError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/assets', { cache: 'no-store' })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Unable to load assets from Supabase.');
+        if (!cancelled) setAssets(result.assets || []);
+      })
+      .catch(error => {
+        if (!cancelled) setAssetLoadError(error instanceof Error ? error.message : 'Unable to load assets from Supabase.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingAssets(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab') as AssetTab;
@@ -33,12 +56,11 @@ function AssetsContent() {
     }
   }, [searchParams]);
 
-  // The connected Supabase project has no assets table; do not present these as live totals.
   const stats = [
-    { label: 'Total Assets', value: '—', icon: Briefcase, color: 'text-emerald-700 bg-emerald-50' },
-    { label: 'Active in Use', value: '—', icon: CheckCircle2, color: 'text-blue-700 bg-blue-50' },
-    { label: 'On Loan / Borrowed', value: '—', icon: Repeat, color: 'text-amber-700 bg-amber-50' },
-    { label: 'Pending Dispose', value: '—', icon: Trash2, color: 'text-rose-700 bg-rose-50' },
+    { label: 'Total Assets', value: isLoadingAssets || assetLoadError ? '—' : assets.length, icon: Briefcase, color: 'text-emerald-700 bg-emerald-50' },
+    { label: 'Active in Use', value: isLoadingAssets || assetLoadError ? '—' : assets.filter(asset => asset.status === 'IN_USE').length, icon: CheckCircle2, color: 'text-blue-700 bg-blue-50' },
+    { label: 'On Loan / Borrowed', value: isLoadingAssets || assetLoadError ? '—' : assets.filter(asset => asset.status === 'ON_LOAN').length, icon: Repeat, color: 'text-amber-700 bg-amber-50' },
+    { label: 'Maintenance / Disposed', value: isLoadingAssets || assetLoadError ? '—' : assets.filter(asset => asset.status === 'MAINTENANCE' || asset.status === 'DISPOSED').length, icon: Trash2, color: 'text-rose-700 bg-rose-50' },
   ];
 
   const tabs: { key: AssetTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -80,9 +102,15 @@ function AssetsContent() {
         </div>
       </div>
 
-      <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-        Asset management is not connected to Supabase. No asset register exists in the connected database; actions and totals on this page are unavailable and must not be used as operational records.
-      </div>
+      {assetLoadError ? (
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-900">
+          Could not load the Asset Register from Supabase: {assetLoadError}
+        </div>
+      ) : (
+        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+          {isLoadingAssets ? 'Connecting to the Asset Register in Supabase...' : 'Asset Register data is loaded from Supabase.'} Borrowing, maintenance, disposal workflows, depreciation, verification, and export are not yet connected and must not be used as operational records.
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -127,14 +155,19 @@ function AssetsContent() {
         })}
       </div>
 
-      {/* The prototype views are intentionally read-only until persistence is implemented. */}
-      <fieldset disabled aria-label="Asset management is not connected" className="min-w-0 border-0 p-0 m-0 space-y-4">
       {activeTab === 'register' && (
         <AssetRegisterView
+          assets={assets}
+          onAssetsChange={setAssets}
+          isLoading={isLoadingAssets}
+          loadError={assetLoadError}
+          canCreateAsset={can('inventory:item:create')}
           onRunVerification={() => setActiveTab('verification')}
           onRunDepreciation={() => setActiveTab('depreciation')}
         />
       )}
+      {activeTab !== 'register' && (
+      <fieldset disabled aria-label="This asset workflow is not connected to Supabase" className="min-w-0 border-0 p-0 m-0 space-y-4">
       {activeTab === 'depreciation' && (
         <div className="space-y-4">
           <button
@@ -162,6 +195,7 @@ function AssetsContent() {
         </div>
       )}
       </fieldset>
+      )}
     </div>
   );
 }

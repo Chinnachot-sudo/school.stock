@@ -58,50 +58,12 @@ export function BorrowReturnView({
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'OVERDUE' | 'RETURNED'>('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Initial Loan Ledger
-  const [borrowLedger, setBorrowLedger] = useState<BorrowRecord[]>([
-    {
-      id: 'LN-20260920-01',
-      itemCode: 'EQ-SCI-004',
-      itemName: 'Digital Microscope 1000X HD',
-      borrowerName: 'Mr. David (Science Lab)',
-      department: 'Middle Years (MYP)',
-      borrowDate: '20 Sep 2026',
-      dueDate: '25 Sep 2026',
-      qty: 2,
-      status: 'ACTIVE',
-      note: 'Field trip biological sampling'
-    },
-    {
-      id: 'LN-20260918-03',
-      itemCode: 'EQ-AV-012',
-      itemName: 'Epson High-Lumen Wireless Projector',
-      borrowerName: 'Kru Sompong (Thai Dept)',
-      department: 'Diploma Programme (DP)',
-      borrowDate: '18 Sep 2026',
-      dueDate: '21 Sep 2026',
-      qty: 1,
-      status: 'OVERDUE',
-      note: 'Thai Poetry Annual Conference'
-    },
-    {
-      id: 'LN-20260915-02',
-      itemCode: 'EQ-PE-088',
-      itemName: 'Stopwatch Digital Professional 100-Lap',
-      borrowerName: 'Coach Marcus',
-      department: 'Physical Education & Sports',
-      borrowDate: '15 Sep 2026',
-      dueDate: '19 Sep 2026',
-      qty: 4,
-      status: 'RETURNED',
-      note: 'Sports Day Trials - Returned in good condition'
-    }
-  ]);
+  const [borrowLedger, setBorrowLedger] = useState<BorrowRecord[]>([]);
 
   // Form State
   const [selectedItemId, setSelectedItemId] = useState(items[0]?.id || '');
   const [borrowerName, setBorrowerName] = useState('');
-  const [departmentName, setDepartmentName] = useState(departments[0]?.name || 'Primary Years (PYP)');
+  const [departmentName, setDepartmentName] = useState(departments[0]?.name || '');
   const [borrowQty, setBorrowQty] = useState(1);
   const [dueDate, setDueDate] = useState('2026-09-30');
   const [loanNote, setLoanNote] = useState('');
@@ -114,25 +76,7 @@ export function BorrowReturnView({
 
   const handleCreateBorrow = (e: React.FormEvent) => {
     e.preventDefault();
-    const targetItem = items.find(i => i.id === selectedItemId) || items[0];
-    const newRecord: BorrowRecord = {
-      id: `LN-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(10 + Math.random() * 90)}`,
-      itemCode: targetItem?.code || 'EQ-001',
-      itemName: targetItem?.name || 'Equipment',
-      borrowerName: borrowerName.trim() || 'Staff Member',
-      department: departmentName,
-      borrowDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      dueDate: new Date(dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      qty: borrowQty,
-      status: 'ACTIVE',
-      note: loanNote
-    };
-
-    setBorrowLedger(prev => [newRecord, ...prev]);
     setIsAddModalOpen(false);
-    setBorrowerName('');
-    setLoanNote('');
-    if (onRecordBorrow) onRecordBorrow(newRecord);
   };
 
   const filtered = borrowLedger.filter(r => {
@@ -146,30 +90,34 @@ export function BorrowReturnView({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+        Equipment loan records are not connected to a database. No loan history is available, and borrow/return actions are disabled.
+      </div>
+
       {/* Header & Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <span className="text-xs font-bold text-slate-500">Currently On Loan</span>
           <div className="text-2xl font-black text-slate-900">
-            {borrowLedger.filter(r => r.status === 'ACTIVE').length} items
+            —
           </div>
-          <span className="text-[11px] text-blue-600 font-semibold">Active school equipment loans</span>
+          <span className="text-[11px] text-slate-500 font-semibold">Not available</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <span className="text-xs font-bold text-slate-500">Overdue Returns</span>
           <div className="text-2xl font-black text-rose-600">
-            {borrowLedger.filter(r => r.status === 'OVERDUE').length} items
+            —
           </div>
-          <span className="text-[11px] text-rose-500 font-semibold">Needs return notification</span>
+          <span className="text-[11px] text-slate-500 font-semibold">Not available</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <span className="text-xs font-bold text-slate-500">Total Returned</span>
           <div className="text-2xl font-black text-emerald-700">
-            {borrowLedger.filter(r => r.status === 'RETURNED').length} items
+            —
           </div>
-          <span className="text-[11px] text-emerald-600 font-semibold">Restocked in working order</span>
+          <span className="text-[11px] text-slate-500 font-semibold">Not available</span>
         </div>
       </div>
 
@@ -204,8 +152,10 @@ export function BorrowReturnView({
           </div>
 
           <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold shadow-sm transition active:scale-95 cursor-pointer"
+            type="button"
+            disabled
+            title="Equipment loan tracking is not connected to a database."
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-300 text-slate-600 text-xs font-bold shadow-sm cursor-not-allowed"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Record Borrow</span>
@@ -230,7 +180,13 @@ export function BorrowReturnView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filtered.map(row => (
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                    No database-backed equipment loan records are available.
+                  </td>
+                </tr>
+              ) : filtered.map(row => (
                 <tr key={row.id} className="hover:bg-slate-50/70 transition">
                   <td className="py-3 px-4 font-mono font-bold text-slate-900">{row.id}</td>
                   <td className="py-3 px-4">
@@ -262,8 +218,10 @@ export function BorrowReturnView({
                   <td className="py-3 px-4 text-center">
                     {row.status !== 'RETURNED' ? (
                       <button
-                        onClick={() => handleReturnItem(row.id)}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0B6B4F] text-[11px] font-bold border border-emerald-200 transition"
+                        type="button"
+                        disabled
+                        title="Equipment return tracking is not connected to a database."
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 text-[11px] font-bold border border-slate-200 cursor-not-allowed"
                       >
                         Mark Returned
                       </button>
@@ -408,66 +366,19 @@ export interface TransferRecord {
 }
 
 export function TransferView({ items }: { items: Item[] }) {
-  const [transfers, setTransfers] = useState<TransferRecord[]>([
-    {
-      id: 'TR-20260924-01',
-      itemCode: 'ST-A4-001',
-      itemName: 'Double A A4 80gsm Copy Paper',
-      sourceLoc: 'Main Warehouse (WH-A1)',
-      targetLoc: 'Primary School Office (PR-02)',
-      qty: 20,
-      transferredBy: 'Kru Prasert',
-      date: '24 Sep 2026, 09:30',
-      status: 'COMPLETED'
-    },
-    {
-      id: 'TR-20260923-04',
-      itemCode: 'UN-POLO-S',
-      itemName: 'School Uniform Polo (Size S)',
-      sourceLoc: 'Main Warehouse (WH-B2)',
-      targetLoc: 'Store Front Register (POS-01)',
-      qty: 50,
-      transferredBy: 'Ms. Supaporn',
-      date: '23 Sep 2026, 14:15',
-      status: 'COMPLETED'
-    }
-  ]);
+  const [transfers, setTransfers] = useState<TransferRecord[]>([]);
 
   const [selectedItemId, setSelectedItemId] = useState(items[0]?.id || '');
-  const [fromLoc, setFromLoc] = useState('Main Warehouse (Zone A)');
-  const [toLoc, setToLoc] = useState('School Store (POS-01)');
+  const [fromLoc, setFromLoc] = useState('');
+  const [toLoc, setToLoc] = useState('');
   const [transferQty, setTransferQty] = useState(10);
   const [note, setNote] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const locations = [
-    'Main Warehouse (Zone A)',
-    'Main Warehouse (Zone B)',
-    'School Store (POS-01)',
-    'Primary School Office',
-    'Middle School Office',
-    'Science Lab Storage',
-    'Sports Hall Storage'
-  ];
+  const locations: string[] = [];
 
   const handleTransferSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const item = items.find(i => i.id === selectedItemId) || items[0];
-    const newTx: TransferRecord = {
-      id: `TR-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(10 + Math.random() * 90)}`,
-      itemCode: item?.code || 'ST-001',
-      itemName: item?.name || 'Stock Item',
-      sourceLoc: fromLoc,
-      targetLoc: toLoc,
-      qty: transferQty,
-      transferredBy: 'Warehouse Keeper',
-      date: new Date().toLocaleString('en-GB'),
-      status: 'COMPLETED'
-    };
-
-    setTransfers(prev => [newTx, ...prev]);
-    setIsSuccess(true);
-    setTimeout(() => setIsSuccess(false), 3000);
   };
 
   return (
@@ -487,6 +398,9 @@ export function TransferView({ items }: { items: Item[] }) {
             </div>
           )}
 
+          <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            Stock transfers and storage locations are not connected to a database. Transfer submission is unavailable.
+          </p>
           <form onSubmit={handleTransferSubmit} className="space-y-3 text-xs">
             <div>
               <label className="block font-bold text-slate-700 mb-1">Select Item to Transfer:</label>
@@ -554,6 +468,7 @@ export function TransferView({ items }: { items: Item[] }) {
 
             <button
               type="submit"
+              disabled
               className="w-full py-2.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition"
             >
               Execute Stock Transfer
@@ -569,7 +484,9 @@ export function TransferView({ items }: { items: Item[] }) {
           </h3>
 
           <div className="divide-y divide-slate-100">
-            {transfers.map(tr => (
+            {transfers.length === 0 ? (
+              <p className="py-8 text-center text-xs text-slate-500">No database-backed transfer records are available.</p>
+            ) : transfers.map(tr => (
               <div key={tr.id} className="py-3 space-y-1.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-mono font-bold text-slate-900">{tr.id}</span>
@@ -642,13 +559,11 @@ export function StockCountView({ items }: { items: Item[] }) {
           </label>
 
           <button
-            onClick={() => {
-              setReconciled(true);
-              alert('Stock count reconciled! Adjustments recorded into inventory ledger.');
-            }}
+            type="button"
+            disabled
             className="px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold shadow-sm transition"
           >
-            Post Reconciliation
+            Posting unavailable
           </button>
         </div>
       </div>
@@ -691,7 +606,7 @@ export function StockCountView({ items }: { items: Item[] }) {
                     <tr key={item.id} className="hover:bg-slate-50/70 transition">
                       <td className="py-3 px-4 font-mono font-bold text-slate-900">{item.code}</td>
                       <td className="py-3 px-4 font-semibold text-slate-800">{item.name}</td>
-                      <td className="py-3 px-4 text-slate-500">{item.location || 'Warehouse A'}</td>
+                      <td className="py-3 px-4 text-slate-500">{item.location || '—'}</td>
                       <td className="py-3 px-4 text-center font-bold text-slate-900">
                         {item.currentStock} {item.unit}
                       </td>
@@ -735,45 +650,7 @@ export function StockCountView({ items }: { items: Item[] }) {
 // 4. LOCATIONS VIEW (Warehouses, Zones, and Bin Locations)
 // ============================================================================
 export function LocationsView() {
-  const warehouses = [
-    {
-      id: 'WH-MAIN',
-      name: 'Main Central Warehouse',
-      zone: 'Building C, Ground Floor',
-      capacity: '85%',
-      shelves: 24,
-      totalItems: 480,
-      color: 'border-emerald-200 bg-emerald-50/30 text-[#0B6B4F]'
-    },
-    {
-      id: 'WH-STORE',
-      name: 'School Store & Uniforms',
-      zone: 'Student Center, 1st Floor',
-      capacity: '92%',
-      shelves: 12,
-      totalItems: 145,
-      color: 'border-blue-200 bg-blue-50/30 text-blue-700'
-    },
-    {
-      id: 'WH-SCI',
-      name: 'Science Prep & Chemical Room',
-      zone: 'Science Building, 3rd Floor',
-      capacity: '60%',
-      shelves: 8,
-      totalItems: 92,
-      color: 'border-purple-200 bg-purple-50/30 text-purple-700'
-    },
-    {
-      id: 'WH-SPORTS',
-      name: 'Sports Equipment Shed',
-      zone: 'Gymnasium Complex',
-      capacity: '70%',
-      shelves: 6,
-      totalItems: 74,
-      color: 'border-amber-200 bg-amber-50/30 text-amber-700'
-    }
-  ];
-
+  const warehouses: Array<{ id: string; name: string; zone: string; capacity: string; shelves: number; totalItems: number; color: string }> = [];
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -787,17 +664,18 @@ export function LocationsView() {
           </p>
         </div>
 
-        <button
-          onClick={() => alert('New storage location creation dialog')}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold transition shadow-sm"
-        >
+        <button type="button" disabled title="Storage locations are not connected to a database." className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-300 text-slate-600 text-xs font-bold cursor-not-allowed">
           <Plus className="w-3.5 h-3.5" />
           <span>Add Location / Bin</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {warehouses.map(wh => (
+        {warehouses.length === 0 ? (
+          <p className="md:col-span-2 rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            No storage location records are available in the connected database.
+          </p>
+        ) : warehouses.map(wh => (
           <div key={wh.id} className={`p-5 rounded-2xl border ${wh.color} shadow-sm space-y-3`}>
             <div className="flex items-center justify-between">
               <span className="font-mono font-bold text-xs">{wh.id}</span>
@@ -826,26 +704,7 @@ export function LocationsView() {
 export function PurchaseRequestsView({ items }: { items: Item[] }) {
   const lowItems = items.filter(i => i.currentStock <= i.minStock);
 
-  const purchaseRequests = [
-    {
-      id: 'PR-20260924-001',
-      date: '24 Sep 2026',
-      requestedBy: 'Inventory Manager',
-      itemsCount: 6,
-      estimatedCost: 28400,
-      status: 'PENDING_APPROVAL',
-      supplier: 'Double A Paper Co., Ltd.'
-    },
-    {
-      id: 'PR-20260920-003',
-      date: '20 Sep 2026',
-      requestedBy: 'Store Supervisor',
-      itemsCount: 4,
-      estimatedCost: 45000,
-      status: 'APPROVED',
-      supplier: 'School Uniform Tailors Co.'
-    }
-  ];
+  const purchaseRequests: Array<{ id: string; date: string; requestedBy: string; itemsCount: number; estimatedCost: number; status: string; supplier: string }> = [];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -860,10 +719,7 @@ export function PurchaseRequestsView({ items }: { items: Item[] }) {
           </p>
         </div>
 
-        <button
-          onClick={() => alert(`Generated PR with ${lowItems.length} low stock items!`)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold transition shadow-sm"
-        >
+        <button type="button" disabled title="Purchase request records are not connected to a database." className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-300 text-slate-600 text-xs font-bold cursor-not-allowed">
           <Plus className="w-4 h-4" />
           <span>Generate PR for Low Stock ({lowItems.length})</span>
         </button>
@@ -885,7 +741,7 @@ export function PurchaseRequestsView({ items }: { items: Item[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {purchaseRequests.map(pr => (
+              {purchaseRequests.length === 0 ? <tr><td colSpan={8} className="py-8 text-center text-slate-500">No purchase request records are available in Supabase.</td></tr> : purchaseRequests.map(pr => (
                 <tr key={pr.id} className="hover:bg-slate-50/70 transition">
                   <td className="py-3 px-4 font-mono font-bold text-slate-900">{pr.id}</td>
                   <td className="py-3 px-4 text-slate-500">{pr.date}</td>
@@ -973,7 +829,7 @@ export function ReorderPointsView({
                   <tr key={item.id} className="hover:bg-slate-50/70 transition">
                     <td className="py-3 px-4 font-mono font-bold text-slate-900">{item.code}</td>
                     <td className="py-3 px-4 font-bold text-slate-800">{item.name}</td>
-                    <td className="py-3 px-4 text-slate-500">{item.location || 'Warehouse A'}</td>
+                    <td className="py-3 px-4 text-slate-500">{item.location || '—'}</td>
                     <td className="py-3 px-4 text-center font-black text-rose-600">
                       {item.currentStock} {item.unit}
                     </td>
@@ -997,7 +853,7 @@ export function ReorderPointsView({
               {lowItems.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-400 italic">
-                    All inventory items are currently above safety reorder thresholds!
+                    {items.length === 0 ? 'No inventory records are available in Supabase.' : 'No items are currently at or below the configured minimum stock level.'}
                   </td>
                 </tr>
               )}

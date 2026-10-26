@@ -37,8 +37,8 @@ export interface ShiftViewProps {
 }
 
 export function ShiftView({ receipts, cashierName, onPrintZReport }: ShiftViewProps) {
-  const [openingFloat, setOpeningFloat] = useState(2000);
-  const [actualCash, setActualCash] = useState<number>(2000);
+  const [openingFloat, setOpeningFloat] = useState(0);
+  const [actualCash, setActualCash] = useState<number>(0);
   const [closingNote, setClosingNote] = useState('');
   const [isClosed, setIsClosed] = useState(false);
   const [cashActionModal, setCashActionModal] = useState<'IN' | 'OUT' | null>(null);
@@ -61,30 +61,7 @@ export function ShiftView({ receipts, cashierName, onPrintZReport }: ShiftViewPr
   const expectedCashInDrawer = openingFloat + cashSales;
   const variance = actualCash - expectedCashInDrawer;
 
-  const pastShifts = [
-    {
-      id: 'SH-20260923-02',
-      date: '23 Sep 2026 (Evening)',
-      cashier: 'Ms. Supaporn',
-      float: 2000,
-      cashSales: 8420,
-      qrSales: 11250,
-      total: 19670,
-      variance: 0,
-      status: 'CLOSED_BALANCED'
-    },
-    {
-      id: 'SH-20260923-01',
-      date: '23 Sep 2026 (Morning)',
-      cashier: 'Mr. Anan',
-      float: 2000,
-      cashSales: 14100,
-      qrSales: 8900,
-      total: 23000,
-      variance: -20,
-      status: 'CLOSED_DISCREPANCY'
-    }
-  ];
+  const pastShifts: Array<{ id: string; date: string; cashier: string; float: number; cashSales: number; qrSales: number; total: number; variance: number; status: string }> = [];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -97,7 +74,7 @@ export function ShiftView({ receipts, cashierName, onPrintZReport }: ShiftViewPr
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-black text-slate-900">
-                Shift #SH-20260924-01
+                Shift tracking unavailable
               </h2>
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide border ${
                 isClosed
@@ -274,7 +251,7 @@ export function ShiftView({ receipts, cashierName, onPrintZReport }: ShiftViewPr
           </h3>
 
           <div className="divide-y divide-slate-100">
-            {pastShifts.map(s => (
+            {pastShifts.length === 0 ? <p className="py-6 text-center text-xs text-slate-500">No shift history is stored in Supabase.</p> : pastShifts.map(s => (
               <div key={s.id} className="py-3 flex items-center justify-between text-xs">
                 <div>
                   <div className="flex items-center gap-2 font-bold text-slate-800">

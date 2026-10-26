@@ -40,7 +40,7 @@ export interface AssetItem {
   location: string;
   custodian: string;
   purchaseDate: string;
-  cost: number;
+  cost: number | null;
   status: string;
 }
 
@@ -95,56 +95,81 @@ export interface AuditRecord {
 // 1. ASSET REGISTER VIEW (Fixed Assets Register & Master)
 // ============================================================================
 export function AssetRegisterView({
+  assets,
+  onAssetsChange,
+  isLoading = false,
+  loadError = '',
+  canCreateAsset = false,
   onRunVerification,
   onRunDepreciation
 }: {
+  assets: AssetItem[];
+  onAssetsChange: (assets: AssetItem[]) => void;
+  isLoading?: boolean;
+  loadError?: string;
+  canCreateAsset?: boolean;
   onRunVerification?: () => void;
   onRunDepreciation?: () => void;
-} = {}) {
+}) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  // Asset Register State
-  const [assets, setAssets] = useState<AssetItem[]>([]);
-
-  // New Asset Form State
-  const [newCode, setNewCode] = useState(`AST-2024-${String(assets.length + 1).padStart(3, '0')}`);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [newCode, setNewCode] = useState('');
   const [newName, setNewName] = useState('');
   const [newSerial, setNewSerial] = useState('');
-  const [newCat, setNewCat] = useState('IT_COMPUTER');
+  const [newCat, setNewCat] = useState('');
   const [newLoc, setNewLoc] = useState('');
   const [newCustodian, setNewCustodian] = useState('');
-  const [newCost, setNewCost] = useState(25000);
-  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newCost, setNewCost] = useState('');
+  const [newDate, setNewDate] = useState('');
+  const [newStatus, setNewStatus] = useState('');
 
-  const handleAddAsset = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim() || !newCode.trim()) return;
-
-    setAssets(prev => [
-      {
-        id: `ast-${Date.now()}`,
-        code: newCode,
-        name: newName,
-        serial: newSerial || 'N/A',
-        category: newCat,
-        location: newLoc || 'Central Store',
-        custodian: newCustodian || 'Admin Office',
-        purchaseDate: newDate,
-        cost: Number(newCost) || 0,
-        status: 'IN_USE',
-      },
-      ...prev
-    ]);
-
-    setIsAddModalOpen(false);
+  const resetForm = () => {
+    setNewCode('');
     setNewName('');
     setNewSerial('');
+    setNewCat('');
     setNewLoc('');
     setNewCustodian('');
-    setNewCode(`AST-2024-${String(assets.length + 2).padStart(3, '0')}`);
+    setNewCost('');
+    setNewDate('');
+    setNewStatus('');
+    setSaveError('');
+  };
+
+  const handleAddAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setSaveError('');
+    try {
+      const response = await fetch('/api/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newCode,
+          name: newName,
+          serial: newSerial,
+          category: newCat,
+          location: newLoc,
+          custodian: newCustodian,
+          purchaseDate: newDate,
+          cost: newCost,
+          status: newStatus
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to save asset.');
+      onAssetsChange([result.asset, ...assets]);
+      setIsAddModalOpen(false);
+      resetForm();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save asset to Supabase.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const filteredAssets = assets.filter(a => {
@@ -196,10 +221,9 @@ export function AssetRegisterView({
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium"
           >
             <option value="ALL">All Categories</option>
-            <option value="IT_COMPUTER">IT & Computers</option>
-            <option value="AUDIO_VISUAL">Audio-Visual & Sound</option>
-            <option value="SCIENCE_LAB">Science & Laboratories</option>
-            <option value="MUSIC_ARTS">Music & Performing Arts</option>
+            {Array.from(new Set(assets.map(asset => asset.category).filter(Boolean))).sort().map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
           </select>
 
           <select
@@ -237,13 +261,13 @@ export function AssetRegisterView({
             </button>
           )}
 
-          <button
+          {canCreateAsset && <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-[#095740] text-white text-xs font-bold shadow-sm transition shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Asset</span>
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -264,8 +288,8 @@ export function AssetRegisterView({
             <tbody className="divide-y divide-slate-100">
               {filteredAssets.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
-                    No asset records found matching your filters.
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                    {isLoading ? 'Loading asset records from Supabase...' : loadError || 'No asset records found matching your filters.'}
                   </td>
                 </tr>
               ) : (
@@ -273,37 +297,28 @@ export function AssetRegisterView({
                   <tr key={asset.id} className="hover:bg-slate-50/60 transition">
                     <td className="py-3.5 px-4">
                       <span className="font-mono font-bold text-slate-900 block">{asset.code}</span>
-                      <span className="font-mono text-[11px] text-slate-400 block mt-0.5">S/N: {asset.serial}</span>
+                      {asset.serial && <span className="font-mono text-[11px] text-slate-400 block mt-0.5">S/N: {asset.serial}</span>}
                     </td>
                     <td className="py-3.5 px-4">
                       <span className="font-bold text-slate-900 block">{asset.name}</span>
-                      <span className="text-[11px] text-slate-500 block mt-0.5">{asset.category.replace('_', ' ')}</span>
+                      {asset.category && <span className="text-[11px] text-slate-500 block mt-0.5">{asset.category}</span>}
                     </td>
                     <td className="py-3.5 px-4">
                       <span className="text-slate-800 block flex items-center gap-1">
-                        <Building className="w-3 h-3 text-slate-400" />
-                        {asset.location}
+                        {asset.location && <><Building className="w-3 h-3 text-slate-400" />{asset.location}</>}
                       </span>
                       <span className="text-[11px] text-slate-500 block mt-0.5 flex items-center gap-1">
-                        <User className="w-3 h-3 text-slate-400" />
-                        {asset.custodian}
+                        {asset.custodian && <><User className="w-3 h-3 text-slate-400" />{asset.custodian}</>}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right font-mono font-semibold text-slate-900">
-                      ฿{asset.cost.toLocaleString()}
+                      {asset.cost === null ? '—' : `฿${asset.cost.toLocaleString()}`}
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       {getStatusBadge(asset.status)}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => alert(`QR Tag for [${asset.code}] - ${asset.name}\nReady to print label sticker.`)}
-                        className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg inline-flex items-center gap-1 text-[11px] font-semibold border border-slate-200"
-                        title="Print Barcode / QR Tag"
-                      >
-                        <QrCode className="w-3.5 h-3.5 text-slate-700" />
-                        <span>Tag</span>
-                      </button>
+                      <span className="text-slate-400">—</span>
                     </td>
                   </tr>
                 ))
@@ -334,6 +349,7 @@ export function AssetRegisterView({
                     value={newCode}
                     onChange={(e) => setNewCode(e.target.value)}
                     required
+                    placeholder="Enter the actual asset tag"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900"
                   />
                 </div>
@@ -343,7 +359,7 @@ export function AssetRegisterView({
                     type="text"
                     value={newSerial}
                     onChange={(e) => setNewSerial(e.target.value)}
-                    placeholder="e.g. SN-8839210"
+                    placeholder="Enter serial number if available"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900"
                   />
                 </div>
@@ -355,7 +371,7 @@ export function AssetRegisterView({
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. MacBook Pro 14' M3 Pro"
+                  placeholder="Enter the actual asset name"
                   required
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                 />
@@ -364,17 +380,13 @@ export function AssetRegisterView({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Category</label>
-                  <select
+                  <input
+                    type="text"
                     value={newCat}
                     onChange={(e) => setNewCat(e.target.value)}
+                    placeholder="Enter category if known"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
-                  >
-                    <option value="IT_COMPUTER">IT & Computers</option>
-                    <option value="AUDIO_VISUAL">Audio-Visual & Sound</option>
-                    <option value="SCIENCE_LAB">Science & Laboratories</option>
-                    <option value="MUSIC_ARTS">Music & Performing Arts</option>
-                    <option value="FURNITURE">Campus Furniture & Fixtures</option>
-                  </select>
+                  />
                 </div>
 
                 <div>
@@ -382,8 +394,10 @@ export function AssetRegisterView({
                   <input
                     type="number"
                     value={newCost}
-                    onChange={(e) => setNewCost(Number(e.target.value))}
-                    required
+                    onChange={(e) => setNewCost(e.target.value)}
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter actual cost if known"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900"
                   />
                 </div>
@@ -396,8 +410,7 @@ export function AssetRegisterView({
                     type="text"
                     value={newLoc}
                     onChange={(e) => setNewLoc(e.target.value)}
-                    placeholder="e.g. Lab 2, Building A"
-                    required
+                    placeholder="Enter actual room or location"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                   />
                 </div>
@@ -408,26 +421,45 @@ export function AssetRegisterView({
                     type="text"
                     value={newCustodian}
                     onChange={(e) => setNewCustodian(e.target.value)}
-                    placeholder="e.g. Kru Somchai (Science)"
-                    required
+                    placeholder="Enter actual custodian if assigned"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                   />
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Purchase Date</label>
+                  <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900" />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Status</label>
+                  <select required value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900">
+                    <option value="">Select actual status</option>
+                    <option value="IN_USE">Active / In Use</option>
+                    <option value="ON_LOAN">On Loan</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="DISPOSED">Disposed</option>
+                  </select>
+                </div>
+              </div>
+
+              {saveError && <p role="alert" className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-rose-700">{saveError}</p>}
+
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
+                  onClick={() => { setIsAddModalOpen(false); setSaveError(''); }}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#0B6B4F] hover:bg-[#095740] text-white rounded-xl font-bold"
+                  disabled={isSaving}
+                  className="px-5 py-2 bg-[#0B6B4F] hover:bg-[#095740] disabled:opacity-60 text-white rounded-xl font-bold"
                 >
-                  Save & Print Tag
+                  {isSaving ? 'Saving to Supabase...' : 'Save Asset'}
                 </button>
               </div>
             </form>

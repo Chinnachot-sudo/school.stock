@@ -113,17 +113,9 @@ export function DepartmentsView() {
 // 2. PRICING & PROMOTIONS VIEW (Customer Tier Pricing & Discounts)
 // ============================================================================
 export function PricingPromotionsView() {
-  const [tiers, setTiers] = useState([
-    { role: 'STUDENT', label: 'Enrolled Students', discount: 'Standard Store Price (0% off)', autoSubsidized: false },
-    { role: 'TEACHER', label: 'Faculty & Teachers', discount: '10% Staff Welfare Discount', autoSubsidized: true },
-    { role: 'PARENT', label: 'Parents / PTA Members', discount: '5% PTA Member Discount', autoSubsidized: false },
-    { role: 'GENERAL', label: 'General Public / Visitors', discount: 'Full Retail Price', autoSubsidized: false },
-  ]);
+  const tiers: Array<{ role: string; label: string; discount: string; autoSubsidized: boolean }> = [];
 
-  const [promotions, setPromotions] = useState([
-    { code: 'BACK2SCHOOL26', name: 'Back to School Uniform Bundle', discount: '15% Off when buying 3+ uniform items', validUntil: '31 Oct 2026', status: 'ACTIVE' },
-    { code: 'STATIONERY10', name: 'Bulk Stationery Discount', discount: '10% Off copy paper cartons (5+ reams)', validUntil: '31 Dec 2026', status: 'ACTIVE' },
-  ]);
+  const promotions: Array<{ code: string; name: string; discount: string; validUntil: string; status: string }> = [];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -141,7 +133,7 @@ export function PricingPromotionsView() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {tiers.map((t, idx) => (
+          {tiers.length === 0 ? <p className="text-xs text-slate-500">No pricing rules are stored in Supabase.</p> : tiers.map((t, idx) => (
             <div key={idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2 text-xs">
               <div className="flex items-center justify-between font-bold text-slate-900">
                 <span>{t.label}</span>
@@ -186,7 +178,7 @@ export function PricingPromotionsView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {promotions.map(p => (
+              {promotions.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No promotion records are stored in Supabase.</td></tr> : promotions.map(p => (
                 <tr key={p.code} className="hover:bg-slate-50/70 transition">
                   <td className="py-3 px-3 font-mono font-black text-[#0B6B4F]">{p.code}</td>
                   <td className="py-3 px-3 font-bold text-slate-900">{p.name}</td>
@@ -211,17 +203,11 @@ export function PricingPromotionsView() {
 // ============================================================================
 export function ApprovalWorkflowView() {
   const [saved, setSaved] = useState(false);
-  const [tier1Limit, setTier1Limit] = useState(1000);
-  const [tier2Limit, setTier2Limit] = useState(5000);
+  const tier1Limit = undefined as number | undefined;
+  const tier2Limit = undefined as number | undefined;
 
   // Deduction Reasons Presets (for Stock Issue & Approvals)
-  const [deductionReasons, setDeductionReasons] = useState([
-    { id: 'teach', label: 'Instructional & Classroom Use', desc: 'Learning materials, student handouts, exercise books, textbooks', status: 'ACTIVE' },
-    { id: 'activity', label: 'School Events & Co-Curricular', desc: 'Campus events, sports day, exhibitions, workshops', status: 'ACTIVE' },
-    { id: 'office', label: 'Administrative & Office Operations', desc: 'Office stationery, paper, folders, general office supplies', status: 'ACTIVE' },
-    { id: 'damage', label: 'Damaged / Obsolete / Expired', desc: 'Disposal of unusable, broken, or outdated inventory', status: 'ACTIVE' },
-    { id: 'adjust', label: 'Periodic Stock Audit Adjustment', desc: 'Discrepancy adjustment following physical stock count', status: 'ACTIVE' },
-  ]);
+  const [deductionReasons, setDeductionReasons] = useState<Array<{ id: string; label: string; desc: string; status: string }>>([]);
   const [isAddReasonOpen, setIsAddReasonOpen] = useState(false);
   const [newReasonLabel, setNewReasonLabel] = useState('');
   const [newReasonDesc, setNewReasonDesc] = useState('');
@@ -292,8 +278,8 @@ export function ApprovalWorkflowView() {
               <span className="font-bold text-slate-700">Requisitions up to (฿):</span>
               <input
                 type="number"
-                value={tier1Limit}
-                onChange={e => setTier1Limit(Number(e.target.value))}
+                value={tier1Limit ?? ''}
+                disabled
                 className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-black text-slate-900 font-mono"
               />
             </div>
@@ -311,11 +297,11 @@ export function ApprovalWorkflowView() {
               Medium requisitions for classroom materials and subject-specific textbooks
             </p>
             <div className="flex items-center gap-3 pt-2">
-              <span className="font-bold text-slate-700">Requisitions between ฿{tier1Limit.toLocaleString()} and (฿):</span>
+              <span className="font-bold text-slate-700">Requisitions between ฿{tier1Limit?.toLocaleString() ?? '—'} and (฿):</span>
               <input
                 type="number"
-                value={tier2Limit}
-                onChange={e => setTier2Limit(Number(e.target.value))}
+                value={tier2Limit ?? ''}
+                disabled
                 className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-black text-slate-900 font-mono"
               />
             </div>
@@ -330,7 +316,7 @@ export function ApprovalWorkflowView() {
               </span>
             </div>
             <p className="text-slate-500">
-              High-value capital equipment, laboratory apparatus, or bulk annual orders exceeding ฿{tier2Limit.toLocaleString()}
+              High-value capital equipment, laboratory apparatus, or bulk annual orders exceeding ฿{tier2Limit?.toLocaleString() ?? '—'}
             </p>
           </div>
 
@@ -370,7 +356,7 @@ export function ApprovalWorkflowView() {
         </div>
 
         <div className="space-y-2.5">
-          {deductionReasons.map(r => (
+          {deductionReasons.length === 0 ? <p className="py-6 text-center text-xs text-slate-500">No deduction reason records are stored in Supabase.</p> : deductionReasons.map(r => (
             <div key={r.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-bold text-slate-900 block">{r.label}</span>
@@ -450,15 +436,7 @@ export function ApprovalWorkflowView() {
 // 4. DOCUMENT NUMBERING VIEW (Document Sequence Formats)
 // ============================================================================
 export function DocumentNumberingView() {
-  const formats = [
-    { type: 'Tax Invoice', prefix: 'INV-', format: '{YYYY}{MM}-{XXXX}', sample: 'INV-202609-0042', nextSeq: 43 },
-    { type: 'Official Receipt', prefix: 'RC', format: '{YY}{MM}-{XXXX}', sample: 'RC2609-0128', nextSeq: 129 },
-    { type: 'Purchase Request', prefix: 'PR-', format: '{YYYY}{MM}-{XXXX}', sample: 'PR-202609-0012', nextSeq: 13 },
-    { type: 'Stock Transfer', prefix: 'TR-', format: '{YYYY}{MM}-{XXXX}', sample: 'TR-202609-0008', nextSeq: 9 },
-    { type: 'Credit Note', prefix: 'CN-', format: '{YYYY}{MM}-{XXXX}', sample: 'CN-202609-0003', nextSeq: 4 },
-    { type: 'Equipment Loan', prefix: 'LN-', format: '{YYYY}{MM}{DD}-{XX}', sample: 'LN-20260924-05', nextSeq: 6 },
-    { type: 'Asset Register', prefix: 'AST-', format: '{YYYY}-{XXXXX}', sample: 'AST-2026-00142', nextSeq: 143 },
-  ];
+  const formats: Array<{ type: string; prefix: string; format: string; sample: string; nextSeq: number }> = [];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -487,7 +465,7 @@ export function DocumentNumberingView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {formats.map((f, idx) => (
+              {formats.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-slate-500">No document numbering settings are stored in Supabase.</td></tr> : formats.map((f, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/70 transition">
                   <td className="py-3 px-4 font-bold text-slate-900">{f.type}</td>
                   <td className="py-3 px-4 font-mono font-bold text-[#0B6B4F]">{f.prefix}</td>
@@ -519,10 +497,10 @@ export function DocumentNumberingView() {
 // 5. NOTIFICATIONS SETTINGS VIEW (Automated Notification Configuration)
 // ============================================================================
 export function NotificationsSettingsView() {
-  const [lineToken, setLineToken] = useState('********************************');
-  const [notifyLowStock, setNotifyLowStock] = useState(true);
-  const [notifyDailySales, setNotifyDailySales] = useState(true);
-  const [notifyApprovals, setNotifyApprovals] = useState(true);
+  const [lineToken, setLineToken] = useState('');
+  const [notifyLowStock, setNotifyLowStock] = useState(false);
+  const [notifyDailySales, setNotifyDailySales] = useState(false);
+  const [notifyApprovals, setNotifyApprovals] = useState(false);
   const [saved, setSaved] = useState(false);
 
   return (
@@ -738,14 +716,7 @@ export function BackupMaintenanceView() {
 // 7. STORAGE LOCATIONS VIEW (Campus Warehouses & Store Depots)
 // ============================================================================
 export function StorageLocationsView() {
-  const [locations, setLocations] = useState([
-    { id: 'loc-1', code: 'LOC-MAIN', name: 'Central Warehouse', building: 'Administration Building, Fl 1', desc: 'Central logistics depot for bulk receipts & distribution', capacity: 'High Capacity', status: 'ACTIVE' },
-    { id: 'loc-2', code: 'LOC-SEC', name: 'Secondary Store', building: 'Secondary School Building, Fl 2', desc: 'MYP & DP classroom supplies and textbooks', capacity: 'Standard', status: 'ACTIVE' },
-    { id: 'loc-3', code: 'LOC-PRI', name: 'Primary Store', building: 'Primary School Building, Fl 1', desc: 'PYP elementary learning supplies and craft kits', capacity: 'Standard', status: 'ACTIVE' },
-    { id: 'loc-4', code: 'LOC-SPORT', name: 'Sports Center Depot', building: 'Athletics Complex & Pool', desc: 'Sports equipment, athletics kits, and uniforms', capacity: 'Medium', status: 'ACTIVE' },
-    { id: 'loc-5', code: 'LOC-SHOP', name: 'School Store / POS Counter', building: 'Administration Building Lobby', desc: 'Uniform retail counter and student supply sales', capacity: 'High Turnover', status: 'ACTIVE' },
-    { id: 'loc-6', code: 'LOC-LAB', name: 'Science Laboratory Prep Room', building: 'Science Center, Fl 3', desc: 'Laboratory apparatus, glassware, and safe storage', capacity: 'Restricted', status: 'ACTIVE' },
-  ]);
+  const [locations, setLocations] = useState<any[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLoc, setEditingLoc] = useState<any>(null);
@@ -818,10 +789,7 @@ export function StorageLocationsView() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-        >
+        <button type="button" disabled title="Storage locations are not connected to a database." className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-300 text-slate-600 text-xs font-bold cursor-not-allowed">
           <Plus className="w-4 h-4" />
           <span>Add Location</span>
         </button>
@@ -842,7 +810,7 @@ export function StorageLocationsView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {locations.map(loc => (
+              {locations.length === 0 ? <tr><td colSpan={7} className="py-8 text-center text-slate-500">No storage location records are available in Supabase.</td></tr> : locations.map(loc => (
                 <tr key={loc.id} className="hover:bg-slate-50/70 transition">
                   <td className="py-3 px-4 font-mono font-bold text-[#0B6B4F]">{loc.code}</td>
                   <td className="py-3 px-4 font-bold text-slate-900">{loc.name}</td>
@@ -989,18 +957,7 @@ export function StorageLocationsView() {
 // 8. UNITS OF MEASURE VIEW (CRUD Table: Code, Name, Type, Status, Actions)
 // ============================================================================
 export function UnitsOfMeasureView() {
-  const [units, setUnits] = useState([
-    { id: 'uom-1', code: 'PCS', name: 'Piece / Unit', type: 'Discrete Count', status: 'ACTIVE' },
-    { id: 'uom-2', code: 'BOX', name: 'Box', type: 'Packaging Container', status: 'ACTIVE' },
-    { id: 'uom-3', code: 'PACK', name: 'Pack', type: 'Bundle Packaging', status: 'ACTIVE' },
-    { id: 'uom-4', code: 'REAM', name: 'Ream (500 Sheets)', type: 'Paper / Stationery', status: 'ACTIVE' },
-    { id: 'uom-5', code: 'ROLL', name: 'Roll', type: 'Continuous Length', status: 'ACTIVE' },
-    { id: 'uom-6', code: 'BTL', name: 'Bottle', type: 'Liquid / Chemical', status: 'ACTIVE' },
-    { id: 'uom-7', code: 'SET', name: 'Set / Kit', type: 'Composite Kit', status: 'ACTIVE' },
-    { id: 'uom-8', code: 'KG', name: 'Kilogram (kg)', type: 'Mass / Weight', status: 'ACTIVE' },
-    { id: 'uom-9', code: 'BOOK', name: 'Book', type: 'Discrete Count', status: 'ACTIVE' },
-    { id: 'uom-10', code: 'SHEET', name: 'Sheet', type: 'Surface Area', status: 'ACTIVE' },
-  ]);
+  const [units, setUnits] = useState<any[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<any>(null);
@@ -1068,10 +1025,7 @@ export function UnitsOfMeasureView() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-        >
+        <button type="button" disabled title="Units of measure are not stored in a Supabase table." className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-300 text-slate-600 text-xs font-bold cursor-not-allowed">
           <Plus className="w-4 h-4" />
           <span>Add Unit of Measure</span>
         </button>
@@ -1090,7 +1044,7 @@ export function UnitsOfMeasureView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {units.map(unit => (
+              {units.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No units of measure are stored in Supabase.</td></tr> : units.map(unit => (
                 <tr key={unit.id} className="hover:bg-slate-50/70 transition">
                   <td className="py-3 px-4 font-mono font-black text-[#0B6B4F] text-xs">{unit.code}</td>
                   <td className="py-3 px-4 font-bold text-slate-900">{unit.name}</td>
@@ -1227,14 +1181,24 @@ export function UnitsOfMeasureView() {
 // 9. CATEGORIES VIEW (Item Taxonomy & Master Categories)
 // ============================================================================
 export function CategoriesView() {
-  const [categories, setCategories] = useState([
-    { id: 'cat-1', code: 'UNIFORM', name: 'School Uniforms & Apparel', desc: 'Student shirts, skirts, trousers, PE uniforms, and ties', itemCount: 42, status: 'ACTIVE' },
-    { id: 'cat-2', code: 'STATIONERY', name: 'Stationery & Writing', desc: 'Pens, pencils, erasers, notebooks, paper, markers', itemCount: 128, status: 'ACTIVE' },
-    { id: 'cat-3', code: 'TEXTBOOK', name: 'Textbooks & Workbooks', desc: 'IB PYP, MYP, DP curriculum study guides and textbooks', itemCount: 65, status: 'ACTIVE' },
-    { id: 'cat-4', code: 'SCIENCE', name: 'Science Laboratory Supplies', desc: 'Chemicals, test tubes, beakers, gloves, filter papers', itemCount: 34, status: 'ACTIVE' },
-    { id: 'cat-5', code: 'ART_CRAFT', name: 'Visual Arts & Craft', desc: 'Paints, sketch pads, clay, brushes, canvas, palettes', itemCount: 51, status: 'ACTIVE' },
-    { id: 'cat-6', code: 'IT_SUPPLY', name: 'IT & Digital Accessories', desc: 'HDMI cables, USB drives, printer toners, mouse pads', itemCount: 29, status: 'ACTIVE' },
-  ]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/categories', { cache: 'no-store' })
+      .then(async response => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Unable to load categories.');
+        if (active) setCategories(Array.isArray(payload.categories) ? payload.categories : []);
+      })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load categories.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -1269,7 +1233,6 @@ export function CategoriesView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      <DemoDataNotice />
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -1277,14 +1240,11 @@ export function CategoriesView() {
             <span>Product & Inventory Categories</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Classify warehouse items, curriculum books, stationery, and uniforms
+            Category names shown here are loaded from the connected database.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-emerald-800 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-        >
+        <button type="button" disabled title="Category creation is not enabled in this view." className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-300 text-slate-600 text-xs font-bold cursor-not-allowed">
           <Plus className="w-4 h-4" />
           <span>Add Category</span>
         </button>
@@ -1295,36 +1255,18 @@ export function CategoriesView() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
-                <th className="py-3 px-4">Code</th>
-                <th className="py-3 px-4">Category Name</th>
-                <th className="py-3 px-4">Description</th>
-                <th className="py-3 px-4 text-center">Items Count</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-4">Database ID</th>
+                <th className="py-3 px-4">Category Name (Supabase)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {categories.map(cat => (
+              {loading && <tr><td colSpan={2} className="py-8 text-center text-slate-500">Loading categories…</td></tr>}
+              {!loading && loadError && <tr><td colSpan={2} className="py-8 text-center text-rose-700">{loadError}</td></tr>}
+              {!loading && !loadError && categories.length === 0 && <tr><td colSpan={2} className="py-8 text-center text-slate-500">No category records found in Supabase.</td></tr>}
+              {!loading && !loadError && categories.map(cat => (
                 <tr key={cat.id} className="hover:bg-slate-50/70 transition">
-                  <td className="py-3 px-4 font-mono font-black text-[#0B6B4F]">{cat.code}</td>
+                  <td className="py-3 px-4 font-mono text-slate-500">{cat.id}</td>
                   <td className="py-3 px-4 font-bold text-slate-900">{cat.name}</td>
-                  <td className="py-3 px-4 text-slate-500">{cat.desc}</td>
-                  <td className="py-3 px-4 text-center font-mono font-bold text-slate-700">{cat.itemCount} items</td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                      {cat.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(cat.id, cat.name)}
-                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
-                      title="Delete Category"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
