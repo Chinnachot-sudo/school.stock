@@ -47,6 +47,9 @@ export function DepartmentsView() {
   const [newDepartmentName, setNewDepartmentName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
+  const [editingDepartmentName, setEditingDepartmentName] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -88,6 +91,42 @@ export function DepartmentsView() {
     }
   };
 
+  const saveDepartmentEdit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingDepartmentId) return;
+    setIsSaving(true);
+    setActionError(null);
+    try {
+      const response = await fetch('/api/departments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingDepartmentId, name: editingDepartmentName })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to update department.');
+      setDepartments(current => current.map(department => department.id === editingDepartmentId ? payload.department : department).sort((a, b) => a.name.localeCompare(b.name)));
+      setEditingDepartmentId(null);
+      setEditingDepartmentName('');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to update department.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteDepartment = async (department: Department) => {
+    if (!window.confirm(`Delete "${department.name}" from Supabase? Departments linked to requisitions cannot be deleted.`)) return;
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/departments?id=${encodeURIComponent(department.id)}`, { method: 'DELETE' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to delete department.');
+      setDepartments(current => current.filter(item => item.id !== department.id));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to delete department.');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -118,6 +157,8 @@ export function DepartmentsView() {
         </form>
       )}
 
+      {actionError && <p role="alert" className="text-xs text-rose-700">{actionError}</p>}
+
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
@@ -125,16 +166,31 @@ export function DepartmentsView() {
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
                 <th className="py-3 px-4">Database ID</th>
                 <th className="py-3 px-4">Department Name (Supabase)</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {loading && <tr><td colSpan={2} className="py-8 text-center text-slate-500">Loading departments…</td></tr>}
-              {!loading && loadError && <tr><td colSpan={2} className="py-8 text-center text-rose-700">{loadError}</td></tr>}
-              {!loading && !loadError && departments.length === 0 && <tr><td colSpan={2} className="py-8 text-center text-slate-500">No department records found in Supabase.</td></tr>}
+              {loading && <tr><td colSpan={3} className="py-8 text-center text-slate-500">Loading departments…</td></tr>}
+              {!loading && loadError && <tr><td colSpan={3} className="py-8 text-center text-rose-700">{loadError}</td></tr>}
+              {!loading && !loadError && departments.length === 0 && <tr><td colSpan={3} className="py-8 text-center text-slate-500">No department records found in Supabase.</td></tr>}
               {!loading && !loadError && departments.map(d => (
                 <tr key={d.id} className="hover:bg-slate-50/70 transition">
                   <td className="py-3 px-4 font-mono text-slate-500">{d.id}</td>
-                  <td className="py-3 px-4 font-bold text-slate-900">{d.name}</td>
+                  <td className="py-3 px-4 font-bold text-slate-900">
+                    {editingDepartmentId === d.id ? (
+                      <form onSubmit={saveDepartmentEdit} className="flex flex-col sm:flex-row gap-2">
+                        <input aria-label={`Edit ${d.name}`} value={editingDepartmentName} onChange={event => setEditingDepartmentName(event.target.value)} maxLength={120} required className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-normal" autoFocus />
+                        <button type="submit" disabled={isSaving} className="rounded-lg bg-[#0B6B4F] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">{isSaving ? 'Saving…' : 'Save'}</button>
+                        <button type="button" onClick={() => { setEditingDepartmentId(null); setEditingDepartmentName(''); setActionError(null); }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs">Cancel</button>
+                      </form>
+                    ) : d.name}
+                  </td>
+                  <td className="py-3 px-4">
+                    {editingDepartmentId !== d.id && <div className="flex justify-end gap-2">
+                      <button type="button" aria-label={`Edit ${d.name}`} title="Edit department" onClick={() => { setEditingDepartmentId(d.id); setEditingDepartmentName(d.name); setActionError(null); }} className="rounded-lg p-2 text-slate-500 hover:bg-emerald-50 hover:text-[#0B6B4F]"><Edit2 className="h-4 w-4" /></button>
+                      <button type="button" aria-label={`Delete ${d.name}`} title="Delete department" onClick={() => deleteDepartment(d)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                    </div>}
+                  </td>
                 </tr>
               ))}
             </tbody>
