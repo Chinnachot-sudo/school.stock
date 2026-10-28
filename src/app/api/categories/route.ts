@@ -1,22 +1,7 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb } from '@/lib/db';
-import { Category } from '@/types/inventory';
-import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
-import { requireAuth, requirePermission } from '@/lib/auth-server';
+import { isServiceRoleConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requireAuth, requireAnyPermission } from '@/lib/auth-server';
 import { logAuditEvent } from '@/lib/audit';
-
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat-uniform', name: 'Uniforms & Dress Code', icon: '👕', description: 'School uniforms, polo shirts, shorts, skirts, PE kit' },
-  { id: 'cat-books', name: 'IB Textbooks & Workbooks', icon: '📚', description: 'PYP, MYP, DP, CP curriculum books and workbooks' },
-  { id: 'cat-stationery', name: 'Stationery & Study Supplies', icon: '✏️', description: 'Pens, pencils, erasers, rulers, scissors, art colors' },
-  { id: 'cat-paper', name: 'Paper & School Notebooks', icon: '📄', description: 'School exercise notebooks, A4 reams, planners' },
-  { id: 'cat-it', name: 'IT & EdTech Supplies', icon: '💻', description: 'Printer toners, computer accessories, AV cables' },
-  { id: 'cat-science', name: 'Science Lab Equipment', icon: '🔬', description: 'Test tubes, lab glassware, safety goggles' },
-  { id: 'cat-art', name: 'Art & Design Supplies', icon: '🎨', description: 'Watercolors, canvas, sketch pads, sculpting clay' },
-  { id: 'cat-pe', name: 'PHE & Sports Equipment', icon: '⚽', description: 'Balls, cones, badminton rackets, sports gear' },
-  { id: 'cat-cleaning', name: 'Hygiene & Facilities', icon: '🧹', description: 'Cleaning supplies, sanitizers, tissues' },
-  { id: 'cat-equipment', name: 'Audio-Visual & Loans', icon: '📽️', description: 'Projectors, wireless microphones, adapters' }
-];
 
 export async function GET(request: Request) {
   try {
@@ -24,26 +9,13 @@ export async function GET(request: Request) {
     if (authCheck.errorResponse) {
       return authCheck.errorResponse;
     }
-    if (isSupabaseConfigured && supabase) {
-      const [catRes, deptRes] = await Promise.all([
-        supabase.from('categories').select('*').order('name'),
-        supabase.from('departments').select('*').order('name')
-      ]);
-      if (catRes.error || deptRes.error) {
-        throw new Error(catRes.error?.message || deptRes.error?.message || 'Failed to load categories');
-      }
-
-      return NextResponse.json({
-        categories: catRes.data || [],
-        departments: deptRes.data || []
-      });
-    }
-
-    const db = readDb();
-    return NextResponse.json({
-      categories: db.categories || DEFAULT_CATEGORIES,
-      departments: db.departments || []
-    });
+    if (!isServiceRoleConfigured || !supabase) return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
+    const [catRes, deptRes] = await Promise.all([
+      supabase.from('categories').select('*').order('name'),
+      supabase.from('departments').select('*').order('name')
+    ]);
+    if (catRes.error || deptRes.error) throw new Error(catRes.error?.message || deptRes.error?.message || 'Failed to load categories');
+    return NextResponse.json({ categories: catRes.data || [], departments: deptRes.data || [] });
   } catch (error: any) {
     console.error('Error fetching categories:', error);
     return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
@@ -52,13 +24,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const authCheck = await requirePermission(request, 'inventory:item:create');
+    const authCheck = await requireAnyPermission(request, ['iam:settings:configure', 'inventory:item:create']);
     if (authCheck.errorResponse) {
       return authCheck.errorResponse;
     }
 
     const body = await request.json();
-    const { name, icon = '🏷️', description = '' } = body;
+    const { name, icon = '🏷️' } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
@@ -66,18 +38,11 @@ export async function POST(request: Request) {
 
     const cleanName = name.trim();
     const cleanIcon = icon.trim() || '🏷️';
-    const cleanDesc = (description || '').trim();
-    const categoryId = `cat-${Date.now()}`;
-
-    const newCategory: Category = {
-      id: categoryId,
-      name: cleanName,
-      icon: cleanIcon,
-      description: cleanDesc
-    };
+    const requestedCode = typeof body.code === 'string' ? body.code.trim().toLowerCase() : '';
+    const categoryId = requestedCode ? (requestedCode.startsWith('cat-') ? requestedCode : `cat-${requestedCode}`) : `cat-${cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
 
     // 1. Supabase Cloud DB
-    if (isSupabaseConfigured && supabase) {
+    if (isServiceRoleConfigured && supabase) {
       const { data, error } = await supabase
         .from('categories')
         .insert({
@@ -101,23 +66,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2. Local JSON DB Fallback
-    const db = readDb();
-    if (!db.categories) db.categories = [];
-
-    const existing = db.categories.find(c => c.name.toLowerCase() === cleanName.toLowerCase());
-    if (existing) {
-      return NextResponse.json({ error: `Category "${cleanName}" already exists` }, { status: 400 });
-    }
-
-    db.categories.push(newCategory);
-    writeDb(db);
-    await logAuditEvent({ category: 'INVENTORY', action: 'CREATE_CATEGORY', details: `Created category "${cleanName}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: categoryId, targetName: cleanName, after: newCategory });
-
-    return NextResponse.json({
-      success: true,
-      category: newCategory
-    });
+    return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
   } catch (error: any) {
     console.error('Error creating category:', error);
     return NextResponse.json({ error: error.message || 'Internal error creating category' }, { status: 500 });

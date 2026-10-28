@@ -93,16 +93,13 @@ import {
 
 import {
   DepartmentsView,
-  PricingPromotionsView,
   ApprovalWorkflowView,
   DocumentNumberingView,
   NotificationsSettingsView,
   BackupMaintenanceView,
-  StorageLocationsView,
-  UnitsOfMeasureView,
-  CategoriesView,
   SystemIntegrationsView
 } from '@/components/settings/SettingsSubViews';
+import { PricingPromotionsView, StorageLocationsView, UnitsOfMeasureView, CategoriesView } from '@/components/settings/SettingsCrudViews';
 
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
 import { SettingsSubTabs, SettingsTabItem } from '@/components/settings/SettingsSubTabs';

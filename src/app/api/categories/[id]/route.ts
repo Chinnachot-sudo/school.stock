@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb } from '@/lib/db';
-import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
-import { requirePermission } from '@/lib/auth-server';
+import { isServiceRoleConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { requireAnyPermission } from '@/lib/auth-server';
 import { logAuditEvent } from '@/lib/audit';
 
 export async function PUT(
@@ -9,7 +8,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authCheck = await requirePermission(request, 'inventory:item:create');
+    const authCheck = await requireAnyPermission(request, ['iam:settings:configure', 'inventory:item:create', 'inventory:item:delete']);
     if (authCheck.errorResponse) {
       return authCheck.errorResponse;
     }
@@ -19,7 +18,7 @@ export async function PUT(
     const { name, icon, description } = body;
 
     // 1. Supabase Cloud DB
-    if (isSupabaseConfigured && supabase) {
+    if (isServiceRoleConfigured && supabase) {
       const updateData: any = {};
       if (name) updateData.name = name.trim();
       if (icon) updateData.icon = icon.trim();
@@ -36,23 +35,7 @@ export async function PUT(
       return NextResponse.json({ success: true, category: data });
     }
 
-    // 2. Local JSON DB
-    const db = readDb();
-    const index = db.categories.findIndex(c => c.id === id);
-    if (index === -1) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-    }
-
-    db.categories[index] = {
-      ...db.categories[index],
-      name: name !== undefined ? name.trim() : db.categories[index].name,
-      icon: icon !== undefined ? icon.trim() : db.categories[index].icon,
-      description: description !== undefined ? description.trim() : db.categories[index].description
-    };
-
-    writeDb(db);
-    await logAuditEvent({ category: 'INVENTORY', action: 'UPDATE_CATEGORY', details: `Updated category "${db.categories[index].name}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: id, targetName: db.categories[index].name, after: db.categories[index] });
-    return NextResponse.json({ success: true, category: db.categories[index] });
+    return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to update category' }, { status: 500 });
   }
@@ -63,16 +46,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authCheck = await requirePermission(request, 'inventory:item:delete');
+    const authCheck = await requireAnyPermission(request, ['iam:settings:configure', 'inventory:item:create', 'inventory:item:delete']);
     if (authCheck.errorResponse) {
       return authCheck.errorResponse;
     }
 
     const { id } = await params;
-    const { data: categoryBefore } = isSupabaseConfigured && supabase ? await supabase.from('categories').select('id, name, icon').eq('id', id).maybeSingle() : { data: null };
+    if (!isServiceRoleConfigured || !supabase) return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
+    const { data: categoryBefore, error: categoryError } = await supabase.from('categories').select('id, name, icon').eq('id', id).maybeSingle();
+    if (categoryError) throw categoryError;
 
     // 1. Supabase Cloud DB
-    if (isSupabaseConfigured && supabase) {
+    if (isServiceRoleConfigured && supabase) {
       const { data: deleted, error } = await supabase.from('categories').delete().eq('id', id).select('id').maybeSingle();
       if (error) {
         // If items are referencing this category
@@ -89,26 +74,7 @@ export async function DELETE(
       return NextResponse.json({ success: true });
     }
 
-    // 2. Local JSON DB
-    const db = readDb();
-    const index = db.categories.findIndex(c => c.id === id);
-    if (index === -1) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-    }
-
-    const itemsUsing = db.items.filter(i => i.categoryId === id);
-    if (itemsUsing.length > 0) {
-      return NextResponse.json(
-        { error: `Cannot delete category: ${itemsUsing.length} item(s) are linked to this category.` },
-        { status: 400 }
-      );
-    }
-
-    const deletedCategory = db.categories[index];
-    db.categories.splice(index, 1);
-    writeDb(db);
-    await logAuditEvent({ category: 'INVENTORY', action: 'DELETE_CATEGORY', details: `Deleted category "${deletedCategory.name}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: id, targetName: deletedCategory.name, before: categoryBefore || deletedCategory });
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to delete category' }, { status: 500 });
   }

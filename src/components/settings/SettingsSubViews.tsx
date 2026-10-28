@@ -151,7 +151,7 @@ export function DepartmentsView() {
           <label htmlFor="new-department-name" className="block text-xs font-bold text-slate-700">Department name</label>
           <div className="flex flex-col sm:flex-row gap-2">
             <input id="new-department-name" value={newDepartmentName} onChange={event => setNewDepartmentName(event.target.value)} maxLength={120} required className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm" placeholder="Enter the actual department name" />
-            <button type="submit" disabled={isSaving} className="px-4 py-2 rounded-xl bg-[#0B6B4F] text-white text-xs font-bold disabled:opacity-60">{isSaving ? 'Saving…' : 'Save to Supabase'}</button>
+            <button type="submit" disabled={isSaving} className="px-4 py-2 rounded-xl bg-[#0B6B4F] text-white text-xs font-bold disabled:opacity-60">{isSaving ? 'Saving…' : 'Save'}</button>
           </div>
           {saveError && <p role="alert" className="text-xs text-rose-700">{saveError}</p>}
         </form>
