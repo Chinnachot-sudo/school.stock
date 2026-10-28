@@ -3,6 +3,7 @@ import { readDb, writeDb } from '@/lib/db';
 import { Category } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { requireAuth, requirePermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-uniform', name: 'Uniforms & Dress Code', icon: '👕', description: 'School uniforms, polo shirts, shorts, skirts, PE kit' },
@@ -92,6 +93,8 @@ export async function POST(request: Request) {
         throw new Error(error.message || 'Failed to insert category in Supabase');
       }
 
+      await logAuditEvent({ category: 'INVENTORY', action: 'CREATE_CATEGORY', details: `Created category "${cleanName}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: categoryId, targetName: cleanName, after: { id: categoryId, name: cleanName, icon: cleanIcon } });
+
       return NextResponse.json({
         success: true,
         category: data
@@ -109,6 +112,7 @@ export async function POST(request: Request) {
 
     db.categories.push(newCategory);
     writeDb(db);
+    await logAuditEvent({ category: 'INVENTORY', action: 'CREATE_CATEGORY', details: `Created category "${cleanName}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: categoryId, targetName: cleanName, after: newCategory });
 
     return NextResponse.json({
       success: true,

@@ -266,12 +266,13 @@ export async function POST(request: Request) {
     const actorName = caller.name || caller.username || 'System Administrator';
     const userNames = createdUsers.map(u => `${u.name} (@${u.username})`).join(', ');
 
-    logAuditEvent({
+    await logAuditEvent({
       category: 'USER_MANAGEMENT',
       action: createdUsers.length > 1 ? 'BATCH_CREATE_USERS' : 'CREATE_USER',
       details: `Created ${createdUsers.length} staff account(s): ${userNames}`,
       actorName,
       actorEmail: caller.email,
+      actorId: caller.id,
       targetId: createdUsers[0]?.id,
       targetName: createdUsers.length === 1 ? createdUsers[0]?.name : `${createdUsers.length} users`,
       metadata: {
@@ -279,7 +280,7 @@ export async function POST(request: Request) {
         count: createdUsers.length,
         users: createdUsers.map(u => ({ id: u.id, username: u.username, role: u.role }))
       }
-    }).catch(e => console.warn('Audit log error:', e));
+    });
 
     return NextResponse.json({
       success: true,

@@ -253,12 +253,13 @@ export async function POST(request: Request) {
       const actionName = type === 'IN' ? 'RECEIVE_STOCK' : type === 'OUT' ? 'ISSUE_STOCK' : 'ADJUST_STOCK';
       const itemsSummary = createdTxs.map(t => `${t.itemName} (${type === 'OUT' ? '-' : '+'}${t.quantity})`).join(', ');
 
-      logAuditEvent({
+      await logAuditEvent({
         category: 'STOCK_OPERATION',
         action: actionName,
         details: `${type === 'IN' ? 'Received stock' : type === 'OUT' ? 'Issued stock' : 'Adjusted stock'}: ${itemsSummary} | Dept: ${department || 'Central'}`,
         actorName: actor,
         actorEmail,
+        actorId: authCheck.user.id,
         targetId: createdTxs[0]?.id,
         targetName: createdTxs.length === 1 ? createdTxs[0]?.itemName : `${createdTxs.length} items`,
         metadata: {
@@ -267,7 +268,7 @@ export async function POST(request: Request) {
           totalCost: totalBatchCost,
           items: createdTxs.map(t => ({ id: t.itemId, code: t.itemCode, qty: t.quantity }))
         }
-      }).catch(e => console.warn('Audit log error:', e));
+      });
 
       return NextResponse.json({
         success: true,
@@ -403,12 +404,13 @@ export async function POST(request: Request) {
     const actionName = type === 'IN' ? 'RECEIVE_STOCK' : type === 'OUT' ? 'ISSUE_STOCK' : 'ADJUST_STOCK';
     const itemsSummary = createdTxs.map(t => `${t.itemName} (${type === 'OUT' ? '-' : '+'}${t.quantity})`).join(', ');
 
-    logAuditEvent({
+    await logAuditEvent({
       category: 'STOCK_OPERATION',
       action: actionName,
       details: `${type === 'IN' ? 'Received stock' : type === 'OUT' ? 'Issued stock' : 'Adjusted stock'}: ${itemsSummary} | Dept: ${department || 'Central'}`,
       actorName: actor,
       actorEmail,
+      actorId: authCheck.user.id,
       targetId: createdTxs[0]?.id,
       targetName: createdTxs.length === 1 ? createdTxs[0]?.itemName : `${createdTxs.length} items`,
       metadata: {
@@ -417,7 +419,7 @@ export async function POST(request: Request) {
         totalCost: totalBatchCost,
         items: createdTxs.map(t => ({ id: t.itemId, code: t.itemCode, qty: t.quantity }))
       }
-    }).catch(e => console.warn('Audit log error:', e));
+    });
 
     return NextResponse.json({
       success: true,

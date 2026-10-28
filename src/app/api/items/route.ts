@@ -197,16 +197,17 @@ export async function POST(request: Request) {
       // Record audit log
       const actor = (authCheck.user.name || authCheck.user.username || 'Inventory Admin').trim();
       const actorEmail = authCheck.user.email || undefined;
-      logAuditEvent({
+      await logAuditEvent({
         category: 'INVENTORY',
         action: 'CREATE_ITEM',
         details: `Created new item: "${createdItem.name}" (${createdItem.code}) with initial stock ${createdItem.currentStock} ${createdItem.unit}`,
         actorName: actor,
         actorEmail,
+        actorId: authCheck.user.id,
         targetId: createdItem.id,
         targetName: createdItem.name,
         metadata: { code: createdItem.code, stock: createdItem.currentStock, price: createdItem.price }
-      }).catch(e => console.warn('Audit log error:', e));
+      });
 
       return NextResponse.json({
         success: true,
@@ -243,15 +244,17 @@ export async function POST(request: Request) {
     writeDb(db);
 
     // Record audit log
-    logAuditEvent({
+    await logAuditEvent({
       category: 'INVENTORY',
       action: 'CREATE_ITEM',
       details: `Created new item: "${newItem.name}" (${newItem.code}) with initial stock ${newItem.currentStock} ${newItem.unit}`,
-      actorName: 'Inventory Admin',
+      actorName: authCheck.user.name || authCheck.user.username,
+      actorEmail: authCheck.user.email,
+      actorId: authCheck.user.id,
       targetId: newItem.id,
       targetName: newItem.name,
       metadata: { code: newItem.code, stock: newItem.currentStock, price: newItem.price }
-    }).catch(e => console.warn('Audit log error:', e));
+    });
 
     return NextResponse.json({ success: true, item: newItem });
   } catch (error: any) {

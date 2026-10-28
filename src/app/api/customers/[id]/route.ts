@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { requirePermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function PUT(
   request: Request,
@@ -78,6 +79,8 @@ export async function PUT(
         return NextResponse.json({ error: msg }, { status: 500 });
       }
 
+      await logAuditEvent({ category: 'SYSTEM', action: 'UPDATE_CUSTOMER', details: `Updated customer "${data.name}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: id, targetName: data.name, metadata: { fields: Object.keys(updateData) }, after: { id: data.id, name: data.name, type: data.type, programme: data.programme, grade: data.grade } });
+
       return NextResponse.json({ success: true, customer: data });
     }
 
@@ -106,6 +109,7 @@ export async function PUT(
     };
 
     writeDb(db);
+    await logAuditEvent({ category: 'SYSTEM', action: 'UPDATE_CUSTOMER', details: `Updated customer "${db.customers[index].name}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: id, targetName: db.customers[index].name, metadata: { fields: Object.keys(body) } });
     return NextResponse.json({ success: true, customer: db.customers[index] });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to update customer' }, { status: 500 });
@@ -123,6 +127,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const { data: customerBefore } = isSupabaseConfigured && supabase ? await supabase.from('customers').select('id, name, type').eq('id', id).maybeSingle() : { data: null };
 
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
@@ -142,6 +147,8 @@ export async function DELETE(
       }
       if (!deleted) return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
 
+      await logAuditEvent({ category: 'SYSTEM', action: 'DELETE_CUSTOMER', details: `Deleted customer "${customerBefore?.name || id}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: id, targetName: customerBefore?.name || id, before: customerBefore || { id } });
+
       return NextResponse.json({ success: true });
     }
 
@@ -150,6 +157,7 @@ export async function DELETE(
     if (db.customers?.some(c => c.id === id)) {
       db.customers = db.customers.filter(c => c.id !== id);
       writeDb(db);
+      await logAuditEvent({ category: 'SYSTEM', action: 'DELETE_CUSTOMER', details: `Deleted customer "${id}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: id, targetName: customerBefore?.name || id, before: customerBefore || { id } });
     } else {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }

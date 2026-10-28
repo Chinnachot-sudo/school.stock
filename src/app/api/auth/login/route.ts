@@ -170,13 +170,13 @@ export async function POST(request: Request) {
     // Check rate limit / account lockout
     const rateCheck = await checkRateLimit(clientKey);
     if (rateCheck.isLocked) {
-      logAuditEvent({
+      await logAuditEvent({
         category: 'SECURITY',
         action: 'ACCOUNT_LOCKED_ATTEMPT',
         details: `Login attempt to locked account: ${cleanInput}`,
         actorName: cleanInput,
         metadata: { username: cleanInput, remainingMinutes: rateCheck.remainingMinutes }
-      }).catch(() => {});
+      });
 
       return NextResponse.json(
         { error: `Account is temporarily locked due to too many failed attempts. Please try again in ${rateCheck.remainingMinutes} minutes.` },
@@ -248,15 +248,16 @@ export async function POST(request: Request) {
               maxAge: 60 * 60 * 24 * 7 // 7 days
             });
 
-            logAuditEvent({
+            await logAuditEvent({
               category: 'SECURITY',
               action: 'LOGIN_SUCCESS',
               details: `User ${userObj.username} (${userObj.role}) logged in successfully`,
               actorName: userObj.name,
+              actorId: userObj.id,
               actorEmail: userObj.email,
               targetId: userObj.id,
               targetName: userObj.username
-            }).catch(() => {});
+            });
 
             return NextResponse.json({ success: true, user: userObj });
           }
@@ -319,15 +320,16 @@ export async function POST(request: Request) {
             maxAge: 60 * 60 * 24 * 7
           });
 
-          logAuditEvent({
+          await logAuditEvent({
             category: 'SECURITY',
             action: 'LOGIN_SUCCESS',
             details: `Fallback user ${userObj.username} (${userObj.role}) logged in successfully`,
             actorName: userObj.name,
+            actorId: userObj.id,
             actorEmail: userObj.email,
             targetId: userObj.id,
             targetName: userObj.username
-          }).catch(() => {});
+          });
 
           return NextResponse.json({ success: true, user: userObj });
         }
@@ -337,13 +339,13 @@ export async function POST(request: Request) {
     // Record failed login and evaluate lockout
     const failureResult = await recordFailedAttempt(clientKey);
 
-    logAuditEvent({
+    await logAuditEvent({
       category: 'SECURITY',
       action: 'LOGIN_FAILURE',
       details: `Failed login attempt for username: ${cleanInput}${failureResult.isNowLocked ? ' (Account locked)' : ''}`,
       actorName: cleanInput,
       metadata: { username: cleanInput, attemptsLeft: failureResult.attemptsLeft, isLocked: failureResult.isNowLocked }
-    }).catch(() => {});
+    });
 
     if (failureResult.isNowLocked) {
       return NextResponse.json(

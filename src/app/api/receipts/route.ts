@@ -343,12 +343,13 @@ export async function POST(request: Request) {
     }
 
     // Record audit log
-    logAuditEvent({
+    await logAuditEvent({
       category: 'POS_SALE',
       action: 'POS_SALE_CHECKOUT',
       details: `POS Sale Receipt #${newReceipt.receiptNumber} (${newReceipt.paymentMethod}): Total ฿${newReceipt.totalAmount.toLocaleString()} to ${newReceipt.customerName}`,
       actorName: newReceipt.cashierName || 'POS Cashier',
       actorEmail: newReceipt.cashierEmail || undefined,
+      actorId: authCheck.user.id,
       targetId: newReceipt.id,
       targetName: `Receipt #${newReceipt.receiptNumber}`,
       metadata: {
@@ -357,7 +358,7 @@ export async function POST(request: Request) {
         totalAmount: newReceipt.totalAmount,
         itemCount: newReceipt.items.length
       }
-    }).catch(e => console.warn('Audit log error:', e));
+    });
 
     return NextResponse.json({
       success: true,

@@ -3,6 +3,7 @@ import { readDb, writeDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { ReturnRecord, ReturnReason, RETURN_REASON_LABELS } from '@/types/inventory';
 import { requireAnyPermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function POST(request: Request) {
   try {
@@ -60,6 +61,8 @@ export async function POST(request: Request) {
         cashierName: verifiedCashierName,
         createdAt: new Date().toISOString()
       };
+
+      await logAuditEvent({ category: 'POS_SALE', action: 'PROCESS_RECEIPT_RETURN', details: `Processed return for receipt ${returnRecord.receiptNumber}`, actorId: authCheck.user.id, actorName: verifiedCashierName, actorEmail: authCheck.user.email, targetId: returnRecord.id, targetName: returnRecord.receiptNumber, metadata: { receiptId: returnRecord.receiptId, totalRefund: returnRecord.totalRefund, reason, itemCount: returnRecord.items.length } });
 
       return NextResponse.json({
         success: true,
@@ -146,6 +149,8 @@ export async function POST(request: Request) {
       });
     }
     writeDb(db);
+
+    await logAuditEvent({ category: 'POS_SALE', action: 'PROCESS_RECEIPT_RETURN', details: `Processed return for receipt ${receipt.receiptNumber}`, actorId: authCheck.user.id, actorName: verifiedCashierName, actorEmail: authCheck.user.email, targetId: returnId, targetName: receipt.receiptNumber, metadata: { receiptId: receipt.id, totalRefund, reason, itemCount: validatedItems.length } });
 
     const returnRecord: ReturnRecord = {
       id: returnId,

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { Department } from '@/types/inventory';
 import { isServiceRoleConfigured, supabaseAdmin } from '@/lib/supabase';
 import { requireAuth, requirePermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 function unavailable() {
   return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
   try {
     const { data, error } = await supabaseAdmin.from('departments').select('id, name').order('name');
     if (error) throw error;
+    await logAuditEvent({ category: 'SYSTEM', action: 'CREATE_DEPARTMENT', details: `Created department "${data.name}"`, actorId: auth.user.id, actorName: auth.user.name || auth.user.username, actorEmail: auth.user.email, targetId: data.id, targetName: data.name, after: data });
     return NextResponse.json({ departments: (data || []).map(toDepartment) });
   } catch (error) {
     console.error('Error fetching departments:', error);
@@ -84,6 +86,7 @@ export async function PATCH(request: Request) {
       .maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ error: 'Department not found.' }, { status: 404 });
+    await logAuditEvent({ category: 'SYSTEM', action: 'UPDATE_DEPARTMENT', details: `Renamed department to "${data.name}"`, actorId: auth.user.id, actorName: auth.user.name || auth.user.username, actorEmail: auth.user.email, targetId: data.id, targetName: data.name, after: data });
     return NextResponse.json({ success: true, department: toDepartment(data) });
   } catch (error) {
     console.error('Error updating department:', error);

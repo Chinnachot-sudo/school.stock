@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth-server';
 import { isServiceRoleConfigured, supabaseAdmin } from '@/lib/supabase';
+import { logAuditEvent } from '@/lib/audit';
 
 function unavailable() {
   return NextResponse.json({ error: 'Supabase server access is not configured.' }, { status: 503 });
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await supabaseAdmin.from('requisitions').insert(row).select('*').single();
     if (error) throw error;
+    await logAuditEvent({ category: 'STOCK_OPERATION', action: 'CREATE_REQUISITION', details: `Requested ${quantity} ${item.unit} of ${item.name}`, actorId: auth.user.id, actorName: auth.user.name || auth.user.username, actorEmail: auth.user.email, targetId: data.id, targetName: item.name, metadata: { quantity, department: departmentName, status: data.status } });
     return NextResponse.json({ success: true, request: data }, { status: 201 });
   } catch (error) {
     console.error('Failed to save requisition:', error);

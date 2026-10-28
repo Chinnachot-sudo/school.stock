@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-server';
 import { isServiceRoleConfigured, supabaseAdmin } from '@/lib/supabase';
+import { logAuditEvent } from '@/lib/audit';
 
 const ISSUE_TYPES = new Set(['DAMAGED', 'DEFECTIVE', 'MISSING', 'OUT_OF_STOCK', 'OTHER']);
 
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
       status: 'OPEN'
     }).select('id, item_name, issue_type, status, created_at').single();
     if (error) throw error;
+    await logAuditEvent({ category: 'INVENTORY', action: 'CREATE_ISSUE_REPORT', details: `Reported ${issueType.toLowerCase()} issue for ${itemName}`, actorId: auth.user.id, actorName: auth.user.name || auth.user.username, actorEmail: auth.user.email, targetId: data.id, targetName: itemName, metadata: { issueType, status: data.status } });
 
     return NextResponse.json({ success: true, report: data }, { status: 201 });
   } catch (error) {

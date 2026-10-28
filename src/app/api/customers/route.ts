@@ -3,6 +3,7 @@ import { readDb, writeDb } from '@/lib/db';
 import { Customer, FamilyMember } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { requirePermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 function extractGuardiansAndCleanNote(rawNote?: string | null, parentName?: string | null): {
   guardians?: FamilyMember[];
@@ -275,6 +276,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: msg }, { status: 500 });
       }
 
+      await logAuditEvent({ category: 'SYSTEM', action: createdCustomers.length > 1 ? 'IMPORT_CUSTOMERS' : 'CREATE_CUSTOMER', details: `Created ${createdCustomers.length} customer record(s)`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: createdCustomers[0]?.id, targetName: createdCustomers.length === 1 ? createdCustomers[0]?.name : `${createdCustomers.length} customers`, metadata: { count: createdCustomers.length, ids: createdCustomers.map(customer => customer.id) } });
+
       return NextResponse.json({
         success: true,
         customer: createdCustomers[0],
@@ -288,6 +291,7 @@ export async function POST(request: Request) {
     if (!db.customers) db.customers = [];
     db.customers.push(...createdCustomers);
     writeDb(db);
+    await logAuditEvent({ category: 'SYSTEM', action: createdCustomers.length > 1 ? 'IMPORT_CUSTOMERS' : 'CREATE_CUSTOMER', details: `Created ${createdCustomers.length} customer record(s)`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: createdCustomers[0]?.id, targetName: createdCustomers.length === 1 ? createdCustomers[0]?.name : `${createdCustomers.length} customers`, metadata: { count: createdCustomers.length, ids: createdCustomers.map(customer => customer.id) } });
 
     return NextResponse.json({
       success: true,

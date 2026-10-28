@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { requirePermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function PUT(
   request: Request,
@@ -31,6 +32,7 @@ export async function PUT(
         .single();
 
       if (error) throw error;
+      await logAuditEvent({ category: 'INVENTORY', action: 'UPDATE_CATEGORY', details: `Updated category "${data.name}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: id, targetName: data.name, after: data });
       return NextResponse.json({ success: true, category: data });
     }
 
@@ -49,6 +51,7 @@ export async function PUT(
     };
 
     writeDb(db);
+    await logAuditEvent({ category: 'INVENTORY', action: 'UPDATE_CATEGORY', details: `Updated category "${db.categories[index].name}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: id, targetName: db.categories[index].name, after: db.categories[index] });
     return NextResponse.json({ success: true, category: db.categories[index] });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to update category' }, { status: 500 });
@@ -66,6 +69,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const { data: categoryBefore } = isSupabaseConfigured && supabase ? await supabase.from('categories').select('id, name, icon').eq('id', id).maybeSingle() : { data: null };
 
     // 1. Supabase Cloud DB
     if (isSupabaseConfigured && supabase) {
@@ -81,6 +85,7 @@ export async function DELETE(
         throw error;
       }
       if (!deleted) return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+      await logAuditEvent({ category: 'INVENTORY', action: 'DELETE_CATEGORY', details: `Deleted category "${categoryBefore?.name || id}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: id, targetName: categoryBefore?.name || id, before: categoryBefore || { id } });
       return NextResponse.json({ success: true });
     }
 
@@ -99,8 +104,10 @@ export async function DELETE(
       );
     }
 
+    const deletedCategory = db.categories[index];
     db.categories.splice(index, 1);
     writeDb(db);
+    await logAuditEvent({ category: 'INVENTORY', action: 'DELETE_CATEGORY', details: `Deleted category "${deletedCategory.name}"`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: id, targetName: deletedCategory.name, before: categoryBefore || deletedCategory });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to delete category' }, { status: 500 });

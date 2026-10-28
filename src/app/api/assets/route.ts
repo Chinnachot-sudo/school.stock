@@ -99,14 +99,14 @@ export async function POST(request: Request) {
         details: `Registered asset ${name} (${code})`,
         actorName: row.created_by_name,
         actorEmail: auth.user.email,
+        actorId: auth.user.id,
         targetId: row.id,
         targetName: name,
         metadata: { code, status }
       });
     } catch (auditError) {
-      // The asset row is already safely persisted; an audit-schema mismatch
-      // must not turn a successful create into a failed response/retry.
       console.error('Asset saved but audit event could not be recorded:', auditError);
+      return NextResponse.json({ error: 'Asset was saved, but its audit event could not be recorded. Contact an administrator before retrying.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, asset: toAsset(data) }, { status: 201 });

@@ -3,6 +3,7 @@ import { readDb, writeDb } from '@/lib/db';
 import { Receipt, ReceiptItem, Transaction } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { requirePermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(
   request: Request,
@@ -100,6 +101,8 @@ export async function DELETE(
         throw new Error(voidResult?.error || voidErr?.message || 'Failed to void receipt in database');
       }
 
+      await logAuditEvent({ category: 'POS_SALE', action: 'VOID_RECEIPT', details: `Voided receipt ${voidResult.receiptNumber || cleanId}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: voidResult.receiptId || cleanId, targetName: voidResult.receiptNumber || cleanId, metadata: { reason: voidReason, stockRestored: true } });
+
       return NextResponse.json({
         success: true,
         message: `Receipt #${voidResult.receiptNumber || cleanId} voided and inventory restored successfully.`,
@@ -148,6 +151,8 @@ export async function DELETE(
     }
 
     writeDb(db);
+
+    await logAuditEvent({ category: 'POS_SALE', action: 'VOID_RECEIPT', details: `Voided receipt ${receipt.receiptNumber}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: receipt.id, targetName: receipt.receiptNumber, metadata: { reason: voidReason, stockRestored: true } });
 
     return NextResponse.json({
       success: true,

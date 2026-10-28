@@ -3,6 +3,7 @@ import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase'
 import { hashPassword, requirePermission } from '@/lib/auth-server';
 import { can } from '@/lib/auth/permissions';
 import { toDbRole, toUiRole } from '@/lib/auth/roles';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function PUT(
   request: Request,
@@ -71,6 +72,8 @@ export async function PUT(
         );
       }
 
+      await logAuditEvent({ category: 'USER_MANAGEMENT', action: 'UPDATE_USER', details: `Updated staff account ${data.username}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: id, targetName: data.name, metadata: { fields: Object.keys(updates).filter(key => key !== 'password_hash'), passwordChanged: 'password_hash' in updates }, after: { username: data.username, name: data.name, email: data.email, role: data.role } });
+
       // Update role in user_roles if changed
       if (updates.role) {
         const { error: delErr } = await supabase.from('user_roles').delete().eq('user_id', id);
@@ -133,6 +136,7 @@ export async function DELETE(
     }
 
     if (isSupabaseConfigured && supabase) {
+      const { data: target } = await supabase.from('app_users').select('id, username, name, role').eq('id', id).maybeSingle();
       // Clean up user_roles first
       const { error: delRolesErr } = await supabase.from('user_roles').delete().eq('user_id', id);
       if (delRolesErr) {
@@ -151,6 +155,7 @@ export async function DELETE(
           { status: 500 }
         );
       }
+      await logAuditEvent({ category: 'USER_MANAGEMENT', action: 'DELETE_USER', details: `Deleted staff account ${target?.username || id}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: id, targetName: target?.name || target?.username || id, before: target || { id } });
     }
 
     return NextResponse.json({ success: true, message: 'User deleted successfully.' });

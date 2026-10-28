@@ -3,6 +3,7 @@ import { readDb, writeDb } from '@/lib/db';
 import { Invoice } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { requirePermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(
   request: Request,
@@ -122,6 +123,8 @@ export async function PATCH(
 
       if (!data) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
+      await logAuditEvent({ category: 'POS_SALE', action: 'UPDATE_INVOICE', details: `Updated invoice ${data.invoice_number}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: data.id, targetName: data.invoice_number, metadata: { fields: Object.keys(sbUpdates), status: data.status } });
+
       return NextResponse.json({ success: true, invoice: data });
     }
 
@@ -131,6 +134,7 @@ export async function PATCH(
     if (idx !== -1) {
       db.invoices[idx] = { ...db.invoices[idx], ...updates };
       writeDb(db);
+      await logAuditEvent({ category: 'POS_SALE', action: 'UPDATE_INVOICE', details: `Updated invoice ${db.invoices[idx].invoiceNumber}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: db.invoices[idx].id, targetName: db.invoices[idx].invoiceNumber, metadata: { fields: Object.keys(updates), status: db.invoices[idx].status } });
       return NextResponse.json({ success: true, invoice: db.invoices[idx] });
     }
 
@@ -180,6 +184,8 @@ export async function DELETE(
 
       if (!data) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
+      await logAuditEvent({ category: 'POS_SALE', action: 'CANCEL_INVOICE', details: `Cancelled invoice ${data.invoice_number}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: data.id, targetName: data.invoice_number, metadata: { reason } });
+
       return NextResponse.json({ success: true, invoice: data });
     }
 
@@ -191,6 +197,7 @@ export async function DELETE(
       db.invoices[idx].note = reason;
       db.invoices[idx].updatedAt = now;
       writeDb(db);
+      await logAuditEvent({ category: 'POS_SALE', action: 'CANCEL_INVOICE', details: `Cancelled invoice ${db.invoices[idx].invoiceNumber}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, targetId: db.invoices[idx].id, targetName: db.invoices[idx].invoiceNumber, metadata: { reason } });
       return NextResponse.json({ success: true, invoice: db.invoices[idx] });
     }
 

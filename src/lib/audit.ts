@@ -1,5 +1,4 @@
-import { readDb, writeDb } from '@/lib/db';
-import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { isServiceRoleConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { AuditLog, AuditActionCategory } from '@/types/inventory';
 
 export interface LogAuditParams {
@@ -8,6 +7,7 @@ export interface LogAuditParams {
   details: string;
   actorName?: string;
   actorEmail?: string;
+  actorId?: string;
   targetId?: string;
   targetName?: string;
   metadata?: Record<string, any>;
@@ -31,41 +31,27 @@ export async function logAuditEvent(params: LogAuditParams): Promise<AuditLog> {
     createdAt: new Date().toISOString()
   };
 
-  // 1. Try persisting to Supabase Cloud DB if available
-  if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('audit_logs').insert({
-        id: newLog.id,
-        category: newLog.category,
-        action: newLog.action,
-        details: newLog.details,
-        actor_name: newLog.actorName,
-        actor_email: newLog.actorEmail || null,
-        target_id: newLog.targetId || null,
-        target_name: newLog.targetName || null,
-        metadata: newLog.metadata ? JSON.stringify(newLog.metadata) : null,
-        before: newLog.before ? JSON.stringify(newLog.before) : null,
-        after: newLog.after ? JSON.stringify(newLog.after) : null,
-        created_at: newLog.createdAt
-      });
-    if (error) throw new Error(`Failed to persist audit log: ${error.message}`);
-    return newLog;
+  if (!isServiceRoleConfigured || !supabase) {
+    throw new Error('Audit logging requires server-side Supabase credentials.');
   }
 
-  // Local storage is only used when Supabase is intentionally not configured.
-  try {
-    const db = readDb();
-    if (!Array.isArray(db.auditLogs)) {
-      db.auditLogs = [];
-    }
-    // Keep most recent 1,000 logs in local cache
-    db.auditLogs.unshift(newLog);
-    if (db.auditLogs.length > 1000) {
-      db.auditLogs = db.auditLogs.slice(0, 1000);
-    }
-    writeDb(db);
-  } catch (dbErr) {
-    console.warn('Local db auditLogs write error:', dbErr);
-  }
+  const row = {
+    id: newLog.id,
+    category: newLog.category,
+    action: newLog.action,
+    details: newLog.details,
+    actor_id: params.actorId || null,
+    actor_name: newLog.actorName,
+    target_id: newLog.targetId || null,
+    target_name: newLog.targetName || null,
+    metadata: newLog.metadata || null,
+    before: newLog.before || null,
+    after: newLog.after || null,
+    created_at: newLog.createdAt
+  };
+
+  const { error } = await supabase.from('audit_logs').insert(row);
+  if (error) throw new Error(`Failed to persist audit log: ${error.message}`);
 
   return newLog;
 }

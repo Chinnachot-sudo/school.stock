@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readDb } from '@/lib/db';
-import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
+import { isServiceRoleConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { AuditLog } from '@/types/inventory';
 import { requirePermission } from '@/lib/auth-server';
 
@@ -17,8 +16,7 @@ export async function GET(request: Request) {
     const q = searchParams.get('q')?.toLowerCase() || '';
 
     // 1. Try Supabase
-    if (isSupabaseConfigured && supabase) {
-      try {
+    if (isServiceRoleConfigured && supabase) {
         let query = supabase.from('audit_logs').select('*').order('created_at', { ascending: false });
         if (category && category !== 'ALL') {
           query = query.eq('category', category);
@@ -31,7 +29,7 @@ export async function GET(request: Request) {
             action: row.action,
             details: row.details,
             actorName: row.actor_name,
-            actorEmail: row.actor_email || undefined,
+            actorEmail: undefined,
             targetId: row.target_id || undefined,
             targetName: row.target_name || undefined,
             metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
@@ -52,33 +50,10 @@ export async function GET(request: Request) {
 
           return NextResponse.json({ logs, total: logs.length });
         }
-      } catch (err) {
-        console.warn('Supabase audit_logs read failed, falling back to local DB:', err);
-      }
+        throw error || new Error('Invalid response from Supabase audit log query.');
     }
 
-    // 2. Local DB
-    const db = readDb();
-    let logs = (db.auditLogs || []).slice();
-
-    if (category && category !== 'ALL') {
-      logs = logs.filter(l => l.category === category);
-    }
-
-    if (q) {
-      logs = logs.filter(
-        l =>
-          l.action.toLowerCase().includes(q) ||
-          l.details.toLowerCase().includes(q) ||
-          l.actorName.toLowerCase().includes(q) ||
-          (l.targetName && l.targetName.toLowerCase().includes(q))
-      );
-    }
-
-    return NextResponse.json({
-      logs: logs.slice(0, limit),
-      total: logs.length
-    });
+    return NextResponse.json({ error: 'Supabase audit log access is not configured.' }, { status: 503 });
   } catch (error) {
     console.error('Error fetching audit logs:', error);
     return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });

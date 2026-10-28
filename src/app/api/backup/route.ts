@@ -130,6 +130,7 @@ export async function GET(request: Request) {
       details: `${format.toUpperCase()} backup exported by ${authCheck.user.username} at ${exportedAt}`,
       actorName: authCheck.user.name || authCheck.user.username,
       actorEmail: authCheck.user.email,
+      actorId: authCheck.user.id,
       metadata: { format, table: format === 'csv' ? tableName : undefined, counts: Object.fromEntries(Object.entries(data).map(([name, rows]) => [name, rows.length])) }
     });
 

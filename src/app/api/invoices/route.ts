@@ -3,6 +3,7 @@ import { readDb, writeDb } from '@/lib/db';
 import { Invoice, InvoiceItem } from '@/types/inventory';
 import { isSupabaseConfigured, supabaseAdmin as supabase } from '@/lib/supabase';
 import { requirePermission } from '@/lib/auth-server';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(request: Request) {
   try {
@@ -250,6 +251,8 @@ export async function POST(request: Request) {
       db.invoices.push(newInvoice);
       writeDb(db);
     }
+
+    await logAuditEvent({ category: 'POS_SALE', action: 'CREATE_INVOICE', details: `Created invoice ${newInvoice.invoiceNumber} for ${newInvoice.customerName}`, actorId: authCheck.user.id, actorName: authCheck.user.name || authCheck.user.username, actorEmail: authCheck.user.email, targetId: newInvoice.id, targetName: newInvoice.invoiceNumber, metadata: { totalAmount, status: newInvoice.status } });
 
     return NextResponse.json({
       success: true,

@@ -126,16 +126,17 @@ export async function PUT(
       };
 
       // Record audit log
-      logAuditEvent({
+      await logAuditEvent({
         category: 'INVENTORY',
         action: 'UPDATE_ITEM',
         details: `Updated item details: "${updatedItem.name}" (${updatedItem.code})`,
         actorName: authCheck.user.name || authCheck.user.username || 'Inventory Admin',
         actorEmail: authCheck.user.email || undefined,
+        actorId: authCheck.user.id,
         targetId: updatedItem.id,
         targetName: updatedItem.name,
         metadata: body
-      }).catch(e => console.warn('Audit log error:', e));
+      });
 
       return NextResponse.json({
         success: true,
@@ -170,16 +171,17 @@ export async function PUT(
     writeDb(db);
 
     // Record audit log
-    logAuditEvent({
+    await logAuditEvent({
       category: 'INVENTORY',
       action: 'UPDATE_ITEM',
       details: `Updated item details: "${db.items[index].name}" (${db.items[index].code})`,
       actorName: authCheck.user.name || authCheck.user.username || 'Inventory Admin',
       actorEmail: authCheck.user.email || undefined,
+      actorId: authCheck.user.id,
       targetId: db.items[index].id,
       targetName: db.items[index].name,
       metadata: body
-    }).catch(e => console.warn('Audit log error:', e));
+    });
 
     return NextResponse.json({ success: true, item: db.items[index] });
   } catch (error) {
@@ -208,15 +210,16 @@ export async function DELETE(
       if (error) throw error;
       if (!deleted) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
 
-      logAuditEvent({
+      await logAuditEvent({
         category: 'INVENTORY',
         action: 'DELETE_ITEM',
         details: `Deleted item "${deletedName}" from system`,
         actorName: authCheck.user.name || authCheck.user.username || 'Inventory Admin',
         actorEmail: authCheck.user.email || undefined,
+        actorId: authCheck.user.id,
         targetId: id,
         targetName: deletedName
-      }).catch(e => console.warn('Audit log error:', e));
+      });
 
       return NextResponse.json({ success: true });
     }
@@ -231,15 +234,16 @@ export async function DELETE(
     db.items.splice(index, 1);
     writeDb(db);
 
-    logAuditEvent({
+    await logAuditEvent({
       category: 'INVENTORY',
       action: 'DELETE_ITEM',
       details: `Deleted item "${deletedName}" from system`,
       actorName: authCheck.user.name || authCheck.user.username || 'Inventory Admin',
       actorEmail: authCheck.user.email || undefined,
+      actorId: authCheck.user.id,
       targetId: id,
       targetName: deletedName
-    }).catch(e => console.warn('Audit log error:', e));
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
