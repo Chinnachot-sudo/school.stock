@@ -28,7 +28,8 @@ import {
   CheckCircle,
   XCircle,
   HelpCircle,
-  Camera
+  Camera,
+  Edit2
 } from 'lucide-react';
 
 export interface AssetItem {
@@ -100,6 +101,8 @@ export function AssetRegisterView({
   isLoading = false,
   loadError = '',
   canCreateAsset = false,
+  canUpdateAsset = false,
+  canDeleteAsset = false,
   onRunVerification,
   onRunDepreciation
 }: {
@@ -108,6 +111,8 @@ export function AssetRegisterView({
   isLoading?: boolean;
   loadError?: string;
   canCreateAsset?: boolean;
+  canUpdateAsset?: boolean;
+  canDeleteAsset?: boolean;
   onRunVerification?: () => void;
   onRunDepreciation?: () => void;
 }) {
@@ -115,6 +120,7 @@ export function AssetRegisterView({
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<AssetItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [newCode, setNewCode] = useState('');
@@ -128,6 +134,7 @@ export function AssetRegisterView({
   const [newStatus, setNewStatus] = useState('');
 
   const resetForm = () => {
+    setEditingAsset(null);
     setNewCode('');
     setNewName('');
     setNewSerial('');
@@ -145,8 +152,8 @@ export function AssetRegisterView({
     setIsSaving(true);
     setSaveError('');
     try {
-      const response = await fetch('/api/assets', {
-        method: 'POST',
+      const response = await fetch(editingAsset ? `/api/assets/${encodeURIComponent(editingAsset.id)}` : '/api/assets', {
+        method: editingAsset ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: newCode,
@@ -162,7 +169,7 @@ export function AssetRegisterView({
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Unable to save asset.');
-      onAssetsChange([result.asset, ...assets]);
+      onAssetsChange(editingAsset ? assets.map(asset => asset.id === editingAsset.id ? result.asset : asset) : [result.asset, ...assets]);
       setIsAddModalOpen(false);
       resetForm();
     } catch (error) {
@@ -170,6 +177,35 @@ export function AssetRegisterView({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const openEditAsset = (asset: AssetItem) => {
+    setEditingAsset(asset);
+    setNewCode(asset.code);
+    setNewName(asset.name);
+    setNewSerial(asset.serial);
+    setNewCat(asset.category);
+    setNewLoc(asset.location);
+    setNewCustodian(asset.custodian);
+    setNewCost(asset.cost === null ? '' : String(asset.cost));
+    setNewDate(asset.purchaseDate);
+    setNewStatus(asset.status);
+    setSaveError('');
+    setIsAddModalOpen(true);
+  };
+
+  const handleDeleteAsset = async (asset: AssetItem) => {
+    if (!window.confirm(`Delete asset "${asset.name}" (${asset.code}) from Supabase?`)) return;
+    setIsSaving(true);
+    setSaveError('');
+    try {
+      const response = await fetch(`/api/assets/${encodeURIComponent(asset.id)}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to delete asset.');
+      onAssetsChange(assets.filter(item => item.id !== asset.id));
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to delete asset from Supabase.');
+    } finally { setIsSaving(false); }
   };
 
   const filteredAssets = assets.filter(a => {
@@ -201,6 +237,7 @@ export function AssetRegisterView({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
+      {saveError && !isAddModalOpen && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">{saveError}</div>}
       {/* Control Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="flex flex-1 items-center gap-2 w-full">
@@ -262,7 +299,7 @@ export function AssetRegisterView({
           )}
 
           {canCreateAsset && <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => { resetForm(); setIsAddModalOpen(true); }}
             className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B6B4F] hover:bg-[#095740] text-white text-xs font-bold shadow-sm transition shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -318,7 +355,11 @@ export function AssetRegisterView({
                       {getStatusBadge(asset.status)}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <span className="text-slate-400">—</span>
+                      <div className="flex justify-end gap-1">
+                        {canUpdateAsset && <button type="button" disabled={isSaving} onClick={() => openEditAsset(asset)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100" aria-label={`Edit ${asset.name}`} title="Edit asset"><Edit2 className="w-4 h-4" /></button>}
+                        {canDeleteAsset && <button type="button" disabled={isSaving} onClick={() => void handleDeleteAsset(asset)} className="p-1.5 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-700" aria-label={`Delete ${asset.name}`} title="Delete asset"><Trash2 className="w-4 h-4" /></button>}
+                        {!canUpdateAsset && !canDeleteAsset && <span className="text-slate-400">—</span>}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -334,10 +375,10 @@ export function AssetRegisterView({
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 animate-in zoom-in-95 duration-150">
             <h3 className="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
               <Briefcase className="w-5 h-5 text-[#0B6B4F]" />
-              <span>Register New School Asset</span>
+              <span>{editingAsset ? 'Edit School Asset' : 'Register New School Asset'}</span>
             </h3>
             <p className="text-xs text-slate-500 mb-4">
-              Add capital equipment to Roong Aroon International School fixed asset registry
+              {editingAsset ? 'Update this asset record in the Supabase register.' : 'Add capital equipment to Roong Aroon International School fixed asset registry'}
             </p>
 
             <form onSubmit={handleAddAsset} className="space-y-3.5 text-xs">
@@ -459,7 +500,7 @@ export function AssetRegisterView({
                   disabled={isSaving}
                   className="px-5 py-2 bg-[#0B6B4F] hover:bg-[#095740] disabled:opacity-60 text-white rounded-xl font-bold"
                 >
-                  {isSaving ? 'Saving to Supabase...' : 'Save Asset'}
+                  {isSaving ? 'Saving to Supabase...' : editingAsset ? 'Save Changes' : 'Save Asset'}
                 </button>
               </div>
             </form>

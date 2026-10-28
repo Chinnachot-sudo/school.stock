@@ -162,6 +162,8 @@ function AssetsContent() {
           isLoading={isLoadingAssets}
           loadError={assetLoadError}
           canCreateAsset={can('inventory:item:create')}
+          canUpdateAsset={can('inventory:item:update')}
+          canDeleteAsset={can('inventory:item:delete')}
           onRunVerification={() => setActiveTab('verification')}
           onRunDepreciation={() => setActiveTab('depreciation')}
         />
