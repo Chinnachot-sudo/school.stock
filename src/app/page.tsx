@@ -31,6 +31,7 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { features } from '@/config/navigation.config';
+import { extractScannedCode } from '@/lib/scan-code';
 
 function HomeContent() {
   const { user, can, role, appUser } = useAuth();
@@ -115,7 +116,7 @@ function HomeContent() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const action = params.get('action');
-      const codeParam = params.get('code') || params.get('scan');
+      const codeParam = extractScannedCode(params.get('code') || params.get('scan') || '');
 
       if (action === 'scan') {
         setIsScannerOpen(true);
@@ -836,15 +837,16 @@ function HomeContent() {
           isOpen={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
           onScanSuccess={code => {
+            const scannedCode = extractScannedCode(code);
             setIsScannerOpen(false);
             const found = items.find(
-              i => i.code.toLowerCase() === code.trim().toLowerCase() || i.id === code.trim()
+              i => i.code.toLowerCase() === scannedCode.toLowerCase() || i.id === scannedCode
             );
             if (found) {
               setSelectedItemForDeduct(found);
               showToast(`Item found: ${found.name}`);
             } else {
-              showToast(`Item not found for code: ${code}`);
+              showToast(`Item not found for code: ${scannedCode}`);
             }
           }}
         />

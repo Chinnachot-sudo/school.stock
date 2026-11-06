@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Item, Transaction } from '@/types/inventory';
 import { useAuth } from '@/lib/auth-context';
 import ScannerModal from '@/components/ScannerModal';
+import { extractScannedCode } from '@/lib/scan-code';
 import {
   Plus,
   Minus,
@@ -155,7 +156,7 @@ export default function StockRestockPage() {
   // Scanner handler
   const handleScanSuccess = (scannedCode: string) => {
     setIsScannerOpen(false);
-    const cleanCode = scannedCode.trim();
+    const cleanCode = extractScannedCode(scannedCode);
     const found = items.find(
       i => i.code.toLowerCase() === cleanCode.toLowerCase() || i.id === cleanCode
     );

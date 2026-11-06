@@ -8,6 +8,7 @@ import TopHeader from '@/components/TopHeader';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import ScannerModal from '@/components/ScannerModal';
 import { X } from 'lucide-react';
+import { extractScannedCode } from '@/lib/scan-code';
 
 const STORAGE_COLLAPSE_KEY = 'school_sidebar_collapsed';
 
@@ -120,7 +121,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           onClose={() => setIsScannerOpen(false)}
           onScanSuccess={code => {
             setIsScannerOpen(false);
-            window.location.href = `/?scan=${encodeURIComponent(code)}`;
+            window.location.href = `/?scan=${encodeURIComponent(extractScannedCode(code))}`;
           }}
         />
       )}

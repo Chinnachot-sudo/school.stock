@@ -18,6 +18,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { generatePromptPayPayload, generateSchoolPromptPayPayload } from '@/lib/promptpay';
 import ScannerModal from '@/components/ScannerModal';
+import { extractScannedCode } from '@/lib/scan-code';
 import ReceiptModal from '@/components/ReceiptModal';
 import InvoiceModal from '@/components/InvoiceModal';
 import { QRCodeSVG } from 'qrcode.react';
@@ -757,11 +758,7 @@ function PosContent() {
   // Barcode scanned
   const handleScanSuccess = (decodedText: string) => {
     setIsScannerOpen(false);
-    let code = decodedText.trim();
-    if (code.includes('code=')) {
-      const match = code.match(/[?&]code=([^&]+)/);
-      if (match) code = decodeURIComponent(match[1]);
-    }
+    const code = extractScannedCode(decodedText);
 
     const found = items.find(i => i.code.toLowerCase() === code.toLowerCase() || i.id === code);
     if (found) {

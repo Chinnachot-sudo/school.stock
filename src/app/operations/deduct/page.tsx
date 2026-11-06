@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Item, Department, Transaction } from '@/types/inventory';
 import { useAuth } from '@/lib/auth-context';
 import ScannerModal from '@/components/ScannerModal';
+import { extractScannedCode } from '@/lib/scan-code';
 import {
   Scissors,
   Search,
@@ -197,7 +198,7 @@ export default function StockDeductPage() {
   // Scanner handler
   const handleScanSuccess = (scannedCode: string) => {
     setIsScannerOpen(false);
-    const cleanCode = scannedCode.trim();
+    const cleanCode = extractScannedCode(scannedCode);
     const found = items.find(
       i => i.code.toLowerCase() === cleanCode.toLowerCase() || i.id === cleanCode
     );

@@ -5,6 +5,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import jsQR from 'jsqr';
 import { X, Camera, Flashlight, AlertCircle, Search, MapPin, Boxes, ArrowRight, RefreshCw } from 'lucide-react';
 import { Item } from '@/types/inventory';
+import { extractScannedCode } from '@/lib/scan-code';
 
 interface ScannerModalProps {
   isOpen: boolean;
@@ -35,22 +36,9 @@ export default function ScannerModal({
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const extractCodeFromText = (raw: string): string => {
-    const trimmed = raw.trim();
-    if (trimmed.includes('code=')) {
-      try {
-        const url = new URL(trimmed, window.location.origin);
-        return url.searchParams.get('code') || trimmed;
-      } catch (e) {
-        const match = trimmed.match(/[?&]code=([^&]+)/);
-        if (match) return decodeURIComponent(match[1]);
-      }
-    }
-    return trimmed;
-  };
-
   const handleProcessCode = (rawCode: string) => {
-    const code = extractCodeFromText(rawCode).toLowerCase();
+    const extractedCode = extractScannedCode(rawCode);
+    const code = extractedCode.toLowerCase();
     
     // Check if items array is passed
     if (items && items.length > 0) {
@@ -67,7 +55,7 @@ export default function ScannerModal({
         }
         return;
       } else {
-        setUnrecognizedCode(extractCodeFromText(rawCode));
+        setUnrecognizedCode(extractedCode);
         setDetectedItem(null);
         return;
       }
@@ -75,7 +63,7 @@ export default function ScannerModal({
 
     // Fallback if standalone onScanSuccess is provided
     if (onScanSuccess) {
-      stopAndClose(() => onScanSuccess(extractCodeFromText(rawCode)));
+      stopAndClose(() => onScanSuccess(extractedCode));
     }
   };
 
