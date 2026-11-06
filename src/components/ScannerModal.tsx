@@ -67,7 +67,7 @@ export default function ScannerModal({
         }
         return;
       } else {
-        setUnrecognizedCode(rawCode);
+        setUnrecognizedCode(extractCodeFromText(rawCode));
         setDetectedItem(null);
         return;
       }
@@ -75,7 +75,7 @@ export default function ScannerModal({
 
     // Fallback if standalone onScanSuccess is provided
     if (onScanSuccess) {
-      stopAndClose(() => onScanSuccess(rawCode));
+      stopAndClose(() => onScanSuccess(extractCodeFromText(rawCode)));
     }
   };
 
