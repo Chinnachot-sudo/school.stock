@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Item, Department, Transaction } from '@/types/inventory';
+import { Item, Department, Transaction, Category } from '@/types/inventory';
+import StockDetailModal from '@/components/StockDetailModal';
 import ScannerModal from '@/components/ScannerModal';
 import QuickDeductModal from '@/components/QuickDeductModal';
 import QuickRestockModal from '@/components/QuickRestockModal';
@@ -39,6 +40,8 @@ function HomeContent() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [scannedItemForDetail, setScannedItemForDetail] = useState<Item | null>(null);
 
   const currentRole = String(role || appUser?.role || user?.role || 'teacher').toUpperCase();
   const isWarehouseOrAdmin = useMemo(() => (
@@ -98,6 +101,7 @@ function HomeContent() {
       const txData = await txRes.json();
 
       setItems(itemsData.items || []);
+      setCategories(itemsData.categories || []);
       setDepartments(itemsData.departments || []);
       setRecentTransactions(txData.transactions || []);
     } catch (err) {
@@ -137,8 +141,7 @@ function HomeContent() {
           i => i.code.toLowerCase() === codeParam.trim().toLowerCase() || i.id === codeParam.trim()
         );
         if (found) {
-          setSelectedItemForDeduct(found);
-          showToast(`Found item: ${found.name}`);
+          setScannedItemForDetail(found);
           window.history.replaceState({}, '', window.location.pathname);
         }
       }
@@ -836,6 +839,8 @@ function HomeContent() {
         <ScannerModal
           isOpen={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
+          items={items}
+          checkStockOnly={true}
           onScanSuccess={code => {
             const scannedCode = extractScannedCode(code);
             setIsScannerOpen(false);
@@ -843,14 +848,25 @@ function HomeContent() {
               i => i.code.toLowerCase() === scannedCode.toLowerCase() || i.id === scannedCode
             );
             if (found) {
-              setSelectedItemForDeduct(found);
-              showToast(`Item found: ${found.name}`);
+              setScannedItemForDetail(found);
             } else {
               showToast(`Item not found for code: ${scannedCode}`);
             }
           }}
         />
       )}
+
+      {/* 4. Stock Detail Check Modal (Stock & Details Only, No Add/Deduct Quantity) */}
+      <StockDetailModal
+        item={scannedItemForDetail}
+        isOpen={Boolean(scannedItemForDetail)}
+        onClose={() => setScannedItemForDetail(null)}
+        categories={categories}
+        onScanNext={() => {
+          setScannedItemForDetail(null);
+          setIsScannerOpen(true);
+        }}
+      />
     </div>
   );
 }

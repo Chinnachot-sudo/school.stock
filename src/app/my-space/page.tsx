@@ -17,10 +17,26 @@ import {
   FileText,
   AlertTriangle,
   School,
-  ArrowRight
+  ArrowRight,
+  Briefcase,
+  ChevronDown,
+  X,
+  MapPin,
+  Tag
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Item, Department } from '@/types/inventory';
+
+export interface AssetItem {
+  id: string;
+  code: string;
+  name: string;
+  serial?: string;
+  category?: string;
+  location?: string;
+  custodian?: string;
+  status: string;
+}
 
 interface MyRequestItem {
   id: string;
@@ -52,12 +68,15 @@ export default function MySpacePage() {
 
   // State
   const [items, setItems] = useState<Item[]>([]);
+  const [assets, setAssets] = useState<AssetItem[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Form: New Request
-  const [selectedItem, setSelectedItem] = useState<string>('');
+  // Form: New Request (Asset Management)
+  const [selectedAsset, setSelectedAsset] = useState<AssetItem | null>(null);
+  const [assetSearchTerm, setAssetSearchTerm] = useState('');
+  const [isAssetDropdownOpen, setIsAssetDropdownOpen] = useState(false);
   const [requestQty, setRequestQty] = useState<number>(1);
   const [targetDepartment, setTargetDepartment] = useState<string>('');
   const [requestPurpose, setRequestPurpose] = useState<string>('');
@@ -84,9 +103,10 @@ export default function MySpacePage() {
     }
   }, [searchParams]);
 
-  // Load items and departments
+  // Load assets, items, and departments
   useEffect(() => {
     Promise.all([
+      fetch('/api/assets', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ assets: [] })),
       fetch('/api/items', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ items: [] })),
       fetch('/api/departments', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ departments: [] })),
       fetch('/api/requisitions', { cache: 'no-store' }).then(async response => {
@@ -94,7 +114,8 @@ export default function MySpacePage() {
         if (!response.ok) throw new Error(payload.error || 'Unable to load requests.');
         return payload;
       }).catch(error => ({ loadError: error instanceof Error ? error.message : 'Unable to load requests.' }))
-    ]).then(([itemsData, deptData, requestsData]) => {
+    ]).then(([assetsData, itemsData, deptData, requestsData]) => {
+      if (assetsData?.assets) setAssets(assetsData.assets);
       if (itemsData?.items) setItems(itemsData.items);
       if (deptData?.departments) setDepartments(deptData.departments);
       if (requestsData?.requests) setMyRequests(requestsData.requests);
@@ -105,23 +126,34 @@ export default function MySpacePage() {
 
   const submitRequest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!selectedAsset) {
+      setRequestFeedback({ type: 'error', message: 'กรุณาเลือกรายการครุภัณฑ์ (Asset) ที่ต้องการทำรายการ' });
+      return;
+    }
     setRequestFeedback(null);
     setSubmittingRequest(true);
     try {
       const response = await fetch('/api/requisitions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId: selectedItem, quantity: requestQty, departmentId: targetDepartment, purpose: requestPurpose })
+        body: JSON.stringify({
+          assetId: selectedAsset.id,
+          itemId: selectedAsset.id,
+          quantity: requestQty,
+          departmentId: targetDepartment,
+          purpose: requestPurpose
+        })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Unable to submit request.');
       const refreshed = await fetch('/api/requisitions', { cache: 'no-store' }).then(r => r.json());
       setMyRequests(Array.isArray(refreshed.requests) ? refreshed.requests : []);
-      setSelectedItem('');
+      setSelectedAsset(null);
+      setAssetSearchTerm('');
       setRequestQty(1);
       setTargetDepartment('');
       setRequestPurpose('');
-      setRequestFeedback({ type: 'success', message: 'Request saved to Supabase and is pending review.' });
+      setRequestFeedback({ type: 'success', message: 'บันทึกคำขอยืมครุภัณฑ์สำเร็จ และอยู่ระหว่างรอการอนุมัติ' });
     } catch (error) {
       setRequestFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Unable to submit request.' });
     } finally {
@@ -157,6 +189,18 @@ export default function MySpacePage() {
       i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       i.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredAssets = assets.filter(asset => {
+    const q = assetSearchTerm.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (asset.name && asset.name.toLowerCase().includes(q)) ||
+      (asset.code && asset.code.toLowerCase().includes(q)) ||
+      (asset.category && asset.category.toLowerCase().includes(q)) ||
+      (asset.location && asset.location.toLowerCase().includes(q)) ||
+      (asset.serial && asset.serial.toLowerCase().includes(q))
+    );
+  }).slice(0, 40);
 
   return (
     <div className="space-y-6">
@@ -220,92 +264,253 @@ export default function MySpacePage() {
             <div>
               <h2 className="text-base font-bold text-[#111827] flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-[#0B6B4F]" />
-                <span>Create New Requisition</span>
+                <span>Create New Requisition (ขอยืมครุภัณฑ์)</span>
               </h2>
               <p className="text-xs text-[#6B7280] mt-0.5">
-                Select items from inventory for classroom instruction or school activities
+                เลือกครุภัณฑ์จาก Asset Management เพื่อขอเบิกใช้งาน หรือยืมสำหรับกิจกรรมการเรียนการสอน
               </p>
             </div>
 
-              <form onSubmit={submitRequest} className="space-y-4">
-                {requestFeedback && <div role="status" className={`rounded-xl border p-3 text-xs ${requestFeedback.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}>{requestFeedback.message}</div>}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Select Material / Item <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={selectedItem}
-                    onChange={e => setSelectedItem(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-[#0B6B4F] outline-none"
-                  >
-                    <option value="">-- Search and select an item --</option>
-                    {items.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} [{item.code}] (Stock: {item.currentStock} {item.unit})
-                      </option>
-                    ))}
-                  </select>
+            <form onSubmit={submitRequest} className="space-y-4">
+              {requestFeedback && (
+                <div
+                  role="status"
+                  className={`rounded-xl border p-3 text-xs ${
+                    requestFeedback.type === 'success'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-rose-200 bg-rose-50 text-rose-800'
+                  }`}
+                >
+                  {requestFeedback.message}
                 </div>
+              )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Requested Quantity <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={requestQty}
-                      onChange={e => setRequestQty(parseInt(e.target.value) || 1)}
-                      required
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-[#0B6B4F] outline-none"
-                    />
-                  </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>
+                    Select Asset / Material (ครุภัณฑ์ที่ต้องการยืม) <span className="text-rose-500">*</span>
+                  </span>
+                  {assets.length > 0 && (
+                    <span className="text-[11px] font-normal text-slate-500">
+                      มีครุภัณฑ์ในระบบ {assets.length} รายการ
+                    </span>
+                  )}
+                </label>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Department / Grade Level
-                    </label>
-                    <select
-                      value={targetDepartment}
-                      onChange={e => setTargetDepartment(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-[#0B6B4F] outline-none"
+                {selectedAsset ? (
+                  /* Selected Asset Card */
+                  <div className="p-3.5 bg-emerald-50/70 border border-emerald-300 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-lg bg-[#0B6B4F] text-white flex items-center justify-center shrink-0 mt-0.5">
+                        <Briefcase className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-white text-[#0B6B4F] border border-emerald-200">
+                            {selectedAsset.code}
+                          </span>
+                          {selectedAsset.category && (
+                            <span className="text-[11px] text-slate-600 bg-white/80 px-2 py-0.5 rounded border border-emerald-100">
+                              {selectedAsset.category}
+                            </span>
+                          )}
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                              selectedAsset.status === 'AVAILABLE'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : selectedAsset.status === 'IN_USE'
+                                ? 'bg-blue-100 text-blue-800'
+                                : selectedAsset.status === 'ON_LOAN'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {selectedAsset.status || 'Active'}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 mt-1 truncate">
+                          {selectedAsset.name}
+                        </h4>
+                        {selectedAsset.location && (
+                          <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            <span>สถานที่: {selectedAsset.location}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAsset(null);
+                        setIsAssetDropdownOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white transition shrink-0"
+                      title="Change Asset"
                     >
-                      <option value="">-- Select Department / Grade --</option>
-                      {departments.map(d => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                </div>
+                ) : (
+                  /* Searchable Combobox Input & Dropdown */
+                  <div className="relative">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={assetSearchTerm}
+                        onChange={e => {
+                          setAssetSearchTerm(e.target.value);
+                          setIsAssetDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsAssetDropdownOpen(true)}
+                        placeholder="ค้นหาชื่อครุภัณฑ์, รหัส Asset Code, หมวดหมู่, หรือสถานที่..."
+                        className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-[#0B6B4F] outline-none transition"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                      <button
+                        type="button"
+                        onClick={() => setIsAssetDropdownOpen(!isAssetDropdownOpen)}
+                        className="absolute right-2.5 top-2.5 p-1 text-slate-400 hover:text-slate-600 rounded"
+                      >
+                        <ChevronDown
+                          className={`w-4 h-4 transition-transform duration-200 ${
+                            isAssetDropdownOpen ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+                    </div>
 
+                    {/* Fast Dropdown Menu */}
+                    {isAssetDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-30"
+                          onClick={() => setIsAssetDropdownOpen(false)}
+                        />
+                        <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white border border-slate-200 rounded-xl shadow-xl max-h-72 overflow-y-auto divide-y divide-slate-100">
+                          {filteredAssets.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-slate-400">
+                              {loading ? 'กำลังโหลดรายการครุภัณฑ์...' : 'ไม่พบครุภัณฑ์ที่ตรงกับคำค้นหา'}
+                            </div>
+                          ) : (
+                            filteredAssets.map(asset => (
+                              <button
+                                key={asset.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedAsset(asset);
+                                  setIsAssetDropdownOpen(false);
+                                  setAssetSearchTerm('');
+                                }}
+                                className="w-full p-3 text-left hover:bg-slate-50 transition flex items-center justify-between gap-3 group"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-[#0B6B4F] group-hover:bg-[#0B6B4F] group-hover:text-white transition">
+                                      {asset.code}
+                                    </span>
+                                    {asset.category && (
+                                      <span className="text-[10px] text-slate-500 bg-slate-100/70 px-1.5 py-0.5 rounded">
+                                        {asset.category}
+                                      </span>
+                                    )}
+                                    <span
+                                      className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                                        asset.status === 'AVAILABLE'
+                                          ? 'text-emerald-700 bg-emerald-50'
+                                          : asset.status === 'IN_USE'
+                                          ? 'text-blue-700 bg-blue-50'
+                                          : asset.status === 'ON_LOAN'
+                                          ? 'text-amber-700 bg-amber-50'
+                                          : 'text-slate-600 bg-slate-100'
+                                      }`}
+                                    >
+                                      {asset.status || 'Active'}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs font-semibold text-slate-800 group-hover:text-[#0B6B4F] transition truncate">
+                                    {asset.name}
+                                  </div>
+                                  {asset.location && (
+                                    <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                      <MapPin className="w-3 h-3" />
+                                      <span>{asset.location}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="text-[11px] text-[#0B6B4F] opacity-0 group-hover:opacity-100 font-bold transition shrink-0">
+                                  เลือก &rarr;
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Purpose / Additional Notes
+                    Requested Quantity <span className="text-rose-500">*</span>
                   </label>
-                  <textarea
-                    rows={3}
-                    value={requestPurpose}
-                    onChange={e => setRequestPurpose(e.target.value)}
-                    placeholder="e.g. For Grade 8 Science experiment this Friday"
+                  <input
+                    type="number"
+                    min={1}
+                    value={requestQty}
+                    onChange={e => setRequestQty(parseInt(e.target.value) || 1)}
+                    required
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-[#0B6B4F] outline-none"
                   />
                 </div>
 
-                <div className="pt-2 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={submittingRequest || loading || !selectedItem}
-                    className="px-6 py-2.5 bg-[#0B6B4F] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 disabled:bg-slate-300 disabled:text-slate-600"
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Department / Grade Level
+                  </label>
+                  <select
+                    value={targetDepartment}
+                    onChange={e => setTargetDepartment(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-[#0B6B4F] outline-none"
                   >
-                    <Send className="w-4 h-4" />
-                    <span>{submittingRequest ? 'Submitting…' : 'Submit Request'}</span>
-                  </button>
+                    <option value="">-- Select Department / Grade --</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </form>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Purpose / Additional Notes
+                </label>
+                <textarea
+                  rows={3}
+                  value={requestPurpose}
+                  onChange={e => setRequestPurpose(e.target.value)}
+                  placeholder="e.g. ขอยืมสำหรับการจัดกิจกรรมการเรียนการสอน หรือโครงการพิเศษ"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-[#0B6B4F] outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={submittingRequest || loading || !selectedAsset}
+                  className="px-6 py-2.5 bg-[#0B6B4F] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 disabled:bg-slate-300 disabled:text-slate-600 transition"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{submittingRequest ? 'Submitting…' : 'Submit Request'}</span>
+                </button>
+              </div>
+            </form>
           </div>
 
           {/* Quick Guide / Policies Card */}
@@ -613,7 +818,14 @@ export default function MySpacePage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedItem(item.id);
+                      const matchedAsset = assets.find(
+                        a => a.code.toLowerCase() === item.code.toLowerCase() || a.name.toLowerCase() === item.name.toLowerCase()
+                      );
+                      if (matchedAsset) {
+                        setSelectedAsset(matchedAsset);
+                      } else {
+                        setAssetSearchTerm(item.name);
+                      }
                       setActiveTab('new-request');
                     }}
                     className="px-2.5 py-1 bg-[#E6F5EF] text-[#0B6B4F] font-bold text-[11px] rounded-lg hover:bg-[#d6f0e4] transition"

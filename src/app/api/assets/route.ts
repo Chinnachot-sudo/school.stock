@@ -4,6 +4,8 @@ import { logAuditEvent } from '@/lib/audit';
 import { requirePermission } from '@/lib/auth-server';
 import { isServiceRoleConfigured, supabaseAdmin } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 const ALLOWED_STATUSES = new Set(['IN_USE', 'ON_LOAN', 'MAINTENANCE', 'DISPOSED']);
 
 function toAsset(row: any) {

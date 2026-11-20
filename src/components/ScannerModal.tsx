@@ -14,6 +14,7 @@ interface ScannerModalProps {
   onDeduct?: (item: Item) => void;
   onRestock?: (item: Item) => void;
   onScanSuccess?: (decodedText: string) => void;
+  checkStockOnly?: boolean;
 }
 
 export default function ScannerModal({
@@ -22,7 +23,8 @@ export default function ScannerModal({
   items = [],
   onDeduct,
   onRestock,
-  onScanSuccess
+  onScanSuccess,
+  checkStockOnly = false
 }: ScannerModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
@@ -407,48 +409,84 @@ export default function ScannerModal({
               </div>
             </div>
 
-            {/* 3 Explicit Action Buttons */}
-            <div className="space-y-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  const target = detectedItem;
-                  stopAndClose(() => {
-                    if (onDeduct) onDeduct(target);
-                    else if (onScanSuccess) onScanSuccess(target.code);
-                  });
-                }}
-                className="w-full min-h-[48px] bg-[#C45C26] hover:bg-[#A84B1E] active:scale-98 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-2 transition"
-              >
-                <span>Issue / Deduct</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+            {/* Stock Check vs Operation Action Buttons */}
+            {checkStockOnly || (!onDeduct && !onRestock) ? (
+              <div className="space-y-2.5 pt-1">
+                <div className="flex items-center justify-between text-[11px] text-[#6B6560] px-2.5 bg-[#F7F4EF] py-2 rounded-lg border border-[#E5E0D8]">
+                  <span>Safety Stock: <strong className="text-[#1A1A1A]">{detectedItem.minStock} {detectedItem.unit}</strong></span>
+                  <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                    detectedItem.currentStock <= 0
+                      ? 'bg-rose-100 text-rose-700'
+                      : detectedItem.currentStock <= detectedItem.minStock
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {detectedItem.currentStock <= 0 ? 'Out of Stock' : detectedItem.currentStock <= detectedItem.minStock ? 'Low Stock' : 'In Stock'}
+                  </span>
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={handleResumeScanning}
+                    className="min-h-[44px] bg-[#0B6B4F] hover:bg-[#095740] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-2xs"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Scan Next Item</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => stopAndClose(() => onClose())}
+                    className="min-h-[44px] bg-white hover:bg-[#F7F4EF] text-[#6B6560] border border-[#E5E0D8] rounded-lg text-xs font-medium flex items-center justify-center transition"
+                  >
+                    <span>Close</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
                 <button
                   type="button"
                   onClick={() => {
                     const target = detectedItem;
                     stopAndClose(() => {
-                      if (onRestock) onRestock(target);
+                      if (onDeduct) onDeduct(target);
                       else if (onScanSuccess) onScanSuccess(target.code);
                     });
                   }}
-                  className="min-h-[44px] bg-white hover:bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                  className="w-full min-h-[48px] bg-[#C45C26] hover:bg-[#A84B1E] active:scale-98 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-2 transition"
                 >
-                  <span>+ Restock</span>
+                  <span>Issue / Deduct</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleResumeScanning}
-                  className="min-h-[44px] bg-white hover:bg-[#F7F4EF] text-[#6B6560] border border-[#E5E0D8] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>Scan Next</span>
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = detectedItem;
+                      stopAndClose(() => {
+                        if (onRestock) onRestock(target);
+                        else if (onScanSuccess) onScanSuccess(target.code);
+                      });
+                    }}
+                    className="min-h-[44px] bg-white hover:bg-[#E8F0EB] text-[#1F4D3A] border border-[#1F4D3A] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                  >
+                    <span>+ Restock</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResumeScanning}
+                    className="min-h-[44px] bg-white hover:bg-[#F7F4EF] text-[#6B6560] border border-[#E5E0D8] rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Scan Next</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         ) : unrecognizedCode ? (
           /* Unrecognized code card */
